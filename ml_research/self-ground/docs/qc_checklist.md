@@ -218,3 +218,44 @@ Observed results:
 - [x] density-matched metadata records relaxed tolerances for the tiny ranking artifact
 - [x] density-matched mechanism report status is `insufficient_evidence`
 - [x] probe artifact status is `not_installed` with `ModuleNotFoundError` blockers for attempted SAEBench/RAVEL packages
+
+## MechanismLab Extraction
+
+- [x] `src/mechanismlab/` reusable schemas implemented
+- [x] generic claim report implemented
+- [x] backend manifests implemented without heavy imports
+- [x] local JSON tracker and local artifact store implemented
+- [x] `mechanismlab` CLI help inspected
+- [x] `mechanismlab backends` inspected
+- [x] SELF-GROUND adapter emits generic MechanismLab artifacts
+- [x] existing SELF-GROUND CLI remains available
+- [x] MechanismLab tests pass
+
+Commands run for this pass:
+
+```bash
+uv sync
+uv run ruff check .
+uv run pytest
+uv run pytest --run-integration
+SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm SELF_GROUND_SAE_ID=blocks.2.hook_resid_post uv run pytest --run-integration
+uv run mechanismlab --help
+uv run mechanismlab backends
+uv run self-ground --help
+uv run python scripts/write_mechanismlab_report.py --run-dir runs/test_negation_ravel_eval_density_matched
+uv run mechanismlab inspect-run runs/test_negation_ravel_eval_density_matched
+```
+
+Observed results:
+
+- [x] `uv run ruff check .` passed
+- [x] `uv run pytest` passed: `180 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `187 passed, 5 skipped`
+- [x] SAE-configured integration passed: `192 passed`
+- [x] `mechanismlab backends` reports optional package availability without requiring optional integrations
+- [x] generated `mechanismlab_claim.json`
+- [x] generated `mechanismlab_experiment.json`
+- [x] generated `mechanismlab_run_manifest.json`
+- [x] generated `mechanismlab_claim_report.json`
+- [x] generated `mechanismlab_claim_report.md`
+- [x] generic MechanismLab report status for the density-matched SELF-GROUND run is `insufficient_evidence`

@@ -11,6 +11,11 @@ use TransformerLens, SAE transforms use SAELens, Phase 3 is moving toward a
 RAVEL/SAEBench cause/isolation evaluation shape, and SELF-GROUND owns the
 negation task specification plus artifact-backed claim ledger.
 
+MechanismLab extraction has started under `src/mechanismlab/`. MechanismLab is
+the reusable claim/evidence/run framework; SELF-GROUND is the first project
+adapter. Current SELF-GROUND reports still run, and generic MechanismLab reports
+can be written alongside them.
+
 ## Phase 1 Recap
 
 Phase 1 implements:
