@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from self_ground.activations import CONDITIONS, condition_text
 from self_ground.data import MinimalPair
+from self_ground.engine_boundary import SAE_LENS_BACKEND, TRANSFORMER_LENS_BACKEND
 from self_ground.io import read_minimal_pairs, write_config, write_jsonl
 from self_ground.logit_scoring import (
     condition_dict,
@@ -324,6 +325,9 @@ def run_real_sae_intervention(
         "token_position": token_position,
         "device": device,
         "result_type": "real_sae_decoded_intervention",
+        "engine_backend": TRANSFORMER_LENS_BACKEND,
+        "sae_backend": SAE_LENS_BACKEND,
+        "claim_eligible": False,
     }
     write_config(config, out_path / "config.json")
 

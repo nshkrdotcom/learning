@@ -14,6 +14,11 @@ from self_ground.behavioral_tasks import (
     read_behavioral_tasks_jsonl,
     write_behavioral_tasks_jsonl,
 )
+from self_ground.engine_boundary import (
+    NEGATION_RAVEL_ADAPTER,
+    SAE_LENS_BACKEND,
+    TRANSFORMER_LENS_BACKEND,
+)
 from self_ground.intervention_telemetry import (
     mean_telemetry,
     telemetry_has_nonfinite,
@@ -826,6 +831,10 @@ def run_real_behavioral_sae_intervention(
         "allow_metadata_mismatch": allow_metadata_mismatch,
         "max_relative_norm_drift_warning": max_relative_norm_drift_warning,
         "max_decoded_delta_norm_ratio_warning": max_decoded_delta_norm_ratio_warning,
+        "engine_backend": TRANSFORMER_LENS_BACKEND,
+        "sae_backend": SAE_LENS_BACKEND,
+        "evaluation_adapter": NEGATION_RAVEL_ADAPTER,
+        "evaluation_shape": "ravel_style_cause_isolation_token_contrast",
     }
     write_config(config, out_path / "config.json")
     tasks = _load_tasks(tasks_path, per_family, seed)

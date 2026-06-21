@@ -4,7 +4,10 @@
 
 Phase 1 asks:
 
-Can we build a real, reproducible pipeline that finds negation-contrastive internal residual dimensions in a small real model, then intervenes on those dimensions and measures whether the model's logits change in a negation-relevant way?
+Can we build a real, reproducible pipeline that finds negation-contrastive
+internal residual dimensions in a small real model, then smoke-patches those
+dimensions and measures whether the model's logits change in a
+negation-relevant way?
 
 ## Completed Capabilities
 
@@ -14,7 +17,7 @@ Can we build a real, reproducible pipeline that finds negation-contrastive inter
 - Real TransformerLens activation capture through `TransformerLensModelAdapter`.
 - Real residual-dimension extraction with explicit `final_token` and `mean` pooling.
 - Real residual-dimension ranking for negation contrast.
-- Real residual-dimension intervention through TransformerLens hooks.
+- Real residual-dimension smoke patching through TransformerLens hooks.
 - Real logit-contrast measurement before and after residual patching.
 - Optional SAELens encoding for ranking when a concrete release/id is configured.
 - Feature-space proxy metrics kept explicitly separate from real intervention artifacts.
@@ -64,7 +67,7 @@ Real activation ranking:
 - `runs/real_activation_ranking_pythia70m/top_examples.jsonl`
 - `runs/real_activation_ranking_pythia70m/README.md`
 
-Real residual intervention:
+Real residual smoke diagnostic:
 
 - `runs/real_residual_intervention_pythia70m/config.json`
 - `runs/real_residual_intervention_pythia70m/selected_features.json`
@@ -76,7 +79,11 @@ Real residual intervention:
 
 Real activation ranking means the table is computed from actual residual stream activations captured from a real TransformerLens model.
 
-Real residual intervention means selected residual dimensions are patched through real TransformerLens hooks, the model is rerun, and logit-contrast changes are measured.
+Real residual smoke diagnostic means selected residual dimensions are patched
+through real TransformerLens hooks, the model is rerun, and logit-contrast
+changes are measured. It verifies the patching pipeline, but it is
+diagnostic-only and cannot feed `candidate_evidence` or
+`strong_candidate_evidence`.
 
 The key Phase 1 metric in `intervention_results.jsonl` is:
 
@@ -85,13 +92,15 @@ specificity_score = mean(abs(delta[x_pos]), abs(delta[x_para]))
                   - mean(abs(delta[x_neg]), abs(delta[x_decoy]))
 ```
 
-This tests whether the residual patch moves negation conditions more than matched affirmation/decoy controls.
+This checks whether the residual smoke patch moves negation conditions more than
+matched affirmation/decoy controls.
 
 ## Limitations
 
 - Residual dimensions are basis-dependent.
 - Residual ranking is not sparse-feature mechanism discovery.
-- Residual intervention is not SAE decoded intervention.
+- Residual smoke patching is not SAE decoded intervention or paper-facing
+  evidence.
 - Feature-space proxy scoring is not behavioral causal evidence.
 - No report head is trained.
 - No broad generalization claim is made.
@@ -100,7 +109,7 @@ This tests whether the residual patch moves negation conditions more than matche
 
 Current repo numbering:
 
-- Phase 1: real residual activation ranking and residual intervention.
+- Phase 1: real residual activation ranking and residual smoke diagnostics.
 - Phase 2: decoded SAE feature intervention. See `docs/phase2_sae_intervention.md`.
 - Phase 3: multi-task token-contrast evaluation and candidate evidence reports.
   See `docs/phase3_token_contrast_evaluation.md`.

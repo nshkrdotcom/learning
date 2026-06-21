@@ -9,7 +9,12 @@ from self_ground.real_residual_intervention import run_real_residual_interventio
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run real residual-dimension intervention.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run a real TransformerLens residual-dimension smoke patch diagnostic. "
+            "Outputs are diagnostic-only and claim-ineligible."
+        )
+    )
     parser.add_argument("--ranking-dir", default=None)
     parser.add_argument("--pairs", default=None)
     parser.add_argument("--out", required=True)

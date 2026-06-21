@@ -97,7 +97,10 @@ def run_activation_ranking_command(
     )
 
 
-@app.command("run-residual-intervention")
+@app.command(
+    "run-residual-intervention",
+    help="Run a TransformerLens residual smoke patch diagnostic; not claim evidence.",
+)
 def run_residual_intervention_command(
     out: Annotated[Path, typer.Option()],
     ranking_dir: Annotated[Path | None, typer.Option()] = None,
@@ -129,7 +132,7 @@ def run_residual_intervention_command(
         device=device,
     )
     console.print(
-        f"wrote residual intervention with {result.n_pairs} pairs and "
+        f"wrote residual smoke diagnostic with {result.n_pairs} pairs and "
         f"{result.n_features} residual features to {result.out_dir}"
     )
 

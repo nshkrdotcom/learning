@@ -99,9 +99,9 @@ Artifact inspection:
 
 - [x] `uv sync` passed
 - [x] `uv run ruff check .` passed
-- [x] `uv run pytest` passed: `140 passed, 12 skipped`
-- [x] `uv run pytest --run-integration` passed without SAE env: `147 passed, 5 skipped`
-- [x] SAE-configured integration passed: `152 passed`
+- [x] `uv run pytest` passed: `148 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `155 passed, 5 skipped`
+- [x] SAE-configured integration passed: `160 passed`
 - [x] root CLI help inspected
 - [x] Phase 3 CLI help inspected
 - [x] SAE compatibility CLI help inspected
@@ -146,3 +146,37 @@ Notes:
 The exact final commit hash and push result are recorded in the final response
 after commit/push, because the commit hash cannot be embedded in the same
 commit before it exists.
+
+## Engine Boundary Hardening
+
+- [x] `docs/decision_log/D007_engine_boundary.md` exists
+- [x] `docs/prior_art_engine_matrix.md` exists
+- [x] TransformerLens is recorded as the local patching backend
+- [x] SAELens is recorded as the SAE backend
+- [x] Phase 3 reports record `engine_backend`
+- [x] forbidden `self_ground_generic_engine` backend blocks claim reports
+- [x] residual-dimension runs are diagnostic-only and claim-ineligible
+- [x] feature-space proxy runs are legacy-only and claim-ineligible
+- [x] RAVEL-style cause/isolation aliases are tested
+- [x] nnsight and pyvene remain outside core dependencies
+- [x] new boundary tests pass
+
+Commands run for this boundary pass:
+
+```bash
+uv run ruff check .
+uv run pytest tests/test_engine_boundary.py tests/test_ravel_alignment.py tests/test_residual_intervention_artifacts.py tests/test_experiment.py tests/test_mechanism_report.py -q
+uv run pytest
+uv run pytest --run-integration
+SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm SELF_GROUND_SAE_ID=blocks.2.hook_resid_post uv run pytest --run-integration
+uv run python scripts/diagnostics/run_residual_smoke_patch.py --ranking-dir runs/test_real_activation_ranking --device cpu --top-k-features 2 --out runs/test_residual_smoke_patch
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/test_real_sae_ranking --out runs/test_negation_ravel_eval --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 2 --top-k-features 2 --baseline-mode top-vs-random-multiseed --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cpu
+```
+
+Boundary artifact inspection:
+
+- [x] `runs/test_real_residual_intervention/config.json` shows `diagnostic_only=true`
+- [x] `runs/test_residual_smoke_patch/config.json` shows `claim_eligible=false`
+- [x] `runs/test_real_sae_ranking/activation_metadata.json` shows `engine_backend=transformer_lens`
+- [x] `runs/test_negation_ravel_eval/config.json` shows `evaluation_adapter=negation_ravel_adapter`
+- [x] `runs/test_negation_ravel_eval/mechanism_report.json` shows `engine_backend=transformer_lens`

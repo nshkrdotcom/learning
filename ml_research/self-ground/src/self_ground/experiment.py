@@ -5,6 +5,7 @@ from pathlib import Path
 
 from self_ground.activations import collect_pair_feature_activations, rank_candidate_features
 from self_ground.data import ExperimentResult
+from self_ground.engine_boundary import LEGACY_FEATURE_SPACE_PROXY
 from self_ground.interventions import evaluate_feature_space_proxy
 from self_ground.io import (
     read_minimal_pairs,
@@ -55,13 +56,16 @@ def _write_run_readme(
     top_k_features: int,
 ) -> None:
     sae_label = f"{sae_release} / {sae_id}" if sae_release and sae_id else "test-local fixture"
-    text = f"""# SELF-GROUND Negation Proxy Run
+    text = f"""# Legacy SELF-GROUND Feature-Space Proxy Run
 
 - model: `{model_name}`
 - SAE: `{sae_label}`
 - pairs: `{n_pairs}`
 - layer: `{layer}`
 - top-k features: `{top_k_features}`
+- engine backend: `{LEGACY_FEATURE_SPACE_PROXY}`
+- legacy: `true`
+- claim eligible: `false`
 
 Proxy metric definitions:
 
@@ -73,9 +77,10 @@ Proxy metric definitions:
 
 Limitations:
 
-This run writes feature-space proxy deltas. It does not reinject decoded activations into
-TransformerLens and does not measure behavioral/logit changes, so it is not a behavioral
-causal intervention result.
+This run writes legacy feature-space proxy deltas. It does not reinject decoded
+activations into TransformerLens and does not measure behavioral/logit changes,
+so it is not a behavioral causal intervention result and cannot enter the
+SELF-GROUND claim ledger.
 """
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
@@ -114,7 +119,10 @@ def run_negation_experiment(
         "layer": layer,
         "top_k_features": top_k_features,
         "n_pairs": len(pairs),
-        "result_type": "feature_space_proxy",
+        "result_type": "feature_space_proxy_legacy",
+        "legacy": True,
+        "claim_eligible": False,
+        "engine_backend": LEGACY_FEATURE_SPACE_PROXY,
     }
     write_config(config, out_dir / "config.json")
     write_jsonl(pairs, out_dir / "pairs.jsonl")
@@ -148,7 +156,8 @@ def run_negation_experiment(
                     metadata={
                         "layer": layer,
                         "ranking_score": ranking.score,
-                        "result_type": "feature_space_proxy",
+                        "result_type": "feature_space_proxy_legacy",
+                        "claim_eligible": False,
                     },
                 )
             )

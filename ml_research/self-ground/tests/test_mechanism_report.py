@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 
 from self_ground.io import write_config, write_jsonl
 from self_ground.mechanism_report import build_mechanism_evidence_report
@@ -37,6 +38,9 @@ def _write_report_inputs(
             "baseline_mode": "top-vs-random-multiseed",
             "random_seeds": [7, 11, 13],
             "operations": operations,
+            "engine_backend": "transformer_lens",
+            "sae_backend": "sae_lens",
+            "evaluation_adapter": "negation_ravel_adapter",
         },
         run_dir / "config.json",
     )
@@ -317,6 +321,22 @@ def test_candidate_report_contains_limitations_and_threshold_checks(tmp_path) ->
     assert report.claim_status == "candidate_evidence"
     assert report.feature_sets[0].threshold_checks
     assert report.feature_sets[0].limitations
+    assert report.engine_backend == "transformer_lens"
+
+
+def test_forbidden_engine_backend_blocks_claim_report(tmp_path) -> None:
+    _write_report_inputs(tmp_path, n_tasks=8)
+    config_path = tmp_path / "config.json"
+    config = json.loads(config_path.read_text())
+    config["engine_backend"] = "self_ground_generic_engine"
+    write_config(config, config_path)
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status == "blocked"
+    assert report.engine_backend == "self_ground_generic_engine"
+    assert report.blocker_reason is not None
+    assert "self_ground_generic_engine" in report.blocker_reason
 
 
 def test_tiny_run_cannot_be_strong_candidate(tmp_path) -> None:

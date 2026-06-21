@@ -19,6 +19,7 @@ from self_ground.activations import (
     residual_activations_to_features,
 )
 from self_ground.data import MinimalPair
+from self_ground.engine_boundary import SAE_LENS_BACKEND, TRANSFORMER_LENS_BACKEND
 from self_ground.io import (
     read_minimal_pairs,
     write_config,
@@ -312,6 +313,9 @@ def run_activation_ranking(
         "n_pairs": len(pairs),
         "n_conditions": len(texts),
         "n_features": len(feature_activations.feature_ids),
+        "engine_backend": TRANSFORMER_LENS_BACKEND,
+        "sae_backend": SAE_LENS_BACKEND if feature_source == "sae" else None,
+        "claim_eligible": False,
     }
     if sae_compatibility is not None:
         metadata.update(

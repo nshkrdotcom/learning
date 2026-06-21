@@ -59,4 +59,7 @@ def test_experiment_end_to_end_with_test_local_adapters_writes_meaningful_artifa
     assert config["model"] == "test-local"
     assert config["top_k_features"] == 4
     assert "adapter" not in config
-    assert config["result_type"] == "feature_space_proxy"
+    assert config["result_type"] == "feature_space_proxy_legacy"
+    assert config["legacy"] is True
+    assert config["claim_eligible"] is False
+    assert config["engine_backend"] == "legacy_feature_space_proxy"

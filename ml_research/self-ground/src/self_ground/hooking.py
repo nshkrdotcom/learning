@@ -4,7 +4,10 @@ from collections.abc import Callable
 
 import torch
 
+from self_ground.engine_boundary import TRANSFORMER_LENS_BACKEND
 from self_ground.model import TransformerLensModelAdapter
+
+ENGINE_BACKEND = TRANSFORMER_LENS_BACKEND
 
 
 @torch.no_grad()
@@ -16,8 +19,10 @@ def run_with_residual_patch(
 ) -> torch.Tensor:
     """Run a real TransformerLens forward pass with an activation patch.
 
+    This is a thin TransformerLens call site used by SELF-GROUND experiments.
     The patch function receives the activation tensor at `hook_point` and must
-    return a tensor with the same shape.
+    return a tensor with the same shape. SELF-GROUND does not maintain a separate
+    intervention engine here.
     """
 
     def hook_fn(activation: torch.Tensor, hook=None) -> torch.Tensor:

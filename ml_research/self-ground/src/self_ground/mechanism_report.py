@@ -7,6 +7,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from self_ground.engine_boundary import (
+    TRANSFORMER_LENS_BACKEND,
+    validate_engine_backend,
+)
 from self_ground.io import read_json, read_jsonl, write_config
 
 
@@ -66,6 +70,7 @@ class MechanismEvidenceReport(BaseModel):
     hook_point: str
     sae_release: str
     sae_id: str
+    engine_backend: str
     metadata_mismatch_override_used: bool
     diagnostic_only: bool
     feature_sets: list[FeatureSetEvidence]
@@ -352,7 +357,10 @@ def _claim_status(
     baseline_accounting: dict[str, Any],
     summary_quality: dict[str, Any],
     summary_rows: list[dict[str, str]],
+    engine_backend_valid: bool,
 ) -> str:
+    if not engine_backend_valid:
+        return "blocked"
     if not all(required_artifacts.values()):
         return "blocked"
     if summary_quality.get("n_summary_rows", 0) and not summary_rows:
@@ -428,7 +436,10 @@ def _blocker_reason(
     summary_quality: dict[str, Any],
     summary_rows: list[dict[str, str]],
     baseline_accounting: dict[str, Any],
+    engine_backend_error: str | None,
 ) -> str | None:
+    if engine_backend_error is not None:
+        return engine_backend_error
     blocker_path = run_dir / "blocker.json"
     if blocker_path.exists():
         blocker = read_json(blocker_path)
@@ -587,6 +598,9 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - hook point: `{report.hook_point}`
 - SAE release: `{report.sae_release}`
 - SAE id: `{report.sae_id}`
+- engine backend: `{report.engine_backend}`
+- SAE backend: `{config.get("sae_backend", "not available")}`
+- evaluation adapter: `{config.get("evaluation_adapter", "not available")}`
 - ranking dir: `{config.get("ranking_dir", "not available")}`
 - operations: `{config.get("operations", "not available")}`
 - patch mode: `{config.get("patch_mode", "not available")}`
@@ -712,6 +726,13 @@ def build_mechanism_evidence_report(
     run_dir = Path(behavioral_run_dir)
     threshold_config = thresholds or EvidenceThresholds()
     config = read_json(run_dir / "config.json") if (run_dir / "config.json").exists() else {}
+    raw_engine_backend = str(config.get("engine_backend") or TRANSFORMER_LENS_BACKEND)
+    engine_backend_error = None
+    try:
+        engine_backend = validate_engine_backend(raw_engine_backend)
+    except ValueError as exc:
+        engine_backend = raw_engine_backend
+        engine_backend_error = str(exc)
     compatibility = (
         read_json(run_dir / "compatibility.json")
         if (run_dir / "compatibility.json").exists()
@@ -766,6 +787,7 @@ def build_mechanism_evidence_report(
         baseline_accounting=baseline_accounting,
         summary_quality=summary_quality,
         summary_rows=summary_rows,
+        engine_backend_valid=engine_backend_error is None,
     )
     blocker_reason = _blocker_reason(
         run_dir=run_dir,
@@ -776,6 +798,7 @@ def build_mechanism_evidence_report(
         summary_quality=summary_quality,
         summary_rows=summary_rows,
         baseline_accounting=baseline_accounting,
+        engine_backend_error=engine_backend_error,
     )
     limitations = _top_level_limitations(
         config=config,
@@ -789,11 +812,11 @@ def build_mechanism_evidence_report(
         thresholds=threshold_config,
     )
     recommended_claim = (
-        "The selected SAE feature set has candidate evidence for influencing "
-        "negation-sensitive next-token contrasts under decoded residual intervention "
-        "in this model/hook/SAE configuration."
+        "The selected SAE feature set has candidate evidence for a negation-scope "
+        "token-contrast effect under decoded residual intervention in this "
+        "model/hook/SAE configuration."
         if claim_status in {"candidate_evidence", "strong_candidate_evidence"}
-        else "The run does not support a candidate mechanism claim under the configured thresholds."
+        else "The run does not support a candidate feature-claim under the configured thresholds."
     )
     report = MechanismEvidenceReport(
         schema_version="phase3.token_contrast.v1",
@@ -801,6 +824,7 @@ def build_mechanism_evidence_report(
         hook_point=str(config.get("hook_point") or ""),
         sae_release=str(config.get("sae_release") or ""),
         sae_id=str(config.get("sae_id") or ""),
+        engine_backend=engine_backend,
         metadata_mismatch_override_used=bool(config.get("allow_metadata_mismatch")),
         diagnostic_only=bool(
             config.get("allow_metadata_mismatch")

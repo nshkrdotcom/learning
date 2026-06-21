@@ -4,7 +4,7 @@
 
 Current repo numbering is:
 
-- Phase 1: real residual activation ranking and residual intervention.
+- Phase 1: real residual activation ranking and residual smoke diagnostics.
 - Phase 2: real decoded SAE feature intervention.
 - Phase 3: multi-task token-contrast evaluation and candidate evidence reports.
 
@@ -14,7 +14,8 @@ Phase 3 implementation.
 ## What Phase 3 Adds
 
 Phase 3 builds a reporting layer above Phase 2 decoded SAE intervention. It
-does not introduce a new intervention primitive. It reuses the real path:
+does not introduce a new intervention primitive or a SELF-GROUND-owned engine.
+It reuses the real path:
 
 ```text
 real model activations
@@ -29,9 +30,48 @@ real model activations
 The evaluation asks whether selected SAE features produce more movement on
 negation-sensitive target prompts than on matched non-negation control prompts,
 and whether top-ranked features outperform deterministic control feature sets.
+This is RAVEL-shaped: target-prompt movement is treated as cause score,
+matched-control movement is treated as isolation score, and `specificity_gap`
+is the cause-minus-isolation alias.
 
 Use the term token-contrast evaluation. This is not broad behavioral
 understanding and not complete mechanism discovery.
+
+## Engine Boundary
+
+The local backend is TransformerLens. SAE loading, encode, and decode are
+SAELens responsibilities. SELF-GROUND owns the negation task schema,
+compatibility gate, evaluation adapter, and claim ledger. It does not maintain a
+generic patching or intervention engine. Residual-dimension outputs are smoke
+diagnostics only, and feature-space proxy outputs are legacy-only.
+
+Every Phase 3 report records `engine_backend` and `sae_backend`. A run using a
+forbidden SELF-GROUND generic engine backend is blocked even if metric rows
+look candidate-like.
+
+## RAVEL-Shaped Wrapper
+
+The forward-facing script is:
+
+```bash
+uv run python scripts/run_negation_ravel_eval.py \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/negation_ravel_eval \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --per-family 2 \
+  --top-k-features 2 \
+  --operations ablate \
+  --patch-mode delta \
+  --device cpu
+```
+
+This currently reuses the existing TransformerLens plus SAELens decoded
+intervention path and records the SELF-GROUND negation RAVEL-style adapter in
+`config.json`. A direct SAEBench bridge remains future work and must be tried
+before expanding the custom evaluator.
 
 ## Compatibility Requirement
 

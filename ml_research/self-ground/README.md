@@ -6,6 +6,11 @@ intervention infrastructure, and Phase 3 token-contrast evaluation reports. It
 does not claim complete SELF-GROUND, broad mechanism discovery, broad behavioral
 understanding, or genuine model introspection.
 
+SELF-GROUND is not a generic intervention engine. Local execution and patching
+use TransformerLens, SAE transforms use SAELens, Phase 3 is moving toward a
+RAVEL/SAEBench cause/isolation evaluation shape, and SELF-GROUND owns the
+negation task specification plus artifact-backed claim ledger.
+
 ## Phase 1 Recap
 
 Phase 1 implements:
@@ -13,10 +18,13 @@ Phase 1 implements:
 - deterministic negation minimal pairs,
 - real TransformerLens activation capture,
 - real residual-dimension activation ranking,
-- real residual-dimension intervention through TransformerLens hooks,
-- real logit-contrast deltas after residual patching.
+- real residual-dimension smoke patching through TransformerLens hooks,
+- real logit-contrast deltas after residual smoke patches.
 
-Phase 1 does not claim sparse SAE mechanisms. Raw residual dimensions are basis-dependent.
+Phase 1 residual outputs are diagnostic only. They do not enter
+`candidate_evidence` or `strong_candidate_evidence`, do not claim sparse SAE
+mechanisms, and are not paper-facing evidence. Raw residual dimensions are
+basis-dependent.
 
 ## Phase 2 Goal
 
@@ -41,7 +49,12 @@ negation-sensitive token-contrast tasks. It validates tokenization, records
 baseline task calibration, compares top SAE feature sets against deterministic
 control feature sets, scores both target prompts and matched non-negation
 control prompts, records intervention telemetry, and writes a thresholded
-mechanism evidence report.
+feature-claim evidence report.
+
+The current scoring is RAVEL-shaped: target-prompt movement is the cause score,
+matched non-negation control movement is the isolation score, and the historical
+`specificity_gap` is treated as cause minus isolation. The custom evaluator is
+kept only as a negation adapter until SAEBench/RAVEL can be repointed cleanly.
 
 This is token-contrast evaluation, not broad behavioral understanding.
 Phase 3 records target-prompt and matched-control intervention telemetry
@@ -87,6 +100,18 @@ uv run python scripts/run_real_residual_intervention.py \
   --ranking-dir runs/real_activation_ranking_pythia70m \
   --device cpu \
   --out runs/real_residual_intervention_pythia70m
+```
+
+The residual command is a smoke diagnostic even though it patches real
+TransformerLens activations.
+
+The preferred diagnostic alias is:
+
+```bash
+uv run python scripts/diagnostics/run_residual_smoke_patch.py \
+  --ranking-dir runs/real_activation_ranking_pythia70m \
+  --device cpu \
+  --out runs/residual_smoke_patch_pythia70m
 ```
 
 ## Phase 2 SAE Compatibility
@@ -173,6 +198,23 @@ uv run python scripts/run_phase3_behavioral_evaluation.py \
   --write-report
 ```
 
+RAVEL-shaped wrapper:
+
+```bash
+uv run python scripts/run_negation_ravel_eval.py \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/negation_ravel_eval \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --per-family 2 \
+  --top-k-features 2 \
+  --operations ablate \
+  --patch-mode delta \
+  --device cpu
+```
+
 Equivalent CLI:
 
 ```bash
@@ -221,7 +263,7 @@ Phase 1 residual ranking:
 - `top_examples.jsonl`
 - `README.md`
 
-Phase 1 residual intervention:
+Phase 1 residual smoke diagnostic:
 
 - `config.json`
 - `selected_features.json`
@@ -271,7 +313,9 @@ artifact is missing.
 
 Feature-space proxy arithmetic is not causal evidence.
 
-Residual-dimension intervention is real TransformerLens intervention evidence, but it is not SAE feature intervention and not mechanism discovery.
+Residual-dimension smoke patching is a real TransformerLens diagnostic, but it
+is not SAE feature intervention, not candidate evidence, and not mechanism
+discovery.
 
 Decoded SAE intervention is real sparse-feature intervention only when compatibility succeeds and the run writes decoded SAE intervention artifacts.
 

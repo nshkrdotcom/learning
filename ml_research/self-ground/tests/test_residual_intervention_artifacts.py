@@ -48,6 +48,12 @@ def test_residual_intervention_artifacts_with_test_local_model(
     assert selected["source"] == "ranking_dir"
     assert all(feature_id.startswith("resid_") for feature_id in selected["feature_ids"])
 
+    config = json.loads((out_dir / "config.json").read_text())
+    assert config["result_type"] == "residual_smoke_patch_diagnostic"
+    assert config["engine_backend"] == "transformer_lens"
+    assert config["diagnostic_only"] is True
+    assert config["claim_eligible"] is False
+
     rows = [
         json.loads(line)
         for line in (out_dir / "intervention_results.jsonl").read_text().splitlines()
@@ -73,6 +79,7 @@ def test_residual_intervention_artifacts_with_test_local_model(
     ]
 
     readme = (out_dir / "README.md").read_text().lower()
-    assert "real transformerlens residual intervention" in readme
+    assert "real transformerlens residual smoke patch" in readme
+    assert "candidate_evidence" in readme
     assert "not an sae decoded intervention" in readme
     assert "sae feature intervention" not in readme

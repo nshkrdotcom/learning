@@ -7,6 +7,7 @@ from typing import Any, Literal
 
 from self_ground.activations import CONDITIONS, condition_text
 from self_ground.data import MinimalPair
+from self_ground.engine_boundary import RESIDUAL_SMOKE_DIAGNOSTIC, TRANSFORMER_LENS_BACKEND
 from self_ground.io import read_minimal_pairs, write_config, write_jsonl
 from self_ground.logit_scoring import condition_dict, contrast_from_logits, delta_dict
 from self_ground.negation import generate_negation_pairs
@@ -118,20 +119,25 @@ def _write_run_readme(
     operation: str,
     n_pairs: int,
 ) -> None:
-    text = f"""# Real Residual Intervention
+    text = f"""# Residual Smoke Patch Diagnostic
 
 - model: `{model_name}`
 - hook point: `{hook_point}`
 - operation: `{operation}`
 - feature ids: `{", ".join(feature_ids)}`
 - pairs: `{n_pairs}`
+- engine backend: `{TRANSFORMER_LENS_BACKEND}`
+- diagnostic only: `true`
+- claim eligible: `false`
 
-This run performs a real TransformerLens residual intervention. It patches raw
+This run performs a real TransformerLens residual smoke patch. It patches raw
 residual stream dimensions at the selected hook point, reruns the model, and
-measures logit-contrast changes.
+measures logit-contrast changes for pipeline diagnostics.
 
-It is not an SAE decoded intervention. Raw residual dimensions are
-basis-dependent and are not directly interpretable as sparse features.
+It is not an SAE decoded intervention and cannot enter SELF-GROUND
+`candidate_evidence` or `strong_candidate_evidence` claim status. Raw residual
+dimensions are basis-dependent and are not directly interpretable as sparse
+features.
 """
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
@@ -277,7 +283,11 @@ def run_real_residual_intervention(
         "per_family": per_family,
         "seed": seed,
         "n_pairs": len(pairs),
-        "result_type": "real_residual_intervention",
+        "result_type": "residual_smoke_patch_diagnostic",
+        "engine_backend": TRANSFORMER_LENS_BACKEND,
+        "diagnostic_backend": RESIDUAL_SMOKE_DIAGNOSTIC,
+        "diagnostic_only": True,
+        "claim_eligible": False,
     }
     selected_features = {
         "source": source,
