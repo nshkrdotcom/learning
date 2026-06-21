@@ -81,6 +81,10 @@ SAEBench/RAVEL integration check; if it records `not_installed` or
 `blocked_api_incompatible`, the custom evaluator remains a temporary task
 adapter.
 
+The latest boundary decision is recorded in
+`docs/decision_log/D008_saebench_ravel_eval_boundary.md`. In this environment
+the probe status is `not_installed`; no upstream SAEBench/RAVEL evaluation ran.
+
 ## Compatibility Requirement
 
 Production Phase 3 runs require semantic, shape, and reconstruction SAE
@@ -172,6 +176,50 @@ prompt contrast, control target score, control foil score, or control contrast
 is NaN or Inf, the run writes `baseline_validation.json`, writes a blocker
 README/report, and does not run decoded interventions. This avoids treating
 post-hoc skipped intervention rows as evidence when calibration itself failed.
+
+## Preregistered Task Calibration
+
+Task calibration is optional and disabled by default. When enabled, it uses only
+baseline/task artifacts computed before decoded intervention rows:
+
+- `baseline-intended-direction`: keep tasks where the unpatched model already
+  favors the intended continuation;
+- `baseline-margin`: additionally require an absolute baseline prompt margin.
+
+Calibration writes:
+
+```text
+task_calibration_rule.json
+task_calibration_result.json
+calibrated_behavioral_tasks.jsonl
+calibrated_excluded_behavioral_tasks.jsonl
+```
+
+If calibration leaves fewer than the configured minimum tasks in any required
+family and `--allow-family-drop false`, the run is blocked before intervention
+rows are written. Calibrated evidence is conditional on the baseline-filtered
+task subset and is not directly comparable to uncalibrated runs without that
+qualification.
+
+The 2026-06-21 E002 calibration analysis found that only 7 of 30 serious-run
+tasks passed intended baseline direction, with `property_negation` retaining
+0 of 10 tasks. The bounded calibrated variants therefore failed closed with
+`task_calibration_failed`; this is useful task-suite evidence, not a candidate
+feature claim.
+
+## Feature Selection Modes
+
+The primary mode remains the ranking-file order:
+
+- `top`: current ranking order;
+- `top-absolute`: explicit alias for absolute-score top-k ranking;
+- `top-positive`: positive signed-score features only;
+- `top-family-consistent`: requires per-family ranking score columns and blocks
+  clearly when those columns are absent.
+
+The current SAE ranking artifact does not include per-family score columns, so
+`top-family-consistent` is not available for E002 without regenerating richer
+ranking artifacts.
 
 ## Telemetry
 

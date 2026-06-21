@@ -7,6 +7,7 @@ import pytest
 from self_ground.baselines import (
     build_feature_sets,
     select_bottom_active_features,
+    select_features_by_mode,
     select_multiple_seeded_random_feature_sets,
     select_seeded_random_features,
     select_top_features,
@@ -109,6 +110,7 @@ def test_feature_set_artifact_shape(tmp_path) -> None:
     labels = [row["label"] for row in artifact["feature_sets"]]
     assert labels == ["top", "random_seed_7", "random_seed_11"]
     assert artifact["feature_sets"][0]["selection_method"] == "ranking_abs_score_top_k"
+    assert artifact["feature_sets"][0]["feature_selection_mode"] == "top"
 
 
 def test_density_matched_feature_set_artifact_shape(tmp_path) -> None:
@@ -130,3 +132,43 @@ def test_density_matched_feature_set_artifact_shape(tmp_path) -> None:
         "per_condition_mean_approximation"
     )
     assert not set(density_row["feature_ids"]) & {"sae_0", "sae_1"}
+
+
+def test_top_positive_feature_selection_excludes_wrong_sign_features(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_ranking(ranking)
+
+    assert select_features_by_mode(
+        ranking,
+        top_k=3,
+        feature_selection_mode="top-positive",
+    ) == ["sae_0", "sae_3", "sae_5"]
+
+
+def test_family_consistent_mode_blocks_without_family_columns(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_ranking(ranking)
+
+    with pytest.raises(ValueError, match="per-family ranking score columns"):
+        select_features_by_mode(
+            ranking,
+            top_k=2,
+            feature_selection_mode="top-family-consistent",
+        )
+
+
+def test_feature_selection_mode_is_recorded(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_ranking(ranking)
+
+    artifact = build_feature_sets(
+        ranking,
+        top_k=2,
+        baseline_mode="top",
+        feature_selection_mode="top-positive",
+    )
+
+    top = artifact["feature_sets"][0]
+    assert artifact["feature_selection_mode"] == "top-positive"
+    assert top["selection_method"] == "ranking_positive_score_top_k"
+    assert top["feature_ids"] == ["sae_0", "sae_3"]

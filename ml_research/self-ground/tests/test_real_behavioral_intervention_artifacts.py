@@ -467,3 +467,73 @@ def test_phase3_nonfinite_baseline_blocks_before_intervention_rows(tmp_path) -> 
     assert "baseline" in report["blocker_reason"].lower()
     readme = (out_dir / "README.md").read_text()
     assert "baseline scoring produced non-finite values" in readme
+
+
+def test_phase3_calibrated_run_writes_calibration_artifacts(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "phase3_calibrated"
+    _write_sae_ranking(ranking_dir)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        baseline_mode="top",
+        operations=["ablate"],
+        patch_mode="delta",
+        task_calibration_mode="baseline-intended-direction",
+        min_calibrated_tasks_per_family=1,
+        allow_family_drop=True,
+        feature_selection_mode="top-positive",
+        model_adapter=TinyBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    assert result.compatible is True
+    assert (out_dir / "task_calibration_rule.json").exists()
+    assert (out_dir / "task_calibration_result.json").exists()
+    assert (out_dir / "calibrated_behavioral_tasks.jsonl").exists()
+    feature_sets = json.loads((out_dir / "feature_sets.json").read_text())
+    assert feature_sets["feature_selection_mode"] == "top-positive"
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["task_calibration_enabled"] is True
+    assert report["feature_selection_mode"] == "top-positive"
+    assert "Task calibration was applied" in " ".join(report["limitations"])
+
+
+def test_phase3_calibration_failure_blocks_before_intervention_rows(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "phase3_calibration_blocked"
+    _write_sae_ranking(ranking_dir)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        baseline_mode="top",
+        operations=["ablate"],
+        patch_mode="delta",
+        task_calibration_mode="baseline-margin",
+        min_baseline_margin=100.0,
+        min_calibrated_tasks_per_family=1,
+        model_adapter=TinyBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    assert result.compatible is False
+    assert (out_dir / "task_calibration_result.json").exists()
+    assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
+    blocker = json.loads((out_dir / "blocker.json").read_text())
+    assert blocker["blocker_type"] == "task_calibration_failed"
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["claim_status"] == "blocked"

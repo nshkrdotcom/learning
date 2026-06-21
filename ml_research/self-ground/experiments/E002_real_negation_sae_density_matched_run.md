@@ -164,3 +164,57 @@ The decoded SAE intervention moved logits under the serious setting, so the
 pipeline is not globally no-op. The result does not support candidate evidence
 because matched-control movement exceeded target movement and baseline
 calibration remained below threshold.
+
+## 2026-06-21 Calibration And Feature-Selection Follow-Up
+
+Baseline calibration analysis:
+
+- artifact: `runs/diagnostics/e002_task_calibration/calibration_summary.json`
+- intended-direction pass count: 7 / 30
+- intended-direction pass rate: `0.23333333333333334`
+- `property_negation`: 0 / 10 pass
+- `sentiment_negation`: 5 / 10 pass
+- `state_negation`: 2 / 10 pass
+
+Feature-selection analysis:
+
+- artifact:
+  `runs/diagnostics/e002_feature_selection/feature_specificity_diagnosis.json`
+- diagnosis labels:
+  - `target_effect_present_but_not_specific`
+  - `control_effect_dominates`
+- top mean abs ranking score: `0.14233589977025984`
+- density-control mean abs ranking score: `0.0`
+
+Bounded calibrated variants:
+
+```text
+runs/e002_calibrated_intended_direction_top_abs
+runs/e002_calibrated_margin_top_abs
+runs/e002_calibrated_intended_direction_top_positive
+```
+
+All three variants blocked before decoded intervention rows because
+preregistered baseline-only calibration failed to retain the required family
+coverage with `--allow-family-drop false`.
+
+Comparison artifact:
+
+```text
+runs/diagnostics/e002_variant_comparison/comparison.json
+```
+
+Interpretation:
+
+The original E002 failure is substantially a task-calibration problem: the
+current property-negation templates are not baseline-calibrated for
+Pythia-70M-deduped under the selected token contrasts. Feature selection also
+remains insufficiently specific because the uncalibrated top feature set moves
+matched controls more than target prompts. No calibrated variant produced
+candidate evidence.
+
+Next action:
+
+Revise or expand the task suite using baseline-only calibration criteria before
+running another serious decoded SAE intervention evaluation. Do not weaken
+claim thresholds or drop required families to obtain a positive result.

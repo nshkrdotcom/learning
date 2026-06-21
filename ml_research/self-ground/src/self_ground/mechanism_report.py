@@ -74,6 +74,9 @@ class MechanismEvidenceReport(BaseModel):
     engine_backend: str
     metadata_mismatch_override_used: bool
     diagnostic_only: bool
+    task_calibration_enabled: bool = False
+    task_calibration: dict[str, Any] | None = None
+    feature_selection_mode: str = "top"
     feature_sets: list[FeatureSetEvidence]
     claim_status: Literal[
         "blocked",
@@ -137,6 +140,10 @@ def _artifact_paths(run_dir: Path) -> dict[str, str]:
         "skipped_behavioral_rows.json",
         "mechanism_report.json",
         "mechanism_report.md",
+        "task_calibration_rule.json",
+        "task_calibration_result.json",
+        "calibrated_behavioral_tasks.jsonl",
+        "calibrated_excluded_behavioral_tasks.jsonl",
     ]
     return {name: str(run_dir / name) for name in names if (run_dir / name).exists()}
 
@@ -150,6 +157,10 @@ def _baseline_pass_rate(run_dir: Path) -> float | None:
     if not path.exists():
         return None
     rows = read_jsonl(path)
+    calibration_path = run_dir / "task_calibration_result.json"
+    if calibration_path.exists():
+        kept = set(read_json(calibration_path).get("kept_task_ids", []))
+        rows = [row for row in rows if row.get("task_id") in kept]
     if not rows:
         return None
     return sum(1 for row in rows if bool(row.get("intended_direction_pass"))) / len(rows)
@@ -531,6 +542,11 @@ def _top_level_limitations(
         compatibility.get("diagnostic_only") or config.get("allow_metadata_mismatch")
     ):
         limitations.append("Metadata mismatch override was used; run is diagnostic-only.")
+    if config.get("task_calibration_mode") not in {None, "none"}:
+        limitations.append(
+            "Task calibration was applied using baseline-only filters. Evidence is "
+            "conditional on this preregistered calibrated task subset."
+        )
     if baseline_pass_rate is not None and baseline_pass_rate < (
         thresholds.min_intended_direction_pass_rate_for_candidate
     ):
@@ -580,6 +596,8 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     validation = artifact_json("behavioral_task_validation.json") or {}
     validation_summary = validation.get("summary", validation)
     feature_sets = artifact_json("feature_sets.json") or {}
+    task_calibration = artifact_json("task_calibration_result.json")
+    task_calibration_rule = artifact_json("task_calibration_rule.json")
     feature_set_rows = feature_sets.get("feature_sets", [])
     baseline_rows = artifact_rows("baseline_task_summary.csv")
     behavior_rows = artifact_rows("behavioral_summary.csv")
@@ -665,6 +683,8 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - patch mode: `{config.get("patch_mode", "not available")}`
 - baseline mode: `{config.get("baseline_mode", "not available")}`
 - random seeds: `{config.get("random_seeds", "not available")}`
+- feature selection mode: `{config.get("feature_selection_mode", "not available")}`
+- task calibration mode: `{config.get("task_calibration_mode", "none")}`
 
 ## SAE Compatibility
 
@@ -697,6 +717,12 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - baseline validation: `{baseline_validation or "not available"}`
 
 {json_block(baseline_rows[:10] if baseline_rows else "not available")}
+
+## Task Calibration
+
+- enabled: `{report.task_calibration_enabled}`
+- rule: `{task_calibration_rule or "not available"}`
+- result: `{task_calibration or "not available"}`
 
 ## Feature Sets
 
@@ -813,6 +839,11 @@ def build_mechanism_evidence_report(
     feature_sets = (
         read_json(run_dir / "feature_sets.json") if (run_dir / "feature_sets.json").exists() else {}
     )
+    task_calibration = (
+        read_json(run_dir / "task_calibration_result.json")
+        if (run_dir / "task_calibration_result.json").exists()
+        else None
+    )
     raw_summary_rows = (
         [
             row
@@ -904,6 +935,9 @@ def build_mechanism_evidence_report(
             config.get("allow_metadata_mismatch")
             or (compatibility or {}).get("diagnostic_only")
         ),
+        task_calibration_enabled=config.get("task_calibration_mode") not in {None, "none"},
+        task_calibration=task_calibration,
+        feature_selection_mode=str(config.get("feature_selection_mode") or "top"),
         feature_sets=evidence,
         claim_status=claim_status,  # type: ignore[arg-type]
         recommended_claim=recommended_claim,
@@ -914,6 +948,7 @@ def build_mechanism_evidence_report(
             **row_accounting,
             **summary_quality,
             "baseline": baseline_accounting,
+            "task_calibration": task_calibration,
         },
         artifacts=_artifact_paths(run_dir),
         qc={

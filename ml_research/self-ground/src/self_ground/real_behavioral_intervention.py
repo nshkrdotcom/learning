@@ -29,6 +29,12 @@ from self_ground.logit_scoring import score_behavioral_task_logits
 from self_ground.mechanism_report import build_mechanism_evidence_report
 from self_ground.sae_compat import SAECompatibilityResult, verify_sae_compatibility
 from self_ground.sae_interventions import run_sae_decoded_intervention_logits_with_telemetry
+from self_ground.task_calibration import (
+    CalibrationMode,
+    apply_task_calibration,
+    task_calibration_rule_from_mode,
+    write_task_calibration_artifacts,
+)
 from self_ground.task_validation import (
     BehavioralTaskValidationSummary,
     TokenValidationResult,
@@ -285,6 +291,8 @@ def _rerun_command(config: dict[str, Any]) -> str:
         f"--operations {','.join(config['operations'])} "
         f"--patch-mode {config['patch_mode']} "
         f"--device {config['device']} "
+        f"--task-calibration-mode {config.get('task_calibration_mode', 'none')} "
+        f"--feature-selection-mode {config.get('feature_selection_mode', 'top')} "
         "--write-report"
     )
 
@@ -758,6 +766,8 @@ monosemantic feature discovery.
         text += "\nNo behavioral intervention rows were written because SAE compatibility failed.\n"
     if blocker and "task validation" in blocker:
         text += "\nNo behavioral intervention rows were written because task validation failed.\n"
+    if blocker and "calibration" in blocker:
+        text += "\nNo behavioral intervention rows were written because task calibration failed.\n"
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
 
@@ -799,6 +809,17 @@ def run_real_behavioral_sae_intervention(
     density_tolerance: float = 0.10,
     abs_mean_tolerance: float = 0.10,
     allow_relaxed_density_matching: bool = True,
+    task_calibration_mode: CalibrationMode = "none",
+    min_baseline_margin: float | None = None,
+    min_calibrated_tasks_per_family: int = 3,
+    allow_family_drop: bool = False,
+    feature_selection_mode: Literal[
+        "top",
+        "top-positive",
+        "top-absolute",
+        "top-family-consistent",
+    ] = "top",
+    min_family_consistency: int = 3,
     model_adapter=None,
     sae_adapter=None,
 ) -> BehavioralInterventionRun:
@@ -841,6 +862,12 @@ def run_real_behavioral_sae_intervention(
         "density_tolerance": density_tolerance,
         "abs_mean_tolerance": abs_mean_tolerance,
         "allow_relaxed_density_matching": allow_relaxed_density_matching,
+        "task_calibration_mode": task_calibration_mode,
+        "min_baseline_margin": min_baseline_margin,
+        "min_calibrated_tasks_per_family": min_calibrated_tasks_per_family,
+        "allow_family_drop": allow_family_drop,
+        "feature_selection_mode": feature_selection_mode,
+        "min_family_consistency": min_family_consistency,
         "engine_backend": TRANSFORMER_LENS_BACKEND,
         "sae_backend": SAE_LENS_BACKEND,
         "evaluation_adapter": NEGATION_RAVEL_ADAPTER,
@@ -980,15 +1007,26 @@ def run_real_behavioral_sae_intervention(
                 compatibility=compatibility,
                 task_validation_passed=True,
             )
-    feature_sets = build_feature_sets(
-        ranking_file,
-        top_k=top_k_features,
-        baseline_mode=baseline_mode,
-        random_seeds=seeds,
-        density_tolerance=density_tolerance,
-        abs_mean_tolerance=abs_mean_tolerance,
-        allow_relaxed_density_matching=allow_relaxed_density_matching,
-    )
+    try:
+        feature_sets = build_feature_sets(
+            ranking_file,
+            top_k=top_k_features,
+            baseline_mode=baseline_mode,
+            random_seeds=seeds,
+            density_tolerance=density_tolerance,
+            abs_mean_tolerance=abs_mean_tolerance,
+            allow_relaxed_density_matching=allow_relaxed_density_matching,
+            feature_selection_mode=feature_selection_mode,
+            min_family_consistency=min_family_consistency,
+        )
+    except Exception as exc:
+        return blocked(
+            blocker_type="feature_selection_failed",
+            reason="feature selection failed before intervention execution",
+            exception=exc,
+            compatibility=compatibility,
+            task_validation_passed=True,
+        )
     write_config(feature_sets, out_path / "feature_sets.json")
     try:
         baseline_rows = _baseline_scores(
@@ -1023,6 +1061,37 @@ def run_real_behavioral_sae_intervention(
             task_validation_passed=True,
             n_feature_sets=len(feature_sets["feature_sets"]),
         )
+    calibration_rule = task_calibration_rule_from_mode(
+        mode=task_calibration_mode,
+        min_abs_baseline_margin=min_baseline_margin,
+        min_tasks_per_family=min_calibrated_tasks_per_family,
+        allow_family_drop=allow_family_drop,
+    )
+    if calibration_rule is not None:
+        calibration_result = apply_task_calibration(
+            tasks=valid_tasks,
+            baseline_rows=list(baseline_rows.values()),
+            rule=calibration_rule,
+        )
+        write_task_calibration_artifacts(
+            out_dir=out_path,
+            tasks=valid_tasks,
+            result=calibration_result,
+        )
+        if not calibration_result.passes_minimum:
+            return blocked(
+                blocker_type="task_calibration_failed",
+                reason="task calibration removed too many tasks for required family coverage",
+                compatibility=compatibility,
+                details=calibration_result.model_dump(mode="json"),
+                task_validation_passed=True,
+                n_feature_sets=len(feature_sets["feature_sets"]),
+            )
+        kept_ids = set(calibration_result.kept_task_ids)
+        valid_tasks = [task for task in valid_tasks if task.id in kept_ids]
+        baseline_rows = {
+            task_id: row for task_id, row in baseline_rows.items() if task_id in kept_ids
+        }
     try:
         rows, skipped_rows = _result_rows(
             model_adapter=model_adapter,

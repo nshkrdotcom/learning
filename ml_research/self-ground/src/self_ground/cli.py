@@ -292,6 +292,25 @@ def run_phase3_behavioral_evaluation_command(
             "--allow-relaxed-density-matching/--no-allow-relaxed-density-matching"
         ),
     ] = True,
+    task_calibration_mode: Annotated[
+        str,
+        typer.Option(
+            help="Baseline-only calibration: none, baseline-intended-direction, or baseline-margin."
+        ),
+    ] = "none",
+    min_baseline_margin: Annotated[float | None, typer.Option()] = None,
+    min_calibrated_tasks_per_family: Annotated[int, typer.Option(min=1)] = 3,
+    allow_family_drop: Annotated[
+        bool,
+        typer.Option("--allow-family-drop/--no-allow-family-drop"),
+    ] = False,
+    feature_selection_mode: Annotated[
+        str,
+        typer.Option(
+            help="Top feature mode: top, top-positive, top-absolute, top-family-consistent."
+        ),
+    ] = "top",
+    min_family_consistency: Annotated[int, typer.Option(min=1)] = 3,
 ) -> None:
     result = run_real_behavioral_sae_intervention(
         out_dir=out,
@@ -320,6 +339,12 @@ def run_phase3_behavioral_evaluation_command(
         density_tolerance=density_tolerance,
         abs_mean_tolerance=abs_mean_tolerance,
         allow_relaxed_density_matching=allow_relaxed_density_matching,
+        task_calibration_mode=task_calibration_mode,  # type: ignore[arg-type]
+        min_baseline_margin=min_baseline_margin,
+        min_calibrated_tasks_per_family=min_calibrated_tasks_per_family,
+        allow_family_drop=allow_family_drop,
+        feature_selection_mode=feature_selection_mode,  # type: ignore[arg-type]
+        min_family_consistency=min_family_consistency,
     )
     console.print_json(data=result.__dict__ | {"out_dir": str(result.out_dir)})
     if not result.compatible or not result.task_validation_passed or result.n_rows == 0:

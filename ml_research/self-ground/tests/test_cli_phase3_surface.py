@@ -25,4 +25,8 @@ def test_phase3_command_surface() -> None:
     assert "allow-metadat" in output
     assert "max-relative-" in output
     assert "max-decoded-d" in output
+    assert "task-calibrat" in output
+    assert "baseline-only" in output
+    assert "feature-selec" in output
+    assert "top-positive" in output
     assert "fake" not in output

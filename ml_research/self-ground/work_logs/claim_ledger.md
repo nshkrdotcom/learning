@@ -35,3 +35,37 @@ or genuine introspection claim is supported.
 Next promotion requires fixing task calibration and/or feature selection so
 target-prompt movement exceeds matched-control movement under the same
 artifact-backed E002 conditions.
+
+## 2026-06-21 Calibration Follow-Up
+
+- calibration analysis:
+  `runs/diagnostics/e002_task_calibration/calibration_summary.json`
+- feature-selection analysis:
+  `runs/diagnostics/e002_feature_selection/feature_specificity_diagnosis.json`
+- variant comparison:
+  `runs/diagnostics/e002_variant_comparison/comparison.json`
+
+Result:
+
+- original E002 remains `insufficient_evidence`;
+- baseline intended-direction pass rate is `0.23333333333333334`;
+- `property_negation` retains 0 / 10 tasks under intended-direction
+  calibration;
+- `state_negation` retains 2 / 10 tasks under intended-direction calibration;
+- all three bounded calibrated variants are `blocked` by
+  `task_calibration_failed`;
+- top-positive feature selection did not get evaluated because calibration
+  failed before intervention rows.
+
+Strongest supported claim:
+
+The real decoded SAE intervention path moves logits, but the current
+Pythia-70M-deduped E002 task/feature setup does not support a negation-specific
+SAE feature-set claim. The immediate bottleneck is baseline task calibration,
+with feature specificity also unresolved in the uncalibrated run.
+
+Unsupported:
+
+- candidate evidence for a negation-scope SAE feature set,
+- broad negation mechanism discovery,
+- upstream SAEBench/RAVEL benchmark evidence.

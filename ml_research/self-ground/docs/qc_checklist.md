@@ -147,6 +147,53 @@ The exact final commit hash and push result are recorded in the final response
 after commit/push, because the commit hash cannot be embedded in the same
 commit before it exists.
 
+## E002 Calibration And Feature-Selection Pass
+
+- [x] task calibration analyzer implemented
+- [x] feature-selection analyzer implemented
+- [x] preregistered baseline-only task calibration implemented
+- [x] calibrated task artifacts are written when calibration is enabled
+- [x] calibration blockers write no intervention rows
+- [x] feature selection modes are recorded in `feature_sets.json`
+- [x] `top-positive` feature selection implemented
+- [x] `top-family-consistent` fails closed without per-family ranking fields
+- [x] original E002 calibration analyzed from artifacts
+- [x] original E002 feature selection analyzed from artifacts
+- [x] bounded calibrated intended-direction/top-absolute variant run
+- [x] bounded calibrated margin/top-absolute variant run
+- [x] bounded calibrated intended-direction/top-positive variant run
+- [x] variant comparison artifact written
+- [x] SAEBench/RAVEL probe rerun
+- [x] D008 SAEBench/RAVEL boundary decision written
+- [x] claim ledger updated
+- [x] research log updated
+- [x] run ledger updated
+
+Commands run:
+
+```bash
+uv run python scripts/analyze_task_calibration.py --run-dir runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density --out runs/diagnostics/e002_task_calibration
+uv run python scripts/analyze_feature_selection.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --eval-dir runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density --out runs/diagnostics/e002_feature_selection
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --out runs/e002_calibrated_intended_direction_top_abs --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 10 --top-k-features 5 --baseline-mode top-vs-random-density-and-bottom-active --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cuda --task-calibration-mode baseline-intended-direction --min-calibrated-tasks-per-family 3 --allow-family-drop false --feature-selection-mode top-absolute
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --out runs/e002_calibrated_margin_top_abs --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 10 --top-k-features 5 --baseline-mode top-vs-random-density-and-bottom-active --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cuda --task-calibration-mode baseline-margin --min-baseline-margin 0.1 --min-calibrated-tasks-per-family 3 --allow-family-drop false --feature-selection-mode top-absolute
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --out runs/e002_calibrated_intended_direction_top_positive --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 10 --top-k-features 5 --baseline-mode top-vs-random-density-and-bottom-active --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cuda --task-calibration-mode baseline-intended-direction --min-calibrated-tasks-per-family 3 --allow-family-drop false --feature-selection-mode top-positive
+uv run python scripts/compare_e002_variants.py --out runs/diagnostics/e002_variant_comparison runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density runs/e002_calibrated_intended_direction_top_abs runs/e002_calibrated_margin_top_abs runs/e002_calibrated_intended_direction_top_positive
+uv run python scripts/probe_saebench_ravel_bridge.py --out runs/tooling_spikes/saebench_ravel_bridge
+```
+
+Observed results:
+
+- [x] baseline intended-direction pass rate is `0.23333333333333334`
+- [x] property-negation calibration pass count is `0/10`
+- [x] feature-selection diagnosis labels include `target_effect_present_but_not_specific`
+- [x] feature-selection diagnosis labels include `control_effect_dominates`
+- [x] intended-direction/top-absolute variant blocked with `task_calibration_failed`
+- [x] margin/top-absolute variant blocked with `task_calibration_failed`
+- [x] intended-direction/top-positive variant blocked with `task_calibration_failed`
+- [x] no calibrated variant wrote behavioral intervention rows
+- [x] no calibrated variant reached candidate evidence
+- [x] SAEBench/RAVEL probe status remains `not_installed`
+
 ## Engine Boundary Hardening
 
 - [x] `docs/decision_log/D007_engine_boundary.md` exists

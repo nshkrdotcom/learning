@@ -47,6 +47,20 @@ def main() -> int:
     parser.add_argument("--density-tolerance", type=float, default=0.10)
     parser.add_argument("--abs-mean-tolerance", type=float, default=0.10)
     parser.add_argument(
+        "--task-calibration-mode",
+        choices=["none", "baseline-intended-direction", "baseline-margin"],
+        default="none",
+    )
+    parser.add_argument("--min-baseline-margin", type=float, default=None)
+    parser.add_argument("--min-calibrated-tasks-per-family", type=int, default=3)
+    parser.add_argument("--allow-family-drop", default="false")
+    parser.add_argument(
+        "--feature-selection-mode",
+        choices=["top", "top-positive", "top-absolute", "top-family-consistent"],
+        default="top",
+    )
+    parser.add_argument("--min-family-consistency", type=int, default=3)
+    parser.add_argument(
         "--allow-relaxed-density-matching",
         dest="allow_relaxed_density_matching",
         action="store_true",
@@ -58,6 +72,7 @@ def main() -> int:
         action="store_false",
     )
     args = parser.parse_args()
+    allow_family_drop = str(args.allow_family_drop).strip().lower() in {"1", "true", "yes", "y"}
 
     try:
         result = run_real_behavioral_sae_intervention(
@@ -89,6 +104,12 @@ def main() -> int:
             density_tolerance=args.density_tolerance,
             abs_mean_tolerance=args.abs_mean_tolerance,
             allow_relaxed_density_matching=args.allow_relaxed_density_matching,
+            task_calibration_mode=args.task_calibration_mode,
+            min_baseline_margin=args.min_baseline_margin,
+            min_calibrated_tasks_per_family=args.min_calibrated_tasks_per_family,
+            allow_family_drop=allow_family_drop,
+            feature_selection_mode=args.feature_selection_mode,
+            min_family_consistency=args.min_family_consistency,
         )
     except Exception as exc:
         print(f"Phase 3 token-contrast evaluation failed: {exc}", file=sys.stderr)

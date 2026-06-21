@@ -10,6 +10,7 @@ from self_ground.baseline_samplers import (
     matched_control_result_to_dict,
     select_activation_density_matched_features,
 )
+from self_ground.behavioral_tasks import TASK_FAMILY_ORDER
 
 
 def _read_ranking(ranking_path: Path) -> list[dict[str, Any]]:
@@ -35,12 +36,69 @@ def _read_ranking(ranking_path: Path) -> list[dict[str, Any]]:
 
 
 def select_top_features(ranking_path: Path, *, top_k: int) -> list[str]:
+    return select_features_by_mode(ranking_path, top_k=top_k, feature_selection_mode="top")
+
+
+def _score(row: dict[str, Any]) -> float:
+    return float(row.get("score") or 0.0)
+
+
+def _family_score_columns(rows: list[dict[str, Any]]) -> dict[str, str]:
+    if not rows:
+        return {}
+    columns = set(rows[0])
+    mapping: dict[str, str] = {}
+    for family in TASK_FAMILY_ORDER:
+        candidates = [
+            f"score_{family}",
+            f"{family}_score",
+            f"ranking_score_{family}",
+            f"{family}_ranking_score",
+        ]
+        for candidate in candidates:
+            if candidate in columns:
+                mapping[family] = candidate
+                break
+    return mapping
+
+
+def select_features_by_mode(
+    ranking_path: Path,
+    *,
+    top_k: int,
+    feature_selection_mode: str = "top",
+    min_family_consistency: int = 3,
+) -> list[str]:
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
     rows = _read_ranking(ranking_path)
-    if len(rows) < top_k:
-        raise ValueError("insufficient SAE features for requested top_k")
-    return [str(row["feature_id"]) for row in rows[:top_k]]
+    if feature_selection_mode in {"top", "top-absolute"}:
+        selected = rows[:top_k]
+    elif feature_selection_mode == "top-positive":
+        selected = [row for row in rows if _score(row) > 0][:top_k]
+    elif feature_selection_mode == "top-family-consistent":
+        if min_family_consistency < 1:
+            raise ValueError("min_family_consistency must be >= 1")
+        family_columns = _family_score_columns(rows)
+        missing = [family for family in TASK_FAMILY_ORDER if family not in family_columns]
+        if missing:
+            raise ValueError(
+                "top-family-consistent requires per-family ranking score columns; "
+                f"missing {missing}"
+            )
+        selected = [
+            row
+            for row in rows
+            if sum(float(row[family_columns[family]]) > 0 for family in TASK_FAMILY_ORDER)
+            >= min_family_consistency
+        ][:top_k]
+    else:
+        raise ValueError(f"unknown feature_selection_mode: {feature_selection_mode}")
+    if len(selected) < top_k:
+        raise ValueError(
+            f"insufficient SAE features for requested top_k under {feature_selection_mode}"
+        )
+    return [str(row["feature_id"]) for row in selected]
 
 
 def select_bottom_active_features(
@@ -109,6 +167,8 @@ def build_feature_sets(
     density_tolerance: float = 0.10,
     abs_mean_tolerance: float = 0.10,
     allow_relaxed_density_matching: bool = True,
+    feature_selection_mode: str = "top",
+    min_family_consistency: int = 3,
 ) -> dict[str, Any]:
     if baseline_mode not in {
         "top",
@@ -123,11 +183,26 @@ def build_feature_sets(
     }:
         raise ValueError("unknown baseline_mode")
     seeds = random_seeds or [7, 11, 13]
-    top_feature_ids = select_top_features(ranking_path, top_k=top_k)
+    top_feature_ids = select_features_by_mode(
+        ranking_path,
+        top_k=top_k,
+        feature_selection_mode=feature_selection_mode,
+        min_family_consistency=min_family_consistency,
+    )
+    selection_method = {
+        "top": "ranking_abs_score_top_k",
+        "top-absolute": "ranking_abs_score_top_k",
+        "top-positive": "ranking_positive_score_top_k",
+        "top-family-consistent": "ranking_positive_family_consistent_top_k",
+    }[feature_selection_mode]
     rows: list[dict[str, Any]] = [
         {
             "label": "top",
-            "selection_method": "ranking_abs_score_top_k",
+            "selection_method": selection_method,
+            "feature_selection_mode": feature_selection_mode,
+            "min_family_consistency": min_family_consistency
+            if feature_selection_mode == "top-family-consistent"
+            else None,
             "feature_ids": top_feature_ids,
             "seed": None,
         }
@@ -201,4 +276,8 @@ def build_feature_sets(
                 "seed": None,
             }
         )
-    return {"feature_sets": rows}
+    return {
+        "feature_selection_mode": feature_selection_mode,
+        "min_family_consistency": min_family_consistency,
+        "feature_sets": rows,
+    }

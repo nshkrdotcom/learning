@@ -188,3 +188,95 @@ uv run python scripts/run_negation_ravel_eval.py \
 
 Result: `insufficient_evidence`, with tiny nonzero target movement
 (`top_target_delta=0.00047969818115234375`) at diagnostic scale.
+
+## 2026-06-21: E002 Task Calibration And Feature-Selection Diagnosis
+
+Artifact-only calibration analysis:
+
+```bash
+uv run python scripts/analyze_task_calibration.py \
+  --run-dir runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density \
+  --out runs/diagnostics/e002_task_calibration
+```
+
+Result:
+
+- 30 baseline rows,
+- intended-direction pass count: 7,
+- intended-direction pass rate: `0.23333333333333334`,
+- wrong-direction task count: 23,
+- tiny-margin task count at 0.1: 4,
+- `property_negation`: 0 / 10 intended-direction pass,
+- `sentiment_negation`: 5 / 10 intended-direction pass,
+- `state_negation`: 2 / 10 intended-direction pass.
+
+Artifact-only feature-selection analysis:
+
+```bash
+uv run python scripts/analyze_feature_selection.py \
+  --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 \
+  --eval-dir runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density \
+  --out runs/diagnostics/e002_feature_selection
+```
+
+Result labels:
+
+- `target_effect_present_but_not_specific`
+- `control_effect_dominates`
+
+Bounded calibrated variants:
+
+```bash
+uv run python scripts/run_negation_ravel_eval.py ... \
+  --out runs/e002_calibrated_intended_direction_top_abs \
+  --task-calibration-mode baseline-intended-direction \
+  --feature-selection-mode top-absolute
+
+uv run python scripts/run_negation_ravel_eval.py ... \
+  --out runs/e002_calibrated_margin_top_abs \
+  --task-calibration-mode baseline-margin \
+  --min-baseline-margin 0.1 \
+  --feature-selection-mode top-absolute
+
+uv run python scripts/run_negation_ravel_eval.py ... \
+  --out runs/e002_calibrated_intended_direction_top_positive \
+  --task-calibration-mode baseline-intended-direction \
+  --feature-selection-mode top-positive
+```
+
+All three variants wrote blocker artifacts and no intervention rows because
+baseline-only calibration failed required family coverage with
+`--allow-family-drop false`.
+
+Comparison artifact:
+
+```text
+runs/diagnostics/e002_variant_comparison/comparison.json
+```
+
+Interpretation:
+
+The current failure is primarily task calibration: property-negation token
+contrasts are not baseline-calibrated for Pythia-70M-deduped. The uncalibrated
+feature set also lacks specificity because matched controls move more than
+target prompts. No variant reached candidate evidence.
+
+## 2026-06-21: SAEBench/RAVEL Boundary Decision
+
+Ran:
+
+```bash
+uv run python scripts/probe_saebench_ravel_bridge.py \
+  --out runs/tooling_spikes/saebench_ravel_bridge
+```
+
+Result: `not_installed`.
+
+Decision recorded:
+
+```text
+docs/decision_log/D008_saebench_ravel_eval_boundary.md
+```
+
+No upstream SAEBench/RAVEL eval ran. Current results remain RAVEL-shaped custom
+token-contrast evaluation over real decoded SAE interventions.
