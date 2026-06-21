@@ -57,6 +57,15 @@ BASELINE_SUMMARY_COLUMNS = [
     "intended_direction_pass_rate",
 ]
 
+BASELINE_SCORE_FIELDS = [
+    "baseline_prompt_target_score",
+    "baseline_prompt_foil_score",
+    "baseline_prompt_contrast",
+    "baseline_control_target_score",
+    "baseline_control_foil_score",
+    "baseline_control_contrast",
+]
+
 BEHAVIORAL_SUMMARY_COLUMNS = [
     "feature_set_label",
     "feature_selection_method",
@@ -183,6 +192,38 @@ def _intended_pass(task: BehavioralTask, contrast: float) -> bool:
     return True
 
 
+def _safe_repr(value: Any) -> str:
+    if isinstance(value, float) and math.isnan(value):
+        return "NaN"
+    if isinstance(value, float) and math.isinf(value):
+        return "Infinity" if value > 0 else "-Infinity"
+    return repr(value)
+
+
+def _baseline_validation_accounting(
+    baseline_rows: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    nonfinite: list[dict[str, Any]] = []
+    for row in baseline_rows.values():
+        for field in BASELINE_SCORE_FIELDS:
+            value = row.get(field)
+            if not isinstance(value, int | float) or not math.isfinite(float(value)):
+                nonfinite.append(
+                    {
+                        "task_id": row.get("task_id"),
+                        "family": row.get("family"),
+                        "field": field,
+                        "value": _safe_repr(value),
+                    }
+                )
+    return {
+        "finite": not nonfinite,
+        "n_rows": len(baseline_rows),
+        "n_nonfinite_rows": len({item["task_id"] for item in nonfinite}),
+        "nonfinite_fields": nonfinite,
+    }
+
+
 def write_baseline_task_artifacts(
     *,
     out_dir: Path,
@@ -221,6 +262,115 @@ def write_baseline_task_artifacts(
                     ),
                 }
             )
+
+
+def _rerun_command(config: dict[str, Any]) -> str:
+    return (
+        "uv run python scripts/run_phase3_behavioral_evaluation.py "
+        f"--ranking-dir {config['ranking_dir']} "
+        f"--out <out-dir> "
+        f"--model {config['model_name']} "
+        f"--hook-point {config['hook_point']} "
+        f"--sae-release {config['sae_release']} "
+        f"--sae-id {config['sae_id']} "
+        f"--per-family {config['per_family']} "
+        f"--top-k-features {config['top_k_features']} "
+        f"--baseline-mode {config['baseline_mode']} "
+        f"--random-seeds {','.join(str(seed) for seed in config['random_seeds'])} "
+        f"--operations {','.join(config['operations'])} "
+        f"--patch-mode {config['patch_mode']} "
+        f"--device {config['device']} "
+        "--write-report"
+    )
+
+
+def _write_blocker_record(
+    *,
+    out_dir: Path,
+    blocker_type: str,
+    reason: str,
+    exception: Exception | None,
+    config: dict[str, Any],
+    details: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    payload = {
+        "blocker_type": blocker_type,
+        "reason": reason,
+        "exception_class": type(exception).__name__ if exception else None,
+        "exception_message": str(exception) if exception else None,
+        "rerun_command": _rerun_command(config),
+        "no_fabricated_intervention_rows_written": True,
+        "details": details or {},
+    }
+    write_config(payload, out_dir / "blocker.json")
+    return payload
+
+
+def _write_blocker_readme(
+    *,
+    out_dir: Path,
+    config: dict[str, Any],
+    blocker: dict[str, Any],
+    compatibility: SAECompatibilityResult | None = None,
+    validation_summary: BehavioralTaskValidationSummary | None = None,
+) -> None:
+    compatibility_text = "not reached"
+    if compatibility is not None:
+        compatibility_text = (
+            f"compatible={compatibility.compatible}, "
+            f"metadata={compatibility.metadata_compatible}, "
+            f"shape={compatibility.shape_compatible}, "
+            f"reconstruction={compatibility.reconstruction_compatible}"
+        )
+    validation_text = "not reached"
+    if validation_summary is not None:
+        validation_text = (
+            f"passes_minimum={validation_summary.passes_minimum}, "
+            f"valid={validation_summary.valid_tasks}, "
+            f"excluded={validation_summary.excluded_tasks}, "
+            f"missing_required={validation_summary.missing_required_families}"
+        )
+    text = f"""# Phase 3 Token-Contrast Evaluation Blocked
+
+## Blocker
+
+- blocker type: `{blocker['blocker_type']}`
+- reason: `{blocker['reason']}`
+- exception class: `{blocker.get('exception_class')}`
+- exception message: `{blocker.get('exception_message')}`
+- compatibility: `{compatibility_text}`
+- task validation: `{validation_text}`
+
+No fabricated intervention rows were written.
+
+## Rerun
+
+```bash
+{blocker['rerun_command']}
+```
+
+## Interpretation
+
+This blocked run is artifact-backed safety behavior. It does not support
+candidate evidence, strong candidate evidence, broad behavioral understanding,
+mechanism discovery, model introspection, or monosemantic feature discovery.
+"""
+    (out_dir / "README.md").write_text(text, encoding="utf-8")
+
+
+def _write_blocked_report(
+    *,
+    out_dir: Path,
+    write_report: bool,
+) -> str | None:
+    if not write_report:
+        return None
+    report = build_mechanism_evidence_report(
+        behavioral_run_dir=out_dir,
+        out_json=out_dir / "mechanism_report.json",
+        out_md=out_dir / "mechanism_report.md",
+    )
+    return report.claim_status
 
 
 def _baseline_scores(
@@ -680,72 +830,106 @@ def run_real_behavioral_sae_intervention(
     write_config(config, out_path / "config.json")
     tasks = _load_tasks(tasks_path, per_family, seed)
     write_behavioral_tasks_jsonl(tasks, out_path / "behavioral_tasks.jsonl")
+    validation_summary: BehavioralTaskValidationSummary | None = None
+    valid_tasks: list[BehavioralTask] = []
+
+    def blocked(
+        *,
+        blocker_type: str,
+        reason: str,
+        exception: Exception | None = None,
+        compatibility: SAECompatibilityResult | None = None,
+        details: dict[str, Any] | None = None,
+        task_validation_passed: bool = False,
+        n_feature_sets: int = 0,
+    ) -> BehavioralInterventionRun:
+        blocker = _write_blocker_record(
+            out_dir=out_path,
+            blocker_type=blocker_type,
+            reason=reason,
+            exception=exception,
+            config=config,
+            details=details,
+        )
+        claim_status = _write_blocked_report(out_dir=out_path, write_report=write_report)
+        _write_blocker_readme(
+            out_dir=out_path,
+            config=config,
+            blocker=blocker,
+            compatibility=compatibility,
+            validation_summary=validation_summary,
+        )
+        return BehavioralInterventionRun(
+            out_dir=out_path,
+            n_tasks_total=len(tasks),
+            n_tasks_valid=len(valid_tasks),
+            n_tasks_excluded=(
+                validation_summary.excluded_tasks if validation_summary is not None else 0
+            ),
+            n_features_per_set=top_k_features,
+            n_feature_sets=n_feature_sets,
+            operations=parsed_operations,
+            patch_mode=patch_mode,
+            compatible=False,
+            task_validation_passed=task_validation_passed,
+            n_rows=0,
+            report_written=write_report and claim_status is not None,
+        )
 
     if model_adapter is None:
         from self_ground.model import TransformerLensModelAdapter
 
-        model_adapter = TransformerLensModelAdapter(model_name=model_name, device=device)
+        try:
+            model_adapter = TransformerLensModelAdapter(model_name=model_name, device=device)
+        except Exception as exc:
+            return blocked(
+                blocker_type="model_load_failure",
+                reason="model adapter could not be loaded before task validation",
+                exception=exc,
+            )
 
-    valid_tasks, validation_results, validation_summary = validate_behavioral_tasks(
-        model_adapter=model_adapter,
-        tasks=tasks,
-        min_valid_tasks_per_family=min_valid_tasks_per_family,
-    )
+    try:
+        valid_tasks, validation_results, validation_summary = validate_behavioral_tasks(
+            model_adapter=model_adapter,
+            tasks=tasks,
+            min_valid_tasks_per_family=min_valid_tasks_per_family,
+        )
+    except Exception as exc:
+        return blocked(
+            blocker_type="task_validation_external_failure",
+            reason="task validation failed while using the model/tokenizer",
+            exception=exc,
+        )
     _write_validation_artifacts(
         out_dir=out_path,
         results=validation_results,
         summary=validation_summary,
     )
     if not validation_summary.passes_minimum:
-        if write_report:
-            build_mechanism_evidence_report(
-                behavioral_run_dir=out_path,
-                out_json=out_path / "mechanism_report.json",
-                out_md=out_path / "mechanism_report.md",
-            )
-        _write_readme(
-            out_dir=out_path,
-            config=config,
-            compatibility=None,
-            validation_summary=validation_summary,
-            feature_sets=None,
-            claim_status="blocked" if write_report else None,
-            blocker="task validation failed",
-            skipped_rows=None,
-        )
-        return BehavioralInterventionRun(
-            out_dir=out_path,
-            n_tasks_total=len(tasks),
-            n_tasks_valid=len(valid_tasks),
-            n_tasks_excluded=validation_summary.excluded_tasks,
-            n_features_per_set=top_k_features,
-            n_feature_sets=0,
-            operations=parsed_operations,
-            patch_mode=patch_mode,
-            compatible=False,
-            task_validation_passed=False,
-            n_rows=0,
-            report_written=write_report,
+        return blocked(
+            blocker_type="task_validation_failed",
+            reason="task validation failed minimum required family coverage",
+            details=validation_summary.model_dump(mode="json"),
         )
 
-    if sae_adapter is None:
-        from self_ground.sae import SAELensAdapter
-
-        sae_adapter = SAELensAdapter.from_pretrained(
-            release=sae_release,
+    try:
+        compatibility = verify_sae_compatibility(
+            model_name=model_name,
+            hook_point=hook_point,
+            sae_release=sae_release,
             sae_id=sae_id,
-            device=device or getattr(model_adapter, "device", "cpu"),
+            device=device,
+            model_adapter=model_adapter,
+            sae_adapter=sae_adapter,
+            allow_metadata_mismatch=allow_metadata_mismatch,
         )
-    compatibility = verify_sae_compatibility(
-        model_name=model_name,
-        hook_point=hook_point,
-        sae_release=sae_release,
-        sae_id=sae_id,
-        device=device,
-        model_adapter=model_adapter,
-        sae_adapter=sae_adapter,
-        allow_metadata_mismatch=allow_metadata_mismatch,
-    )
+    except Exception as exc:
+        return blocked(
+            blocker_type="sae_compatibility_external_failure",
+            reason="SAE compatibility verification failed before producing a result",
+            exception=exc,
+            task_validation_passed=True,
+        )
     write_config(compatibility.model_dump(), out_path / "compatibility.json")
     may_run_diagnostic = (
         allow_metadata_mismatch
@@ -753,37 +937,30 @@ def run_real_behavioral_sae_intervention(
         and compatibility.reconstruction_compatible
     )
     if not compatibility.compatible and not may_run_diagnostic:
-        if write_report:
-            build_mechanism_evidence_report(
-                behavioral_run_dir=out_path,
-                out_json=out_path / "mechanism_report.json",
-                out_md=out_path / "mechanism_report.md",
-            )
-        _write_readme(
-            out_dir=out_path,
-            config=config,
+        return blocked(
+            blocker_type="sae_compatibility_failed",
+            reason=f"SAE compatibility failed: {compatibility.error}",
             compatibility=compatibility,
-            validation_summary=validation_summary,
-            feature_sets=None,
-            claim_status="blocked" if write_report else None,
-            blocker=f"SAE compatibility failed: {compatibility.error}",
-            skipped_rows=None,
-        )
-        return BehavioralInterventionRun(
-            out_dir=out_path,
-            n_tasks_total=len(tasks),
-            n_tasks_valid=len(valid_tasks),
-            n_tasks_excluded=validation_summary.excluded_tasks,
-            n_features_per_set=top_k_features,
-            n_feature_sets=0,
-            operations=parsed_operations,
-            patch_mode=patch_mode,
-            compatible=False,
             task_validation_passed=True,
-            n_rows=0,
-            report_written=write_report,
         )
 
+    if sae_adapter is None:
+        from self_ground.sae import SAELensAdapter
+
+        try:
+            sae_adapter = SAELensAdapter.from_pretrained(
+                release=sae_release,
+                sae_id=sae_id,
+                device=device or getattr(model_adapter, "device", "cpu"),
+            )
+        except Exception as exc:
+            return blocked(
+                blocker_type="post_compat_sae_load_failure",
+                reason="SAE adapter could not be loaded after compatibility passed",
+                exception=exc,
+                compatibility=compatibility,
+                task_validation_passed=True,
+            )
     feature_sets = build_feature_sets(
         ranking_file,
         top_k=top_k_features,
@@ -791,38 +968,69 @@ def run_real_behavioral_sae_intervention(
         random_seeds=seeds,
     )
     write_config(feature_sets, out_path / "feature_sets.json")
-    baseline_rows = _baseline_scores(
-        model_adapter=model_adapter,
-        tasks=valid_tasks,
-        validations=validation_results,
-        reduction=reduction,
-    )
+    try:
+        baseline_rows = _baseline_scores(
+            model_adapter=model_adapter,
+            tasks=valid_tasks,
+            validations=validation_results,
+            reduction=reduction,
+        )
+    except Exception as exc:
+        return blocked(
+            blocker_type="baseline_scoring_external_failure",
+            reason="baseline scoring failed during model logit calls",
+            exception=exc,
+            compatibility=compatibility,
+            task_validation_passed=True,
+            n_feature_sets=len(feature_sets["feature_sets"]),
+        )
     write_baseline_task_artifacts(
         out_dir=out_path,
         tasks=valid_tasks,
         validations=[result for result in validation_results if result.valid],
         baseline_rows=list(baseline_rows.values()),
     )
-    rows, skipped_rows = _result_rows(
-        model_adapter=model_adapter,
-        sae_adapter=sae_adapter,
-        tasks=valid_tasks,
-        validations=validation_results,
-        baseline_rows=baseline_rows,
-        feature_sets=feature_sets,
-        model_name=model_name,
-        hook_point=hook_point,
-        sae_release=sae_release,
-        sae_id=sae_id,
-        ranking_dir=ranking_path,
-        operations=parsed_operations,
-        amplify_factors=factors,
-        patch_mode=patch_mode,
-        token_position=token_position,
-        reduction=reduction,
-        max_relative_norm_drift_warning=max_relative_norm_drift_warning,
-        max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
-    )
+    baseline_validation = _baseline_validation_accounting(baseline_rows)
+    write_config(baseline_validation, out_path / "baseline_validation.json")
+    if not baseline_validation["finite"]:
+        return blocked(
+            blocker_type="baseline_nonfinite",
+            reason="baseline scoring produced non-finite values",
+            compatibility=compatibility,
+            details=baseline_validation,
+            task_validation_passed=True,
+            n_feature_sets=len(feature_sets["feature_sets"]),
+        )
+    try:
+        rows, skipped_rows = _result_rows(
+            model_adapter=model_adapter,
+            sae_adapter=sae_adapter,
+            tasks=valid_tasks,
+            validations=validation_results,
+            baseline_rows=baseline_rows,
+            feature_sets=feature_sets,
+            model_name=model_name,
+            hook_point=hook_point,
+            sae_release=sae_release,
+            sae_id=sae_id,
+            ranking_dir=ranking_path,
+            operations=parsed_operations,
+            amplify_factors=factors,
+            patch_mode=patch_mode,
+            token_position=token_position,
+            reduction=reduction,
+            max_relative_norm_drift_warning=max_relative_norm_drift_warning,
+            max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
+        )
+    except Exception as exc:
+        return blocked(
+            blocker_type="decoded_intervention_external_failure",
+            reason="decoded SAE intervention execution failed",
+            exception=exc,
+            compatibility=compatibility,
+            task_validation_passed=True,
+            n_feature_sets=len(feature_sets["feature_sets"]),
+        )
     write_config(skipped_rows, out_path / "skipped_behavioral_rows.json")
     write_jsonl(rows, out_path / "behavioral_intervention_results.jsonl")
     _write_behavioral_summary(rows, out_path / "behavioral_summary.csv")

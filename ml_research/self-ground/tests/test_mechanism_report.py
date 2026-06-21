@@ -21,6 +21,8 @@ def _write_report_inputs(
     norm_drift_warning_rate: float = 0.0,
     skipped_rows: int = 0,
     malformed_summary_value: str | None = None,
+    omit_artifacts: list[str] | None = None,
+    blocker_reason: str | None = None,
 ) -> None:
     families = families or ["sentiment_negation", "property_negation"]
     random_labels = random_labels or ["random_seed_7"]
@@ -55,12 +57,39 @@ def _write_report_inputs(
         {
             "summary": {
                 "passes_minimum": True,
+                "total_tasks": n_tasks,
                 "valid_tasks": n_tasks,
+                "excluded_tasks": 0,
                 "valid_by_family": {family: n_tasks // len(families) for family in families},
+                "excluded_by_family": {family: 0 for family in families},
+                "min_valid_tasks_per_family": 2,
+                "required_families": families,
+                "missing_required_families": [],
             }
         },
         run_dir / "behavioral_task_validation.json",
     )
+    write_jsonl(
+        [
+            {
+                "id": f"{family}_{idx}",
+                "family": family,
+                "concept": f"concept_{idx}",
+                "prompt": "The movie was not good. The movie was",
+                "target_tokens": [" bad"],
+                "foil_tokens": [" good"],
+                "control_prompt": "The movie was good. The movie was",
+                "control_type": "matched_non_negation",
+                "control_target_tokens": [" good"],
+                "control_foil_tokens": [" bad"],
+                "expected_baseline_direction": "positive",
+                "metadata": {"template_family": family},
+            }
+            for idx, family in enumerate(families)
+        ],
+        run_dir / "behavioral_tasks.jsonl",
+    )
+    write_jsonl([], run_dir / "excluded_behavioral_tasks.jsonl")
     write_config(
         {
             "feature_sets": [
@@ -86,14 +115,54 @@ def _write_report_inputs(
     write_jsonl(
         [
             {
+                "task_id": f"{family}_{idx}",
                 "family": family,
+                "baseline_prompt_target_score": 1.0,
+                "baseline_prompt_foil_score": 0.0,
                 "baseline_prompt_contrast": 1.0,
+                "baseline_control_target_score": 1.0,
+                "baseline_control_foil_score": 0.0,
                 "baseline_control_contrast": 1.0,
                 "intended_direction_pass": True,
             }
-            for family in families
+            for idx, family in enumerate(families)
         ],
         run_dir / "baseline_task_scores.jsonl",
+    )
+    with (run_dir / "baseline_task_summary.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "family",
+                "n_tasks",
+                "prompt_contrast_mean",
+                "prompt_contrast_abs_mean",
+                "control_contrast_mean",
+                "control_contrast_abs_mean",
+                "intended_direction_pass_rate",
+            ],
+        )
+        writer.writeheader()
+        for family in families:
+            writer.writerow(
+                {
+                    "family": family,
+                    "n_tasks": n_tasks // len(families),
+                    "prompt_contrast_mean": 1.0,
+                    "prompt_contrast_abs_mean": 1.0,
+                    "control_contrast_mean": 1.0,
+                    "control_contrast_abs_mean": 1.0,
+                    "intended_direction_pass_rate": 1.0,
+                }
+            )
+    write_config(
+        {
+            "finite": True,
+            "n_rows": len(families),
+            "n_nonfinite_rows": 0,
+            "nonfinite_fields": [],
+        },
+        run_dir / "baseline_validation.json",
     )
     fieldnames = [
         "feature_set_label",
@@ -203,6 +272,22 @@ def _write_report_inputs(
         },
         run_dir / "skipped_behavioral_rows.json",
     )
+    if blocker_reason is not None:
+        write_config(
+            {
+                "blocker_type": "test_blocker",
+                "reason": blocker_reason,
+                "exception_class": None,
+                "exception_message": None,
+                "rerun_command": "uv run python scripts/run_phase3_behavioral_evaluation.py ...",
+                "no_fabricated_intervention_rows_written": True,
+            },
+            run_dir / "blocker.json",
+        )
+    for artifact in omit_artifacts or []:
+        path = run_dir / artifact
+        if path.exists():
+            path.unlink()
 
 
 def test_blocked_report_does_not_overclaim(tmp_path) -> None:
@@ -211,6 +296,7 @@ def test_blocked_report_does_not_overclaim(tmp_path) -> None:
     report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
 
     assert report.claim_status == "blocked"
+    assert "SAE compatibility" in report.blocker_reason
     assert "complete negation mechanism discovery" in report.not_supported_claims[0]
 
 
@@ -310,6 +396,32 @@ def test_missing_required_artifacts_block_report(tmp_path) -> None:
 
     assert report.claim_status == "blocked"
     assert report.qc["required_artifacts_present"] is False
+    assert "missing required artifacts" in report.blocker_reason
+
+
+def test_new_required_artifacts_are_enforced(tmp_path) -> None:
+    for artifact in [
+        "behavioral_tasks.jsonl",
+        "excluded_behavioral_tasks.jsonl",
+        "baseline_task_summary.csv",
+        "skipped_behavioral_rows.json",
+    ]:
+        run_dir = tmp_path / artifact.replace(".", "_")
+        run_dir.mkdir()
+        _write_report_inputs(run_dir, n_tasks=8, omit_artifacts=[artifact])
+
+        report = build_mechanism_evidence_report(behavioral_run_dir=run_dir)
+
+        assert report.claim_status == "blocked", artifact
+        assert artifact in report.blocker_reason
+
+
+def test_full_fixture_can_still_reach_candidate(tmp_path) -> None:
+    _write_report_inputs(tmp_path, n_tasks=8)
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status == "candidate_evidence"
 
 
 def test_skipped_rows_prevent_strong_evidence(tmp_path) -> None:
@@ -339,3 +451,54 @@ def test_markdown_contains_rerun_commands(tmp_path) -> None:
     assert "uv run python scripts/run_phase3_behavioral_evaluation.py" in (
         tmp_path / "mechanism_report.md"
     ).read_text()
+
+
+def test_markdown_contains_required_evidence_sections_and_reconstruction(tmp_path) -> None:
+    _write_report_inputs(tmp_path, n_tasks=8)
+
+    build_mechanism_evidence_report(
+        behavioral_run_dir=tmp_path,
+        out_md=tmp_path / "mechanism_report.md",
+    )
+
+    text = (tmp_path / "mechanism_report.md").read_text()
+    for heading in [
+        "## Configuration",
+        "## SAE Compatibility",
+        "## Task Validation",
+        "## Baseline Calibration",
+        "## Feature Sets",
+        "## Target-Prompt Intervention Evidence",
+        "## Matched Non-Negation Control Evidence",
+        "## Feature-Set Comparison",
+        "## Intervention Telemetry",
+        "## Threshold Checks",
+        "## Claim Status",
+        "## Limitations",
+        "## Not Supported",
+        "## Row Accounting",
+        "## Rerun",
+    ]:
+        assert heading in text
+    assert "reconstruction MSE" in text
+    assert "0.1" in text
+
+
+def test_all_skipped_report_has_blocker_reason(tmp_path) -> None:
+    _write_report_inputs(tmp_path, skipped_rows=3)
+    (tmp_path / "behavioral_intervention_results.jsonl").write_text("")
+    (tmp_path / "behavioral_summary.csv").write_text(
+        "feature_set_label,feature_selection_method,operation,factor,patch_mode,family,"
+        "n_tasks,target_signed_delta_mean,target_signed_delta_abs_mean,"
+        "target_absolute_delta_mean,control_signed_delta_mean,"
+        "control_signed_delta_abs_mean,control_absolute_delta_mean,"
+        "specificity_gap_mean,collateral_ratio_mean,n_null_collateral_ratio,"
+        "baseline_contrast_mean,patched_contrast_mean,control_baseline_contrast_mean,"
+        "control_patched_contrast_mean,target_score_delta_mean,foil_score_delta_mean,"
+        "relative_norm_drift_mean,decoded_delta_norm_mean,norm_drift_warning_rate\n"
+    )
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status == "blocked"
+    assert "skipped" in report.blocker_reason

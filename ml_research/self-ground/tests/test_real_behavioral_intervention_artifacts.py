@@ -9,6 +9,7 @@ import torch
 
 from self_ground.activations import FeatureActivations
 from self_ground.real_behavioral_intervention import run_real_behavioral_sae_intervention
+from self_ground.sae_compat import SAECompatibilityResult
 
 
 class TinyBehavioralTokenizer:
@@ -101,6 +102,11 @@ class TinyNaNHookBehavioralModelAdapter(TinyBehavioralModelAdapter):
     def __init__(self) -> None:
         super().__init__()
         self.model = TinyNaNHookBehavioralModel(self)
+
+
+class TinyNaNBaselineBehavioralModelAdapter(TinyBehavioralModelAdapter):
+    def logits_for_texts(self, texts: list[str]) -> torch.Tensor:
+        return torch.full((len(texts), 1, 17), float("nan"), dtype=torch.float32)
 
 
 class TinyBehavioralSAE:
@@ -243,6 +249,9 @@ def test_phase3_blocks_on_semantic_mismatch_without_rows(tmp_path) -> None:
     assert result.compatible is False
     assert (out_dir / "compatibility.json").exists()
     assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
+    assert (out_dir / "blocker.json").exists()
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert "SAE compatibility" in report["blocker_reason"]
     assert "SAE compatibility failed" in (out_dir / "README.md").read_text()
 
 
@@ -279,3 +288,133 @@ def test_phase3_nonfinite_rows_are_accounted_and_blocked(tmp_path) -> None:
     readme = (out_dir / "README.md").read_text()
     assert "Skipped Rows" in readme
     assert "nonfinite_row_value" in readme
+
+
+def test_phase3_model_load_failure_writes_blocker_artifacts(tmp_path, monkeypatch) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "model_blocked"
+    _write_sae_ranking(ranking_dir)
+
+    class FailingModelAdapter:
+        def __init__(self, *args, **kwargs) -> None:
+            del args, kwargs
+            raise RuntimeError("model cache unavailable")
+
+    import self_ground.model as model_module
+
+    monkeypatch.setattr(model_module, "TransformerLensModelAdapter", FailingModelAdapter)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=1,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+    )
+
+    assert result.compatible is False
+    assert (out_dir / "config.json").exists()
+    assert (out_dir / "behavioral_tasks.jsonl").exists()
+    assert not (out_dir / "behavioral_task_validation.json").exists()
+    assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
+    blocker = json.loads((out_dir / "blocker.json").read_text())
+    assert blocker["blocker_type"] == "model_load_failure"
+    assert blocker["exception_class"] == "RuntimeError"
+    assert "model cache unavailable" in blocker["exception_message"]
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["claim_status"] == "blocked"
+    assert "model_load_failure" in report["blocker_reason"]
+    assert "No fabricated intervention rows were written" in (
+        out_dir / "README.md"
+    ).read_text()
+
+
+def test_phase3_post_compat_sae_load_failure_writes_blocker(tmp_path, monkeypatch) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "sae_load_blocked"
+    _write_sae_ranking(ranking_dir)
+
+    def compatible_result(**kwargs):
+        return SAECompatibilityResult(
+            model_name=kwargs["model_name"],
+            hook_point=kwargs["hook_point"],
+            sae_release=kwargs["sae_release"],
+            sae_id=kwargs["sae_id"],
+            activation_shape=[4, 1, 8],
+            encoded_shape=[4, 1, 8],
+            decoded_shape=[4, 1, 8],
+            d_model=8,
+            d_sae=8,
+            shape_compatible=True,
+            metadata_compatible=True,
+            reconstruction_compatible=True,
+            semantically_compatible=True,
+            compatible=True,
+            status="ok",
+        )
+
+    import self_ground.real_behavioral_intervention as phase3_module
+    import self_ground.sae as sae_module
+
+    monkeypatch.setattr(phase3_module, "verify_sae_compatibility", compatible_result)
+
+    def failing_sae_load(*args, **kwargs):
+        del args, kwargs
+        raise RuntimeError("SAE weights unavailable after compatibility")
+
+    monkeypatch.setattr(sae_module.SAELensAdapter, "from_pretrained", failing_sae_load)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        model_adapter=TinyBehavioralModelAdapter(),
+    )
+
+    assert result.compatible is False
+    assert (out_dir / "compatibility.json").exists()
+    assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
+    blocker = json.loads((out_dir / "blocker.json").read_text())
+    assert blocker["blocker_type"] == "post_compat_sae_load_failure"
+    assert "SAE weights unavailable" in blocker["exception_message"]
+
+
+def test_phase3_nonfinite_baseline_blocks_before_intervention_rows(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "baseline_blocked"
+    _write_sae_ranking(ranking_dir)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        model_adapter=TinyNaNBaselineBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    assert result.compatible is False
+    assert (out_dir / "baseline_validation.json").exists()
+    baseline_validation = json.loads((out_dir / "baseline_validation.json").read_text())
+    assert baseline_validation["finite"] is False
+    assert baseline_validation["n_nonfinite_rows"] > 0
+    assert baseline_validation["nonfinite_fields"][0]["task_id"]
+    assert baseline_validation["nonfinite_fields"][0]["family"]
+    assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["claim_status"] == "blocked"
+    assert "baseline" in report["blocker_reason"].lower()
+    readme = (out_dir / "README.md").read_text()
+    assert "baseline scoring produced non-finite values" in readme

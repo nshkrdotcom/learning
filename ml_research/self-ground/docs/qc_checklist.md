@@ -1,8 +1,8 @@
 # QC Checklist
 
-Scope: Phase 3 finish pass for SELF-GROUND token-contrast evaluation. This
-checklist records the current repository state after hardening evidence gates,
-telemetry provenance, non-finite accounting, docs, and public command parity.
+Scope: Phase 3 artifact-backed blocker and acceptance-invariant pass for
+SELF-GROUND token-contrast evaluation. This checklist is updated during final
+QC for the current implementation.
 
 ## Phase 1 Preservation
 
@@ -44,6 +44,16 @@ Status: all passed.
 
 ## Phase 3 Finish Pass
 
+- [x] required Phase 3 task families are enforced by default
+- [x] missing required families appear in validation summaries with zero counts
+- [x] model-load failures write artifact-backed blocked runs
+- [x] SAE compatibility is verified before post-compatibility SAE loading
+- [x] post-compatibility SAE-load failures write artifact-backed blocked runs
+- [x] baseline non-finite scores write `baseline_validation.json`
+- [x] baseline non-finite scores block before decoded intervention rows
+- [x] reports include stable `blocker_reason`
+- [x] Markdown mechanism report includes full evidence sections
+- [x] required artifact gate includes the full successful Phase 3 artifact layout
 - [x] mechanism report uses required artifact presence, not config-only claims
 - [x] strong evidence is denied by high relative norm drift
 - [x] strong evidence is denied by high norm-drift warning rate
@@ -62,7 +72,7 @@ Status: all passed.
 - [x] Phase 3 script exposes telemetry warning thresholds
 - [x] Phase 3 Typer CLI exposes telemetry warning thresholds
 - [x] README duplicate/misplaced CLI section removed
-- [x] Phase 3 docs describe final telemetry, skipped-row, and claim-gate behavior
+- [x] Phase 3 docs describe final telemetry, skipped-row, blocker, baseline, and claim-gate behavior
 
 Command run:
 
@@ -76,25 +86,28 @@ Status: passed with `compatible=true`, `n_tasks_valid=6`, `n_rows=24`, and
 Artifact inspection:
 
 - [x] `runs/test_phase3_behavioral_evaluation/skipped_behavioral_rows.json` shows `n_skipped_rows=0`
+- [x] `runs/test_phase3_behavioral_evaluation/baseline_validation.json` shows `finite=true`
 - [x] `runs/test_phase3_behavioral_evaluation/mechanism_report.json` shows `claim_status=insufficient_evidence`
+- [x] `runs/test_phase3_behavioral_evaluation/mechanism_report.json` shows `blocker_reason=null`
 - [x] `runs/test_phase3_behavioral_evaluation/mechanism_report.json` shows `required_artifacts_present=true`
 - [x] `runs/test_phase3_behavioral_evaluation/mechanism_report.json` shows `n_written_rows=24`
 - [x] `runs/test_phase3_behavioral_evaluation/behavioral_intervention_results.jsonl` contains target/control deltas and separate telemetry fields
+- [x] `runs/test_phase3_behavioral_evaluation/mechanism_report.md` includes all required evidence sections
 - [x] `runs/test_phase3_behavioral_evaluation/README.md` includes skipped-row accounting and conservative interpretation text
 
 ## Tests And Static Review
 
 - [x] `uv sync` passed
 - [x] `uv run ruff check .` passed
-- [x] `uv run pytest` passed: `130 passed, 12 skipped`
-- [x] `uv run pytest --run-integration` passed without SAE env: `137 passed, 5 skipped`
-- [x] SAE-configured integration passed: `142 passed`
+- [x] `uv run pytest` passed: `140 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `147 passed, 5 skipped`
+- [x] SAE-configured integration passed: `152 passed`
 - [x] root CLI help inspected
 - [x] Phase 3 CLI help inspected
 - [x] SAE compatibility CLI help inspected
 - [x] SAE intervention CLI help inspected
 - [x] activation-ranking CLI help inspected
-- [x] fake/dummy/mock/placeholder scan reviewed; hits are tests or negative QC/docs language only
+- [x] fake/dummy/mock/placeholder scan reviewed; hits are tests or negative blocker/QC/docs language only
 - [x] overclaiming scan reviewed; hits are explicit not-supported claims or claim-status identifiers
 - [x] proxy/residual-SAE wording scan reviewed; no production overclaiming found
 

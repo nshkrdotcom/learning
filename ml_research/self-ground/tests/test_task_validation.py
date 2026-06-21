@@ -66,6 +66,7 @@ def test_valid_single_token_task_passes() -> None:
         model_adapter=TinyTokenizerAdapter(),
         tasks=[_task()],
         min_valid_tasks_per_family=1,
+        required_families=["sentiment_negation"],
     )
 
     assert [task.id for task in valid] == ["task"]
@@ -84,6 +85,7 @@ def test_multi_token_and_overlap_are_excluded_with_reasons() -> None:
         model_adapter=TinyTokenizerAdapter(),
         tasks=tasks,
         min_valid_tasks_per_family=1,
+        required_families=["sentiment_negation"],
     )
 
     assert valid == []
@@ -101,6 +103,7 @@ def test_wrong_control_type_fails_validation() -> None:
         model_adapter=TinyTokenizerAdapter(),
         tasks=[task],
         min_valid_tasks_per_family=1,
+        required_families=["sentiment_negation"],
     )
 
     assert valid == []
@@ -113,6 +116,59 @@ def test_validation_summary_serializes_cleanly() -> None:
         model_adapter=TinyTokenizerAdapter(),
         tasks=[_task()],
         min_valid_tasks_per_family=1,
+        required_families=["sentiment_negation"],
     )
 
     assert json.loads(summary.model_dump_json())["valid_tasks"] == 1
+
+
+def test_default_validation_requires_all_phase3_families() -> None:
+    _, _, summary = validate_behavioral_tasks(
+        model_adapter=TinyTokenizerAdapter(),
+        tasks=[_task(family="sentiment_negation")],
+        min_valid_tasks_per_family=1,
+    )
+
+    assert summary.passes_minimum is False
+    assert summary.valid_by_family["sentiment_negation"] == 1
+    assert summary.valid_by_family["property_negation"] == 0
+    assert summary.valid_by_family["state_negation"] == 0
+    assert summary.missing_required_families == [
+        "property_negation",
+        "state_negation",
+    ]
+
+
+def test_default_validation_passes_when_required_families_present() -> None:
+    tasks = [
+        _task(task_id="sentiment", family="sentiment_negation"),
+        _task(task_id="property", family="property_negation"),
+        _task(task_id="state", family="state_negation"),
+    ]
+
+    _, _, summary = validate_behavioral_tasks(
+        model_adapter=TinyTokenizerAdapter(),
+        tasks=tasks,
+        min_valid_tasks_per_family=1,
+    )
+
+    assert summary.passes_minimum is True
+    assert summary.missing_required_families == []
+
+
+def test_extra_families_do_not_replace_required_families() -> None:
+    tasks = [
+        _task(task_id="sentiment", family="sentiment_negation"),
+        _task(task_id="extra", family="extra_family"),
+    ]
+
+    _, _, summary = validate_behavioral_tasks(
+        model_adapter=TinyTokenizerAdapter(),
+        tasks=tasks,
+        min_valid_tasks_per_family=1,
+    )
+
+    assert summary.passes_minimum is False
+    assert summary.valid_by_family["extra_family"] == 1
+    assert "property_negation" in summary.missing_required_families
+    assert "state_negation" in summary.missing_required_families

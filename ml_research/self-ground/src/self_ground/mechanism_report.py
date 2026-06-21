@@ -76,6 +76,7 @@ class MechanismEvidenceReport(BaseModel):
         "strong_candidate_evidence",
     ]
     recommended_claim: str
+    blocker_reason: str | None
     not_supported_claims: list[str]
     limitations: list[str]
     row_accounting: dict[str, Any]
@@ -94,12 +95,16 @@ NOT_SUPPORTED = [
 
 REQUIRED_EVIDENCE_ARTIFACTS = [
     "config.json",
-    "compatibility.json",
+    "behavioral_tasks.jsonl",
     "behavioral_task_validation.json",
+    "excluded_behavioral_tasks.jsonl",
+    "compatibility.json",
     "feature_sets.json",
     "baseline_task_scores.jsonl",
+    "baseline_task_summary.csv",
     "behavioral_intervention_results.jsonl",
     "behavioral_summary.csv",
+    "skipped_behavioral_rows.json",
 ]
 
 
@@ -121,6 +126,8 @@ def _float(row: dict[str, Any], key: str) -> float | None:
 def _artifact_paths(run_dir: Path) -> dict[str, str]:
     names = [
         *REQUIRED_EVIDENCE_ARTIFACTS,
+        "baseline_validation.json",
+        "blocker.json",
         "skipped_behavioral_rows.json",
         "mechanism_report.json",
         "mechanism_report.md",
@@ -140,6 +147,13 @@ def _baseline_pass_rate(run_dir: Path) -> float | None:
     if not rows:
         return None
     return sum(1 for row in rows if bool(row.get("intended_direction_pass"))) / len(rows)
+
+
+def _load_baseline_accounting(run_dir: Path) -> dict[str, Any]:
+    path = run_dir / "baseline_validation.json"
+    if path.exists():
+        return read_json(path)
+    return {"finite": None, "n_nonfinite_rows": 0, "nonfinite_fields": []}
 
 
 def _raw_behavioral_rows(run_dir: Path) -> list[dict[str, Any]]:
@@ -335,6 +349,7 @@ def _claim_status(
     thresholds: EvidenceThresholds,
     required_artifacts: dict[str, bool],
     row_accounting: dict[str, Any],
+    baseline_accounting: dict[str, Any],
     summary_quality: dict[str, Any],
     summary_rows: list[dict[str, str]],
 ) -> str:
@@ -343,6 +358,8 @@ def _claim_status(
     if summary_quality.get("n_summary_rows", 0) and not summary_rows:
         return "blocked"
     if bool(row_accounting.get("all_rows_skipped")):
+        return "blocked"
+    if int(baseline_accounting.get("n_nonfinite_rows", 0) or 0) > 0:
         return "blocked"
     if not compatibility or not validation:
         return "blocked"
@@ -401,6 +418,48 @@ def _claim_status(
     return "candidate_evidence"
 
 
+def _blocker_reason(
+    *,
+    run_dir: Path,
+    compatibility: dict[str, Any] | None,
+    validation: dict[str, Any] | None,
+    required_artifacts: dict[str, bool],
+    row_accounting: dict[str, Any],
+    summary_quality: dict[str, Any],
+    summary_rows: list[dict[str, str]],
+    baseline_accounting: dict[str, Any],
+) -> str | None:
+    blocker_path = run_dir / "blocker.json"
+    if blocker_path.exists():
+        blocker = read_json(blocker_path)
+        blocker_type = str(blocker.get("blocker_type") or "blocked")
+        reason = str(blocker.get("reason") or blocker.get("blocker_type") or "blocked")
+        exc_class = blocker.get("exception_class")
+        message = blocker.get("exception_message")
+        if exc_class or message:
+            return f"{blocker_type}: {reason}: {exc_class}: {message}"
+        return f"{blocker_type}: {reason}"
+    if validation is not None:
+        summary = validation.get("summary", validation)
+        if not bool(summary.get("passes_minimum")):
+            missing = summary.get("missing_required_families", [])
+            return f"task validation failed; missing/underfilled required families: {missing}"
+    if compatibility is not None and not bool(compatibility.get("compatible")) and not bool(
+        compatibility.get("diagnostic_only")
+    ):
+        return f"SAE compatibility failed: {compatibility.get('error')}"
+    if int(baseline_accounting.get("n_nonfinite_rows", 0) or 0) > 0:
+        return "baseline non-finite blocker"
+    if bool(row_accounting.get("all_rows_skipped")):
+        return "all intervention rows were skipped"
+    if summary_quality.get("n_summary_rows", 0) and not summary_rows:
+        return "all behavioral summary rows were malformed or non-finite"
+    missing = [name for name, present in required_artifacts.items() if not present]
+    if missing:
+        return f"missing required artifacts: {', '.join(missing)}"
+    return None
+
+
 def _top_level_limitations(
     *,
     config: dict[str, Any],
@@ -408,6 +467,7 @@ def _top_level_limitations(
     baseline_pass_rate: float | None,
     evidence: list[FeatureSetEvidence],
     row_accounting: dict[str, Any],
+    baseline_accounting: dict[str, Any],
     summary_quality: dict[str, Any],
     summary_rows: list[dict[str, str]],
     thresholds: EvidenceThresholds,
@@ -423,6 +483,8 @@ def _top_level_limitations(
         limitations.append("Baseline intended-direction pass rate is below candidate threshold.")
     if int(row_accounting.get("n_skipped_rows", 0)) > 0:
         limitations.append("Some intervention rows were skipped due to non-finite values.")
+    if int(baseline_accounting.get("n_nonfinite_rows", 0) or 0) > 0:
+        limitations.append("Baseline scoring produced non-finite values.")
     if summary_quality.get("n_invalid_summary_rows", 0):
         limitations.append("Some behavioral summary rows were malformed or non-finite.")
     operations = {
@@ -447,20 +509,151 @@ def _top_level_limitations(
 
 
 def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
+    def artifact_json(name: str) -> dict[str, Any] | None:
+        artifact = report.artifacts.get(name)
+        return read_json(artifact) if artifact else None
+
+    def artifact_rows(name: str) -> list[dict[str, Any]]:
+        artifact = report.artifacts.get(name)
+        if not artifact:
+            return []
+        if name.endswith(".jsonl"):
+            return read_jsonl(artifact)
+        return _read_csv(Path(artifact))
+
+    config = artifact_json("config.json") or {}
+    compatibility = artifact_json("compatibility.json") or {}
+    validation = artifact_json("behavioral_task_validation.json") or {}
+    validation_summary = validation.get("summary", validation)
+    feature_sets = artifact_json("feature_sets.json") or {}
+    baseline_rows = artifact_rows("baseline_task_summary.csv")
+    behavior_rows = artifact_rows("behavioral_summary.csv")
+    skipped = artifact_json("skipped_behavioral_rows.json") or {}
+    baseline_validation = artifact_json("baseline_validation.json") or {}
+    all_behavior_rows = [row for row in behavior_rows if row.get("family") == "__all__"]
+    baseline_pass_rate = (
+        report.feature_sets[0].intended_direction_pass_rate
+        if report.feature_sets
+        else "not available"
+    )
+    target_evidence = all_behavior_rows[:10] if all_behavior_rows else "not available"
+    control_evidence = (
+        [
+            {
+                "feature_set_label": row.get("feature_set_label"),
+                "operation": row.get("operation"),
+                "control_absolute_delta_mean": row.get("control_absolute_delta_mean"),
+                "collateral_ratio_mean": row.get("collateral_ratio_mean"),
+            }
+            for row in all_behavior_rows
+        ][:10]
+        if all_behavior_rows
+        else "not available"
+    )
+    feature_comparison = [
+        {
+            "feature_set_label": item.feature_set_label,
+            "top_vs_control_ratio": item.top_vs_control_ratio,
+        }
+        for item in report.feature_sets
+    ]
+    telemetry_summary = (
+        [
+            {
+                "feature_set_label": row.get("feature_set_label"),
+                "operation": row.get("operation"),
+                "relative_norm_drift_mean": row.get("relative_norm_drift_mean"),
+                "decoded_delta_norm_mean": row.get("decoded_delta_norm_mean"),
+                "norm_drift_warning_rate": row.get("norm_drift_warning_rate"),
+            }
+            for row in all_behavior_rows
+        ][:10]
+        if all_behavior_rows
+        else "not available"
+    )
+
+    blocker_text = ""
+    if report.blocker_reason:
+        blocker_text = f"\n## Blocker\n\n{report.blocker_reason}\n"
+
+    def json_block(value: Any) -> str:
+        return f"```json\n{value}\n```"
+
     text = f"""# Phase 3 Token-Contrast Evidence Report
+
+## Configuration
 
 - model: `{report.model_name}`
 - hook point: `{report.hook_point}`
 - SAE release: `{report.sae_release}`
 - SAE id: `{report.sae_id}`
+- ranking dir: `{config.get("ranking_dir", "not available")}`
+- operations: `{config.get("operations", "not available")}`
+- patch mode: `{config.get("patch_mode", "not available")}`
+- baseline mode: `{config.get("baseline_mode", "not available")}`
+- random seeds: `{config.get("random_seeds", "not available")}`
+
+## SAE Compatibility
+
+- compatible: `{compatibility.get("compatible", "not available")}`
 - diagnostic only: `{report.diagnostic_only}`
+- metadata compatible: `{compatibility.get("metadata_compatible", "not available")}`
+- shape compatible: `{compatibility.get("shape_compatible", "not available")}`
+- reconstruction compatible: `{compatibility.get("reconstruction_compatible", "not available")}`
+- declared model: `{compatibility.get("declared_model", "not available")}`
+- declared hook point: `{compatibility.get("declared_hook_point", "not available")}`
+- reconstruction MSE: `{compatibility.get("reconstruction_mse", "not available")}`
+- reconstruction relative L2: `{compatibility.get("reconstruction_l2_relative", "not available")}`
+- reconstruction max absolute error:
+  `{compatibility.get("reconstruction_max_abs_error", "not available")}`
+
+## Task Validation
+
+- total tasks: `{validation_summary.get("total_tasks", "not available")}`
+- valid tasks: `{validation_summary.get("valid_tasks", "not available")}`
+- excluded tasks: `{validation_summary.get("excluded_tasks", "not available")}`
+- min valid tasks per family:
+  `{validation_summary.get("min_valid_tasks_per_family", "not available")}`
+- passes minimum: `{validation_summary.get("passes_minimum", "not available")}`
+- valid by family: `{validation_summary.get("valid_by_family", "not available")}`
+- excluded by family: `{validation_summary.get("excluded_by_family", "not available")}`
+
+## Baseline Calibration
+
+- intended-direction pass rate: `{baseline_pass_rate}`
+- baseline validation: `{baseline_validation or "not available"}`
+
+{json_block(baseline_rows[:10] if baseline_rows else "not available")}
+
+## Feature Sets
+
+{json_block(feature_sets.get("feature_sets", "not available"))}
+
+## Target-Prompt Intervention Evidence
+
+{json_block(target_evidence)}
+
+## Matched Non-Negation Control Evidence
+
+{json_block(control_evidence)}
+
+## Feature-Set Comparison
+
+{json_block(feature_comparison)}
+
+## Intervention Telemetry
+
+{json_block(telemetry_summary)}
+
+- skipped rows: `{skipped or "not available"}`
+
+## Claim Status
+
 - claim status: `{report.claim_status}`
-
-## Recommended Claim
-
-{report.recommended_claim}
-
+- recommended claim: {report.recommended_claim}
+{blocker_text}
 ## Limitations
+
 
 """
     for limitation in report.limitations:
@@ -544,6 +737,7 @@ def build_mechanism_evidence_report(
     summary_rows, summary_quality = _valid_all_family_summary_rows(raw_summary_rows)
     raw_rows = _raw_behavioral_rows(run_dir)
     row_accounting = _load_row_accounting(run_dir, raw_rows)
+    baseline_accounting = _load_baseline_accounting(run_dir)
     required_artifacts = _required_artifact_status(run_dir)
     baseline_pass_rate = _baseline_pass_rate(run_dir)
     families = _valid_families(raw_rows)
@@ -569,8 +763,19 @@ def build_mechanism_evidence_report(
         thresholds=threshold_config,
         required_artifacts=required_artifacts,
         row_accounting=row_accounting,
+        baseline_accounting=baseline_accounting,
         summary_quality=summary_quality,
         summary_rows=summary_rows,
+    )
+    blocker_reason = _blocker_reason(
+        run_dir=run_dir,
+        compatibility=compatibility,
+        validation=validation,
+        required_artifacts=required_artifacts,
+        row_accounting=row_accounting,
+        summary_quality=summary_quality,
+        summary_rows=summary_rows,
+        baseline_accounting=baseline_accounting,
     )
     limitations = _top_level_limitations(
         config=config,
@@ -578,6 +783,7 @@ def build_mechanism_evidence_report(
         baseline_pass_rate=baseline_pass_rate,
         evidence=evidence,
         row_accounting=row_accounting,
+        baseline_accounting=baseline_accounting,
         summary_quality=summary_quality,
         summary_rows=summary_rows,
         thresholds=threshold_config,
@@ -603,11 +809,13 @@ def build_mechanism_evidence_report(
         feature_sets=evidence,
         claim_status=claim_status,  # type: ignore[arg-type]
         recommended_claim=recommended_claim,
+        blocker_reason=blocker_reason,
         not_supported_claims=NOT_SUPPORTED,
         limitations=limitations,
         row_accounting={
             **row_accounting,
             **summary_quality,
+            "baseline": baseline_accounting,
         },
         artifacts=_artifact_paths(run_dir),
         qc={

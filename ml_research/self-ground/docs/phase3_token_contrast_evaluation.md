@@ -79,6 +79,17 @@ All token strings are resolved through the model tokenizer. Each scoring token
 must map to exactly one model token. Excluded tasks are written to
 `excluded_behavioral_tasks.jsonl`; they are not silently dropped.
 
+Validation requires every Phase 3 family to meet
+`min_valid_tasks_per_family`:
+
+- `sentiment_negation`
+- `property_negation`
+- `state_negation`
+
+A custom task file that omits or underfills any required family is blocked even
+if all families present in the file tokenize cleanly. Validation summaries
+include required families with zero counts when they are absent.
+
 ## Baselines And Feature Sets
 
 Feature sets are selected only from the provided SAE ranking artifact:
@@ -90,6 +101,12 @@ Feature sets are selected only from the provided SAE ranking artifact:
 Random controls are deterministic by seed and never come from another SAE or
 ranking file. Activation-matched controls are not implemented in Phase 3 and
 remain a limitation.
+
+Baseline scoring is fail-closed. If any baseline target score, foil score,
+prompt contrast, control target score, control foil score, or control contrast
+is NaN or Inf, the run writes `baseline_validation.json`, writes a blocker
+README/report, and does not run decoded interventions. This avoids treating
+post-hoc skipped intervention rows as evidence when calibration itself failed.
 
 ## Telemetry
 
@@ -129,6 +146,7 @@ compatibility.json
 feature_sets.json
 baseline_task_scores.jsonl
 baseline_task_summary.csv
+baseline_validation.json
 behavioral_intervention_results.jsonl
 behavioral_summary.csv
 skipped_behavioral_rows.json
@@ -138,7 +156,11 @@ README.md
 ```
 
 Blocked runs still write executable diagnostics, but do not write fabricated
-intervention rows.
+intervention rows. Expected operational blockers such as model-load failures,
+SAE-load failures, task-validation failures, compatibility failures, non-finite
+baseline scores, and decoded-intervention resource failures write
+`blocker.json`, `README.md`, and, when requested, `mechanism_report.json` and
+`mechanism_report.md`.
 
 ## Report Status
 
@@ -166,6 +188,16 @@ Strong evidence also requires actual artifact rows, not config-only claims:
 
 Missing required artifacts produce `blocked`. Malformed or non-finite summary
 rows produce `blocked` or `insufficient_evidence` rather than candidate status.
+The required artifact gate includes `behavioral_tasks.jsonl`,
+`excluded_behavioral_tasks.jsonl`, `baseline_task_summary.csv`, and
+`skipped_behavioral_rows.json`; candidate claims cannot be made from partial
+run directories.
+
+`mechanism_report.md` includes explicit sections for configuration, semantic
+SAE compatibility, reconstruction metrics, task validation, baseline
+calibration, feature sets, target-prompt evidence, matched-control evidence,
+feature-set comparison, intervention telemetry, threshold checks, claim status,
+limitations, unsupported claims, row accounting, and rerun commands.
 
 ## Commands
 

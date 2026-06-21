@@ -46,6 +46,11 @@ mechanism evidence report.
 This is token-contrast evaluation, not broad behavioral understanding.
 Phase 3 records target-prompt and matched-control intervention telemetry
 separately, then writes aggregate row-level telemetry for summary thresholds.
+It requires the three Phase 3 task families (`sentiment_negation`,
+`property_negation`, and `state_negation`) to meet the configured minimum valid
+task count. Expected model/SAE resource failures, task-validation failures,
+compatibility failures, and non-finite baseline scores write artifact-backed
+blocked runs instead of raw partial failures or fabricated rows.
 
 ## Semantic SAE Compatibility
 
@@ -249,12 +254,18 @@ Phase 3 token-contrast evaluation:
 - `feature_sets.json`
 - `baseline_task_scores.jsonl`
 - `baseline_task_summary.csv`
+- `baseline_validation.json`
 - `behavioral_intervention_results.jsonl`
 - `behavioral_summary.csv`
 - `skipped_behavioral_rows.json`
+- `blocker.json` for blocked runs
 - `mechanism_report.json`
 - `mechanism_report.md`
 - `README.md`
+
+Successful Phase 3 reports require the full artifact contract above, except
+`blocker.json`. The report builder blocks candidate claims if any required
+artifact is missing.
 
 ## Interpretation Boundaries
 
@@ -273,3 +284,10 @@ top-vs-control comparison cannot support strong candidate evidence.
 Rows with non-finite telemetry or logits are explicitly counted in
 `skipped_behavioral_rows.json`; all-skipped runs are blocked and partially
 skipped runs cannot support strong candidate evidence.
+Baseline scores are stricter: any non-finite baseline score writes
+`baseline_validation.json`, creates a blocked report, and skips decoded
+intervention rows. `mechanism_report.md` includes configuration, semantic SAE
+compatibility, reconstruction metrics, task validation, baseline calibration,
+feature sets, target/control evidence, feature-set comparisons, telemetry,
+threshold checks, limitations, unsupported claims, row accounting, and rerun
+commands.

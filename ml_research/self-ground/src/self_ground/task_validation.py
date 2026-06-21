@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from self_ground.behavioral_tasks import BehavioralTask
+from self_ground.behavioral_tasks import TASK_FAMILY_ORDER, BehavioralTask
 from self_ground.logit_scoring import token_id_for_single_token_string
 
 
@@ -34,6 +34,8 @@ class BehavioralTaskValidationSummary(BaseModel):
     valid_by_family: dict[str, int]
     excluded_by_family: dict[str, int]
     min_valid_tasks_per_family: int
+    required_families: list[str]
+    missing_required_families: list[str]
     passes_minimum: bool
 
 
@@ -102,17 +104,22 @@ def validate_behavioral_tasks(
     model_adapter,
     tasks: list[BehavioralTask],
     min_valid_tasks_per_family: int = 2,
+    required_families: list[str] | None = None,
 ) -> tuple[list[BehavioralTask], list[TokenValidationResult], BehavioralTaskValidationSummary]:
     if min_valid_tasks_per_family < 1:
         raise ValueError("min_valid_tasks_per_family must be >= 1")
+    required = list(TASK_FAMILY_ORDER if required_families is None else required_families)
     task_by_id = {task.id: task for task in tasks}
     results = [_validate_one(model_adapter, task) for task in tasks]
     valid_tasks = [task_by_id[result.task_id] for result in results if result.valid]
     valid_counter = Counter(result.family for result in results if result.valid)
     excluded_counter = Counter(result.family for result in results if not result.valid)
-    families = {task.family for task in tasks}
-    passes_minimum = bool(families) and all(
-        valid_counter.get(family, 0) >= min_valid_tasks_per_family for family in families
+    families = {task.family for task in tasks} | set(required)
+    missing_required = [
+        family for family in required if valid_counter.get(family, 0) < min_valid_tasks_per_family
+    ]
+    passes_minimum = bool(required) and all(
+        valid_counter.get(family, 0) >= min_valid_tasks_per_family for family in required
     )
     summary = BehavioralTaskValidationSummary(
         total_tasks=len(tasks),
@@ -123,6 +130,8 @@ def validate_behavioral_tasks(
             family: int(excluded_counter.get(family, 0)) for family in sorted(families)
         },
         min_valid_tasks_per_family=min_valid_tasks_per_family,
+        required_families=required,
+        missing_required_families=missing_required,
         passes_minimum=passes_minimum,
     )
     return valid_tasks, results, summary
