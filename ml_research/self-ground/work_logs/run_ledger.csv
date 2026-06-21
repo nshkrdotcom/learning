@@ -1,0 +1,2 @@
+date,run_dir,kind,model,hook_point,sae_release,sae_id,device,scale,claim_status,notes
+2026-06-21,runs/diagnostic_negation_ravel_eval_density_matched,diagnostic_phase3_density_matched,EleutherAI/pythia-70m-deduped,blocks.2.hook_resid_post,pythia-70m-deduped-res-sm,blocks.2.hook_resid_post,cpu,"per_family=2; top_k=2; density_matched_seeds=7/11/13",insufficient_evidence,"Real TransformerLens+SAELens decoded SAE path completed; 24 rows; zero top/control deltas; diagnostic scale only."

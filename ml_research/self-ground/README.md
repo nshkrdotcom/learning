@@ -11,10 +11,11 @@ use TransformerLens, SAE transforms use SAELens, Phase 3 is moving toward a
 RAVEL/SAEBench cause/isolation evaluation shape, and SELF-GROUND owns the
 negation task specification plus artifact-backed claim ledger.
 
-MechanismLab extraction has started under `src/mechanismlab/`. MechanismLab is
-the reusable claim/evidence/run framework; SELF-GROUND is the first project
-adapter. Current SELF-GROUND reports still run, and generic MechanismLab reports
-can be written alongside them.
+The earlier MechanismLab framework extraction attempt is frozen and removed from
+the active package. The current priority is one serious, inspectable,
+artifact-backed negation SAE run over the existing TransformerLens + SAELens
+stack. Framework extraction should not resume until multiple distinct tasks have
+run end to end and a shared abstraction would delete code or reduce complexity.
 
 ## Phase 1 Recap
 
@@ -233,6 +234,17 @@ uv run python scripts/probe_saebench_ravel_bridge.py \
   --out runs/probe_saebench_ravel_bridge
 ```
 
+The first serious GPU run plan is specified in
+`experiments/E002_real_negation_sae_density_matched_run.md`. CPU runs with
+`per_family=2` and `top_k_features=2` are diagnostic only.
+
+Inspect a completed Phase 3 claim run without recomputing model results:
+
+```bash
+uv run python scripts/inspect_claim_run.py \
+  --run-dir runs/diagnostic_negation_ravel_eval_density_matched
+```
+
 Equivalent CLI:
 
 ```bash
@@ -357,3 +369,15 @@ compatibility, reconstruction metrics, task validation, baseline calibration,
 feature sets, target/control evidence, feature-set comparisons, telemetry,
 threshold checks, limitations, unsupported claims, row accounting, and rerun
 commands.
+
+Framework-shaped schemas, generic backend/plugin abstractions, and generic
+trackers are not active in this repo.
+
+## What Would Justify Future Framework Extraction?
+
+Framework extraction should be reconsidered only after:
+
+- at least two or three distinct tasks have run end to end,
+- common artifacts and pain points are visible in real runs,
+- no existing library owns the needed abstraction,
+- extraction deletes code or reduces complexity rather than adding interfaces.

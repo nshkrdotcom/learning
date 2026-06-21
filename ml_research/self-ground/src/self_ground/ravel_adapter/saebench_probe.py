@@ -28,6 +28,7 @@ class SAEBenchRavelProbeResult(BaseModel):
         "import_ok",
         "blocked_api_incompatible",
         "bridge_feasible",
+        "ran_real_eval",
     ]
     packages_attempted: list[str]
     imported_modules: list[str]
@@ -126,7 +127,7 @@ def probe_saebench_ravel_bridge(
             recommended_next_step=(
                 "Install upstream SAEBench/RAVEL in an optional environment, then rerun "
                 "`uv run python scripts/probe_saebench_ravel_bridge.py --out "
-                "runs/probe_saebench_ravel_bridge`."
+                f"{out_path}`."
             ),
         )
         _write_probe_artifacts(result, out_path)

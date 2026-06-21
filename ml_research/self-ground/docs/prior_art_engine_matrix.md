@@ -19,7 +19,8 @@ runtime machinery.
 
 The current Phase 3 implementation uses TransformerLens for execution/patching,
 SAELens for SAE transforms, and a SELF-GROUND negation RAVEL-style adapter for
-cause/isolation summaries. A bounded SAEBench/RAVEL probe now exists:
+cause/isolation summaries. It does not claim upstream SAEBench/RAVEL execution.
+A bounded SAEBench/RAVEL probe now exists:
 
 ```bash
 uv run python scripts/probe_saebench_ravel_bridge.py \
@@ -30,3 +31,7 @@ The latest result should be checked at
 `runs/probe_saebench_ravel_bridge/probe_result.json`. Expanding the custom
 evaluator requires first recording whether the upstream bridge is feasible,
 blocked by a missing package, or blocked by API incompatibility.
+
+Framework extraction is frozen. Future abstraction work should wait until
+multiple real task families or projects have produced end-to-end runs and the
+shared abstraction would remove code rather than add generic interfaces.

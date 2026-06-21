@@ -219,17 +219,21 @@ Observed results:
 - [x] density-matched mechanism report status is `insufficient_evidence`
 - [x] probe artifact status is `not_installed` with `ModuleNotFoundError` blockers for attempted SAEBench/RAVEL packages
 
-## MechanismLab Extraction
+## Library-Backed Evidence Refocus
 
-- [x] `src/mechanismlab/` reusable schemas implemented
-- [x] generic claim report implemented
-- [x] backend manifests implemented without heavy imports
-- [x] local JSON tracker and local artifact store implemented
-- [x] `mechanismlab` CLI help inspected
-- [x] `mechanismlab backends` inspected
-- [x] SELF-GROUND adapter emits generic MechanismLab artifacts
-- [x] existing SELF-GROUND CLI remains available
-- [x] MechanismLab tests pass
+- [x] `docs/code_classification.md` reviewed
+- [x] `docs/execution_stack.md` reviewed
+- [x] active `src/mechanismlab/` framework package removed
+- [x] `mechanismlab` CLI removed from `pyproject.toml`
+- [x] `self_ground/mechanismlab_adapter.py` removed
+- [x] serious E002 GPU command documented
+- [x] `scripts/inspect_claim_run.py` works on diagnostic artifacts
+- [x] diagnostic density-matched run completed
+- [x] diagnostic claim status recorded as conservative
+- [x] run ledger updated
+- [x] research log updated
+- [x] claim ledger updated
+- [x] SAEBench/RAVEL probe remains bounded and honest
 
 Commands run for this pass:
 
@@ -239,23 +243,23 @@ uv run ruff check .
 uv run pytest
 uv run pytest --run-integration
 SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm SELF_GROUND_SAE_ID=blocks.2.hook_resid_post uv run pytest --run-integration
-uv run mechanismlab --help
-uv run mechanismlab backends
-uv run self-ground --help
-uv run python scripts/write_mechanismlab_report.py --run-dir runs/test_negation_ravel_eval_density_matched
-uv run mechanismlab inspect-run runs/test_negation_ravel_eval_density_matched
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/test_real_sae_ranking --out runs/diagnostic_negation_ravel_eval_density_matched --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 2 --top-k-features 2 --baseline-mode top-vs-density-matched-multiseed --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cpu
+uv run python scripts/inspect_claim_run.py --run-dir runs/diagnostic_negation_ravel_eval_density_matched
+uv run python scripts/probe_saebench_ravel_bridge.py --out runs/tooling_spikes/saebench_ravel_bridge
 ```
 
 Observed results:
 
 - [x] `uv run ruff check .` passed
-- [x] `uv run pytest` passed: `180 passed, 12 skipped`
-- [x] `uv run pytest --run-integration` passed without SAE env: `187 passed, 5 skipped`
-- [x] SAE-configured integration passed: `192 passed`
-- [x] `mechanismlab backends` reports optional package availability without requiring optional integrations
-- [x] generated `mechanismlab_claim.json`
-- [x] generated `mechanismlab_experiment.json`
-- [x] generated `mechanismlab_run_manifest.json`
-- [x] generated `mechanismlab_claim_report.json`
-- [x] generated `mechanismlab_claim_report.md`
-- [x] generic MechanismLab report status for the density-matched SELF-GROUND run is `insufficient_evidence`
+- [x] `uv run pytest` passed: `168 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `175 passed, 5 skipped`
+- [x] SAE-configured integration passed: `180 passed`
+- [x] diagnostic run wrote `runs/diagnostic_negation_ravel_eval_density_matched`
+- [x] diagnostic run used `engine_backend=transformer_lens`
+- [x] diagnostic run used `sae_backend=sae_lens`
+- [x] diagnostic run compatibility is semantic/shape/reconstruction compatible
+- [x] diagnostic run wrote 24 behavioral rows and 0 skipped rows
+- [x] inspector reports `run_classification=diagnostic_or_smoke_run`
+- [x] inspector reports `claim_status=insufficient_evidence`
+- [x] inspector reports `top_target_delta=0.0`, `top_control_delta=0.0`, and `specificity_gap=0.0`
+- [x] SAEBench/RAVEL probe status is `not_installed`; no upstream integration claimed

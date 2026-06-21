@@ -49,6 +49,11 @@ Every Phase 3 report records `engine_backend` and `sae_backend`. A run using a
 forbidden SELF-GROUND generic engine backend is blocked even if metric rows
 look candidate-like.
 
+The MechanismLab framework extraction attempt is no longer active. Generic
+backend protocols, generic trackers, and generic framework CLIs are not part of
+the Phase 3 execution path. The current priority is one serious, inspectable
+TransformerLens + SAELens run.
+
 ## RAVEL-Shaped Wrapper
 
 The forward-facing script is:
@@ -70,8 +75,11 @@ uv run python scripts/run_negation_ravel_eval.py \
 
 This currently reuses the existing TransformerLens plus SAELens decoded
 intervention path and records the SELF-GROUND negation RAVEL-style adapter in
-`config.json`. A direct SAEBench bridge remains future work and must be tried
-before expanding the custom evaluator.
+`config.json`. It does not claim upstream RAVEL or SAEBench execution. The
+bounded probe in `scripts/probe_saebench_ravel_bridge.py` is the only current
+SAEBench/RAVEL integration check; if it records `not_installed` or
+`blocked_api_incompatible`, the custom evaluator remains a temporary task
+adapter.
 
 ## Compatibility Requirement
 
@@ -257,6 +265,34 @@ feature-set comparison, intervention telemetry, threshold checks, claim status,
 limitations, unsupported claims, row accounting, and rerun commands.
 
 ## Commands
+
+The serious GPU run plan is recorded in
+`experiments/E002_real_negation_sae_density_matched_run.md`. The intended
+evaluation command is:
+
+```bash
+uv run python scripts/run_negation_ravel_eval.py \
+  --ranking-dir runs/real_sae_ranking_pythia70m_deduped_l2_pf10 \
+  --out runs/negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --per-family 10 \
+  --top-k-features 5 \
+  --baseline-mode top-vs-random-density-and-bottom-active \
+  --random-seeds 7,11,13 \
+  --operations ablate \
+  --patch-mode delta \
+  --device cuda
+```
+
+Inspect completed runs with:
+
+```bash
+uv run python scripts/inspect_claim_run.py \
+  --run-dir runs/negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density
+```
 
 First produce a compatible SAE ranking:
 
