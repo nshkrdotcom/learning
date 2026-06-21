@@ -37,11 +37,31 @@ class FeatureEffect(BaseModel):
     cleanliness: float
 
 
+class FeatureProxyEffect(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    feature_id: str
+    operation: Literal[
+        "feature_space_ablation_proxy",
+        "feature_space_amplification_proxy",
+        "feature_space_patch_proxy",
+    ]
+    delta_pos: float
+    delta_neg: float
+    delta_para: float
+    delta_decoy: float
+    proxy_necessity: float
+    proxy_sufficiency: float
+    proxy_specificity: float
+    collateral_proxy: float
+    proxy_cleanliness: float
+
+
 class ExperimentResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pair_id: str
     feature_id: str
     template_family: str
-    metrics: FeatureEffect
+    metrics: FeatureProxyEffect
     metadata: dict[str, Any]

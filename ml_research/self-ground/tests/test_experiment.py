@@ -33,7 +33,7 @@ def test_experiment_end_to_end_with_test_local_adapters_writes_meaningful_artifa
         "config.json",
         "pairs.jsonl",
         "feature_rankings.csv",
-        "intervention_results.jsonl",
+        "feature_space_proxy_results.jsonl",
         "summary.csv",
         "README.md",
     }
@@ -48,13 +48,15 @@ def test_experiment_end_to_end_with_test_local_adapters_writes_meaningful_artifa
         summary = list(csv.DictReader(handle))
     top = summary[0]
     assert top["feature_id"] == "negation"
-    assert float(top["specificity_mean"]) > 1.0
-    assert float(top["cleanliness_mean"]) > 1.0
+    assert float(top["proxy_specificity_mean"]) > 1.0
+    assert float(top["proxy_cleanliness_mean"]) > 1.0
 
-    interventions = read_jsonl(out_dir / "intervention_results.jsonl")
-    assert len(interventions) == len(pairs) * 4
+    proxy_rows = read_jsonl(out_dir / "feature_space_proxy_results.jsonl")
+    assert len(proxy_rows) == len(pairs) * 4
+    assert not (out_dir / "intervention_results.jsonl").exists()
 
     config = json.loads((out_dir / "config.json").read_text())
     assert config["model"] == "test-local"
     assert config["top_k_features"] == 4
     assert "adapter" not in config
+    assert config["result_type"] == "feature_space_proxy"

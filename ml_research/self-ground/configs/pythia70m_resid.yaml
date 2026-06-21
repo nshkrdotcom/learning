@@ -1,0 +1,7 @@
+model: EleutherAI/pythia-70m
+hook_point: blocks.2.hook_resid_post
+feature_source: residual_dimensions
+pooling: final_token
+per_family: 15
+top_k_features: 50
+device: cpu

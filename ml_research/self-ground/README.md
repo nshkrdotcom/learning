@@ -1,59 +1,146 @@
-# SELF-GROUND v0
+# SELF-GROUND
 
-This repo builds the initial SELF-GROUND experiment for negation-scope causal-mechanism evaluation. It generates matched negation minimal pairs, ranks SAE-like features by contrastive activation, runs feature-space necessity and sufficiency interventions, and writes transparent artifacts for inspection.
+This repo implements the initial SELF-GROUND negation-scope milestone. It builds matched negation controls, captures real TransformerLens activations, ranks residual dimensions or configured SAELens features by negation contrast, and writes inspectable JSON/CSV artifacts.
 
-It does not train a report head, train a new SAE, provide a web UI, run broad-domain sweeps, or claim genuine model introspection.
+It does not train a report head, train a new SAE, ship fake adapters in production, or claim genuine model introspection.
 
-## Requirements
+## Current Milestone
 
-- `uv`
-- Python 3.11, managed by `uv`
-- Optional GPU for real model runs
+Implemented:
+
+- deterministic Tier A/B negation minimal-pair generation
+- control-purity scoring
+- real TransformerLens activation capture for `EleutherAI/pythia-70m`
+- real residual-dimension activation ranking without an SAE
+- optional SAELens feature ranking when a release/id is provided
+- real TransformerLens residual hook patching integration test
+- feature-space proxy scoring clearly labeled as proxy
 
 ## Setup
 
 ```bash
 uv sync
-uv run pytest
-uv run self-ground generate-negation --per-family 15 --out data/negation_pairs.jsonl
-uv run self-ground run-negation --pairs data/negation_pairs.jsonl --sae-release <release> --sae-id <id> --out runs/negation_v0
 ```
 
-Fast tests skip integration tests by default. To run model/SAE checks explicitly:
+## Fast Tests
+
+```bash
+uv run pytest
+```
+
+## Real Model Check
+
+```bash
+uv run python scripts/check_real_model.py --device cpu
+```
+
+Equivalent CLI:
+
+```bash
+uv run self-ground check-real-model \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --device cpu \
+  --out runs/check_real_model.json
+```
+
+## Real Residual-Dimension Ranking
+
+```bash
+uv run python scripts/run_real_activation_ranking.py \
+  --device cpu \
+  --out runs/real_activation_ranking_pythia70m
+```
+
+Equivalent CLI:
+
+```bash
+uv run self-ground run-activation-ranking \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --feature-source residual_dimensions \
+  --pooling final_token \
+  --per-family 15 \
+  --top-k-features 50 \
+  --device cpu \
+  --out runs/real_activation_ranking_pythia70m
+```
+
+## Optional SAE Ranking
+
+```bash
+uv run self-ground run-activation-ranking \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --feature-source sae \
+  --sae-release <release> \
+  --sae-id <id> \
+  --pooling final_token \
+  --per-family 15 \
+  --top-k-features 50 \
+  --device cpu \
+  --out runs/real_sae_ranking_pythia70m
+```
+
+Optional SAE integration test:
+
+```bash
+SELF_GROUND_SAE_RELEASE=<release> \
+SELF_GROUND_SAE_ID=<id> \
+uv run pytest --run-integration tests/integration/test_sae_adapter_optional.py
+```
+
+## Optional Integration Tests
 
 ```bash
 uv run pytest --run-integration
 ```
 
-## Commands
+These tests load `EleutherAI/pythia-70m`, run real activation capture, run real residual-dimension ranking, and verify real TransformerLens hook patching changes logits.
+
+## Data Generation
 
 ```bash
 uv run self-ground generate-negation --per-family 15 --out data/negation_pairs.jsonl
-uv run self-ground run-negation --pairs data/negation_pairs.jsonl --model gpt2-small --layer blocks.8.hook_resid_post --sae-release <release> --sae-id <id> --top-k-features 20 --out runs/negation_v0
-uv run self-ground summarize-run runs/negation_v0
 ```
 
-## Outputs
+## Artifact Layouts
 
-Each run writes:
+Real model check:
+
+- `runs/check_real_model.json`
+
+Real activation ranking:
+
+- `config.json`
+- `pairs.jsonl`
+- `activation_metadata.json`
+- `feature_rankings.csv`
+- `top_examples.jsonl`
+- `README.md`
+
+Proxy experiment path:
 
 - `config.json`
 - `pairs.jsonl`
 - `feature_rankings.csv`
-- `intervention_results.jsonl`
+- `feature_space_proxy_results.jsonl`
 - `summary.csv`
 - `README.md`
 
-## Metric Notes
+## Metric Boundary
 
-Candidate ranking uses:
+Residual/SAE ranking is real activation analysis: activations come from a real TransformerLens forward pass.
 
-```text
-mean_activation(x_pos) + mean_activation(x_para) - mean_activation(x_neg) - mean_activation(x_decoy)
-```
+Feature-space proxy scoring is not behavioral causal intervention. It uses activation-level deltas to estimate proxy necessity, proxy sufficiency, proxy specificity, collateral proxy, and proxy cleanliness. Real causal intervention requires decoded reinjection into the model plus logit or behavioral measurement.
 
-Necessity, sufficiency, specificity, collateral, and cleanliness are computed separately. Cleanliness weights are configurable in code via `MetricWeights`.
+SAE decoded reinjection is not implemented in this milestone. The current blocker is documented in `docs/sae_intervention_blocker.md`.
 
-## Limitations
+## Known Limitations
 
-Fast tests use test-local doubles in `tests/` only. Production code does not ship mock adapters or expose a mock CLI mode. TransformerLens activation capture is implemented behind an integration test. SAELens loading is experimental because pretrained SAE identifiers and download behavior vary by environment. Full decoded reinjection into TransformerLens is not part of v0; intervention rows use real SAE feature-space deltas and should be treated as proxy causal evidence until the injection backend is hardened.
+- no report head
+- no trained SAE
+- no fake adapters or fake CLI modes in production
+- residual-dimension ranking is real activation analysis, not mechanism discovery
+- feature-space proxy scoring is not behavioral causal intervention
+- SAE decoded reinjection remains a separate next milestone

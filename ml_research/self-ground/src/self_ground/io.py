@@ -14,11 +14,11 @@ from self_ground.data import ExperimentResult, MinimalPair
 SUMMARY_COLUMNS = [
     "feature_id",
     "n_pairs",
-    "necessity_mean",
-    "sufficiency_mean",
-    "specificity_mean",
-    "collateral_mean",
-    "cleanliness_mean",
+    "proxy_necessity_mean",
+    "proxy_sufficiency_mean",
+    "proxy_specificity_mean",
+    "collateral_proxy_mean",
+    "proxy_cleanliness_mean",
 ]
 
 
@@ -61,7 +61,15 @@ def write_feature_rankings_csv(rankings: list[RankedFeature], path: str | Path) 
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["feature_id", "score", "mean_pos", "mean_neg", "mean_para", "mean_decoy"],
+            fieldnames=[
+                "feature_id",
+                "score",
+                "mean_pos",
+                "mean_neg",
+                "mean_para",
+                "mean_decoy",
+                "abs_score",
+            ],
         )
         writer.writeheader()
         for row in rankings:
@@ -73,6 +81,7 @@ def write_feature_rankings_csv(rankings: list[RankedFeature], path: str | Path) 
                     "mean_neg": row.mean_neg,
                     "mean_para": row.mean_para,
                     "mean_decoy": row.mean_decoy,
+                    "abs_score": row.abs_score,
                 }
             )
 
@@ -89,14 +98,29 @@ def write_summary_csv(results: list[ExperimentResult], path: str | Path) -> None
             {
                 "feature_id": feature_id,
                 "n_pairs": n,
-                "necessity_mean": sum(r.metrics.necessity for r in feature_results) / n,
-                "sufficiency_mean": sum(r.metrics.sufficiency for r in feature_results) / n,
-                "specificity_mean": sum(r.metrics.specificity for r in feature_results) / n,
-                "collateral_mean": sum(r.metrics.collateral for r in feature_results) / n,
-                "cleanliness_mean": sum(r.metrics.cleanliness for r in feature_results) / n,
+                "proxy_necessity_mean": sum(
+                    r.metrics.proxy_necessity for r in feature_results
+                )
+                / n,
+                "proxy_sufficiency_mean": sum(
+                    r.metrics.proxy_sufficiency for r in feature_results
+                )
+                / n,
+                "proxy_specificity_mean": sum(
+                    r.metrics.proxy_specificity for r in feature_results
+                )
+                / n,
+                "collateral_proxy_mean": sum(
+                    r.metrics.collateral_proxy for r in feature_results
+                )
+                / n,
+                "proxy_cleanliness_mean": sum(
+                    r.metrics.proxy_cleanliness for r in feature_results
+                )
+                / n,
             }
         )
-    rows.sort(key=lambda row: (-float(row["cleanliness_mean"]), str(row["feature_id"])))
+    rows.sort(key=lambda row: (-float(row["proxy_cleanliness_mean"]), str(row["feature_id"])))
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -33,3 +33,21 @@ def test_transformer_lens_behavior_score_is_finite() -> None:
 
     assert isinstance(score, float)
     assert score == pytest.approx(score)
+
+
+@pytest.mark.integration
+def test_transformer_lens_logit_contrast_is_finite() -> None:
+    from self_ground.model import TransformerLensModelAdapter
+
+    adapter = TransformerLensModelAdapter(
+        model_name="EleutherAI/pythia-70m",
+        device="cpu",
+    )
+    contrast = adapter.logit_contrast(
+        ["The dog is friendly.", "The dog is not friendly."],
+        positive=[" not", " no"],
+        negative=[" often", " always"],
+    )
+
+    assert contrast.shape == (2,)
+    assert contrast.isfinite().all().item()

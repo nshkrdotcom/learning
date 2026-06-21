@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 from self_ground.activations import FeatureActivations, PairFeatureActivations
-from self_ground.metrics import MetricWeights, build_feature_effect
+from self_ground.metrics import MetricWeights, build_feature_proxy_effect
 
 
 def ablate_features(
@@ -72,7 +72,7 @@ def _collateral_proxy(
     return float(np.mean(np.abs(original_decoded - ablated_decoded)))
 
 
-def evaluate_feature_intervention(
+def evaluate_feature_space_proxy(
     features: PairFeatureActivations,
     pair_id: str,
     feature_id: str,
@@ -95,9 +95,9 @@ def evaluate_feature_intervention(
         sae=sae,
     )
 
-    return build_feature_effect(
+    return build_feature_proxy_effect(
         feature_id=feature_id,
-        operation="ablate",
+        operation="feature_space_ablation_proxy",
         delta_pos=pos,
         delta_neg=neg,
         delta_para=para,

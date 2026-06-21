@@ -4,7 +4,7 @@ import pytest
 
 from self_ground.metrics import (
     MetricWeights,
-    build_feature_effect,
+    build_feature_proxy_effect,
     compute_necessity,
     compute_sufficiency,
 )
@@ -29,7 +29,7 @@ def test_necessity_and_sufficiency_are_not_conflated() -> None:
 
 
 def test_dirty_broad_feature_gets_lower_cleanliness_than_targeted_feature() -> None:
-    clean = build_feature_effect(
+    clean = build_feature_proxy_effect(
         feature_id="negation",
         delta_pos=1.0,
         delta_neg=0.0,
@@ -40,7 +40,7 @@ def test_dirty_broad_feature_gets_lower_cleanliness_than_targeted_feature() -> N
         collateral=0.0,
         mechanism_size=1,
     )
-    dirty = build_feature_effect(
+    dirty = build_feature_proxy_effect(
         feature_id="dirty_broad",
         delta_pos=1.0,
         delta_neg=0.0,
@@ -52,13 +52,13 @@ def test_dirty_broad_feature_gets_lower_cleanliness_than_targeted_feature() -> N
         mechanism_size=1,
     )
 
-    assert clean.cleanliness > dirty.cleanliness
-    assert dirty.collateral > clean.collateral
+    assert clean.proxy_cleanliness > dirty.proxy_cleanliness
+    assert dirty.collateral_proxy > clean.collateral_proxy
 
 
 def test_mechanism_size_penalty_works() -> None:
     weights = MetricWeights(beta_size=0.5)
-    small = build_feature_effect(
+    small = build_feature_proxy_effect(
         feature_id="small",
         delta_pos=1.0,
         delta_neg=0.0,
@@ -70,7 +70,7 @@ def test_mechanism_size_penalty_works() -> None:
         mechanism_size=1,
         weights=weights,
     )
-    large = build_feature_effect(
+    large = build_feature_proxy_effect(
         feature_id="large",
         delta_pos=1.0,
         delta_neg=0.0,
@@ -83,4 +83,4 @@ def test_mechanism_size_penalty_works() -> None:
         weights=weights,
     )
 
-    assert small.cleanliness > large.cleanliness
+    assert small.proxy_cleanliness > large.proxy_cleanliness

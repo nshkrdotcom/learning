@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from self_ground.activations import collect_pair_feature_activations, rank_candidate_features
-from self_ground.interventions import evaluate_feature_intervention
+from self_ground.interventions import evaluate_feature_space_proxy
 from self_ground.negation import generate_negation_pairs
 
 
@@ -39,7 +39,7 @@ def test_ablation_math_is_selective_for_negation_conditions(
         layer="test.layer",
     )
 
-    effect = evaluate_feature_intervention(
+    effect = evaluate_feature_space_proxy(
         features=features,
         pair_id=pair.id,
         feature_id="negation",
@@ -50,9 +50,9 @@ def test_ablation_math_is_selective_for_negation_conditions(
     assert effect.delta_para > 0.9
     assert abs(effect.delta_neg) < 1e-9
     assert abs(effect.delta_decoy) < 1e-9
-    assert effect.necessity > 1.8
-    assert effect.sufficiency > 1.0
-    assert effect.specificity > 1.8
+    assert effect.proxy_necessity > 1.8
+    assert effect.proxy_sufficiency > 1.0
+    assert effect.proxy_specificity > 1.8
 
 
 def test_dirty_feature_has_nonzero_collateral_and_lower_cleanliness(
@@ -67,9 +67,9 @@ def test_dirty_feature_has_nonzero_collateral_and_lower_cleanliness(
         layer="test.layer",
     )
 
-    clean = evaluate_feature_intervention(features, pair.id, "negation", tiny_sae_adapter)
-    dirty = evaluate_feature_intervention(features, pair.id, "dirty_broad", tiny_sae_adapter)
+    clean = evaluate_feature_space_proxy(features, pair.id, "negation", tiny_sae_adapter)
+    dirty = evaluate_feature_space_proxy(features, pair.id, "dirty_broad", tiny_sae_adapter)
 
-    assert dirty.collateral > 0.0
-    assert dirty.collateral > clean.collateral
-    assert clean.cleanliness > dirty.cleanliness
+    assert dirty.collateral_proxy > 0.0
+    assert dirty.collateral_proxy > clean.collateral_proxy
+    assert clean.proxy_cleanliness > dirty.proxy_cleanliness

@@ -7,6 +7,7 @@ import numpy as np
 from self_ground.data import MinimalPair
 
 CONDITIONS = ("x_pos", "x_neg", "x_para", "x_decoy")
+POOLING_MODES = ("final_token", "mean")
 
 
 @dataclass(frozen=True)
@@ -60,6 +61,7 @@ class PairFeatureActivations:
 class RankedFeature:
     feature_id: str
     score: float
+    abs_score: float
     mean_pos: float
     mean_neg: float
     mean_para: float
@@ -72,38 +74,85 @@ def _to_numpy(value) -> np.ndarray:
     return np.asarray(value, dtype=float)
 
 
-def _feature_matrix(feature_activations: FeatureActivations) -> np.ndarray:
-    values = _to_numpy(feature_activations.values)
+def pool_feature_values(values, *, pooling: str = "final_token") -> np.ndarray:
+    """Pool `[batch, position, feature]` values into `[batch, feature]`.
+
+    `final_token` uses the final sequence position. `mean` averages across
+    sequence positions. Two-dimensional inputs are already pooled and are
+    returned unchanged.
+    """
+
+    values = _to_numpy(values)
+    if pooling not in POOLING_MODES:
+        modes = ", ".join(POOLING_MODES)
+        raise ValueError(f"invalid pooling {pooling!r}; expected one of: {modes}")
     if values.ndim == 2:
         return values
-    return values.mean(axis=tuple(range(1, values.ndim - 1)))
+    if values.ndim != 3:
+        raise ValueError(
+            "feature values must be 2D [batch, feature] or 3D [batch, position, feature]"
+        )
+    if pooling == "final_token":
+        return values[:, -1, :]
+    return values.mean(axis=1)
 
 
-def _condition_text(pair: MinimalPair, condition: str) -> str:
+def residual_activations_to_features(
+    activations,
+    *,
+    pooling: str = "final_token",
+) -> FeatureActivations:
+    values = pool_feature_values(activations, pooling=pooling)
+    feature_ids = [f"resid_{idx}" for idx in range(values.shape[-1])]
+    return FeatureActivations(values=values, feature_ids=feature_ids)
+
+
+def condition_text(pair: MinimalPair, condition: str) -> str:
     return getattr(pair, condition)
 
 
-def collect_pair_feature_activations(
+def flatten_pair_conditions(
     pairs: list[MinimalPair],
-    *,
-    model,
-    sae,
-    layer: str,
-) -> PairFeatureActivations:
+) -> tuple[list[str], list[str], list[str], list[str]]:
     texts: list[str] = []
     pair_ids: list[str] = []
     template_families: list[str] = []
     conditions: list[str] = []
     for pair in pairs:
         for condition in CONDITIONS:
-            texts.append(_condition_text(pair, condition))
+            texts.append(condition_text(pair, condition))
             pair_ids.append(pair.id)
             template_families.append(pair.template_family)
             conditions.append(condition)
+    return texts, pair_ids, template_families, conditions
+
+
+def collect_pair_feature_activations(
+    pairs: list[MinimalPair],
+    *,
+    model,
+    sae=None,
+    layer: str,
+    feature_source: str = "sae",
+    pooling: str = "final_token",
+) -> PairFeatureActivations:
+    texts, pair_ids, template_families, conditions = flatten_pair_conditions(pairs)
 
     activations = model.get_activations(texts, hook_point=layer)
-    feature_activations = sae.encode(activations)
-    values = _feature_matrix(feature_activations)
+    if feature_source == "residual_dimensions":
+        feature_activations = residual_activations_to_features(activations, pooling=pooling)
+    elif feature_source == "sae":
+        if sae is None:
+            raise ValueError("feature_source='sae' requires an SAE adapter")
+        feature_activations = sae.encode(activations)
+        values = pool_feature_values(feature_activations.values, pooling=pooling)
+        feature_activations = FeatureActivations(
+            values=values,
+            feature_ids=list(feature_activations.feature_ids),
+        )
+    else:
+        raise ValueError("feature_source must be 'residual_dimensions' or 'sae'")
+    values = feature_activations.values
 
     return PairFeatureActivations(
         pair_ids=pair_ids,
@@ -128,10 +177,11 @@ def rank_candidate_features(features: PairFeatureActivations) -> list[RankedFeat
             RankedFeature(
                 feature_id=feature_id,
                 score=float(score),
+                abs_score=float(abs(score)),
                 mean_pos=mean_pos,
                 mean_neg=mean_neg,
                 mean_para=mean_para,
                 mean_decoy=mean_decoy,
             )
         )
-    return sorted(rows, key=lambda row: (-row.score, row.feature_id))
+    return sorted(rows, key=lambda row: (-row.abs_score, -row.score, row.feature_id))

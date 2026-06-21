@@ -41,7 +41,7 @@ class SAELensAdapter:
         encoded = self.sae.encode(tensor)
         values = encoded.detach().cpu().numpy()
         feature_count = values.shape[-1]
-        feature_ids = [str(idx) for idx in range(feature_count)]
+        feature_ids = [f"sae_{idx}" for idx in range(feature_count)]
         return FeatureActivations(values=values, feature_ids=feature_ids)
 
     @torch.no_grad()

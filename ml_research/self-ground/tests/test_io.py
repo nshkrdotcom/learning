@@ -11,7 +11,7 @@ from self_ground.io import (
     write_jsonl,
     write_summary_csv,
 )
-from self_ground.metrics import build_feature_effect
+from self_ground.metrics import build_feature_proxy_effect
 from self_ground.negation import generate_negation_pairs
 
 
@@ -26,7 +26,7 @@ def test_jsonl_round_trip_for_minimal_pairs(tmp_path) -> None:
 
 
 def test_summary_csv_has_stable_columns(tmp_path) -> None:
-    effect = build_feature_effect(
+    effect = build_feature_proxy_effect(
         feature_id="negation",
         delta_pos=1.0,
         delta_neg=0.0,
@@ -55,11 +55,11 @@ def test_summary_csv_has_stable_columns(tmp_path) -> None:
     assert header == [
         "feature_id",
         "n_pairs",
-        "necessity_mean",
-        "sufficiency_mean",
-        "specificity_mean",
-        "collateral_mean",
-        "cleanliness_mean",
+        "proxy_necessity_mean",
+        "proxy_sufficiency_mean",
+        "proxy_specificity_mean",
+        "collateral_proxy_mean",
+        "proxy_cleanliness_mean",
     ]
 
 

@@ -1,0 +1,9 @@
+model: EleutherAI/pythia-70m
+hook_point: blocks.2.hook_resid_post
+feature_source: sae
+sae_release: REPLACE_WITH_TESTED_RELEASE
+sae_id: REPLACE_WITH_TESTED_SAE_ID
+pooling: final_token
+per_family: 15
+top_k_features: 50
+device: cpu

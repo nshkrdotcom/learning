@@ -5,7 +5,7 @@ from pathlib import Path
 
 from self_ground.activations import collect_pair_feature_activations, rank_candidate_features
 from self_ground.data import ExperimentResult
-from self_ground.interventions import evaluate_feature_intervention
+from self_ground.interventions import evaluate_feature_space_proxy
 from self_ground.io import (
     read_minimal_pairs,
     write_config,
@@ -55,7 +55,7 @@ def _write_run_readme(
     top_k_features: int,
 ) -> None:
     sae_label = f"{sae_release} / {sae_id}" if sae_release and sae_id else "injected test adapter"
-    text = f"""# SELF-GROUND Negation Run
+    text = f"""# SELF-GROUND Negation Proxy Run
 
 - model: `{model_name}`
 - SAE: `{sae_label}`
@@ -63,19 +63,19 @@ def _write_run_readme(
 - layer: `{layer}`
 - top-k features: `{top_k_features}`
 
-Metric definitions:
+Proxy metric definitions:
 
 - ranking = mean(x_pos) + mean(x_para) - mean(x_neg) - mean(x_decoy)
-- necessity = (delta_ablate_pos + delta_ablate_para) - (delta_ablate_neg + delta_ablate_decoy)
-- sufficiency = amplify/patch target shift + rescue after ablation - collateral shift
-- specificity = delta_pos + delta_para - delta_neg - delta_decoy
-- cleanliness = weighted necessity + sufficiency + specificity - collateral - mechanism size penalty
+- proxy_necessity = (delta_pos + delta_para) - (delta_neg + delta_decoy)
+- proxy_sufficiency = feature-space target shift + rescue proxy - collateral proxy
+- proxy_specificity = delta_pos + delta_para - delta_neg - delta_decoy
+- proxy_cleanliness = weighted proxy metrics - collateral proxy - mechanism size penalty
 
 Limitations:
 
-This v0 writes real SAE feature-space deltas. It does not yet reinject decoded activations into
-TransformerLens, so intervention rows are proxy causal evidence rather than completed behavioral
-interventions.
+This run writes feature-space proxy deltas. It does not reinject decoded activations into
+TransformerLens and does not measure behavioral/logit changes, so it is not a behavioral
+causal intervention result.
 """
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
@@ -114,7 +114,7 @@ def run_negation_experiment(
         "layer": layer,
         "top_k_features": top_k_features,
         "n_pairs": len(pairs),
-        "intervention_mode": "sae_feature_space_proxy",
+        "result_type": "feature_space_proxy",
     }
     write_config(config, out_dir / "config.json")
     write_jsonl(pairs, out_dir / "pairs.jsonl")
@@ -132,7 +132,7 @@ def run_negation_experiment(
     results: list[ExperimentResult] = []
     for ranking in top_rankings:
         for pair in pairs:
-            effect = evaluate_feature_intervention(
+            effect = evaluate_feature_space_proxy(
                 features,
                 pair.id,
                 ranking.feature_id,
@@ -148,12 +148,12 @@ def run_negation_experiment(
                     metadata={
                         "layer": layer,
                         "ranking_score": ranking.score,
-                        "intervention_mode": "sae_feature_space_proxy",
+                        "result_type": "feature_space_proxy",
                     },
                 )
             )
 
-    write_jsonl(results, out_dir / "intervention_results.jsonl")
+    write_jsonl(results, out_dir / "feature_space_proxy_results.jsonl")
     write_summary_csv(results, out_dir / "summary.csv")
     _write_run_readme(
         out_dir=out_dir,
