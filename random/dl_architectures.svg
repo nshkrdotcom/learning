@@ -1,6 +1,6 @@
 <svg width="850" height="600" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#1A237E" />
     </marker>
     <style>
@@ -11,7 +11,6 @@
       .header-important { fill: #C2185B; }
       .text { font-family: sans-serif; font-size: 11px; fill: #555; }
       .line { stroke: #1A237E; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
-      .line-dashed { stroke-dasharray: 5,5; }
       .legend-text { font-family: sans-serif; font-size: 12px; fill: #333; }
     </style>
   </defs>
@@ -40,7 +39,7 @@
   <text x="730" y="150" class="text" text-anchor="middle">Current SOTA backbone</text>
 
   <!-- Lineage RNN -> Transformer -->
-  <path d="M610,130 L640,130" class="line" />
+  <path d="M610,130 L648,130" class="line" />
   <text x="630" y="125" class="text" text-anchor="middle" font-weight="bold">Displaced</text>
 
   <!-- Row 2 -->
@@ -61,7 +60,7 @@
   <text x="730" y="305" class="text" text-anchor="middle">Iterative denoising</text>
 
   <!-- Lineage GAN -> Diffusion -->
-  <path d="M610,300 L640,300" class="line" />
+  <path d="M610,300 L648,300" class="line" />
   <text x="630" y="295" class="text" text-anchor="middle" font-weight="bold">Displaced</text>
 
   <!-- Legend & Nuance -->

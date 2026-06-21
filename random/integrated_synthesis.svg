@@ -1,0 +1,60 @@
+<svg width="1000" height="700" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #1A237E; }
+      .label { font-family: sans-serif; font-size: 16px; font-weight: bold; fill: #1A237E; }
+      .desc { font-family: sans-serif; font-size: 12px; fill: #555; }
+      .paradigm-label { font-family: sans-serif; font-size: 14px; font-weight: bold; fill: #FF6F00; }
+      .rep-learn-region { fill: #C2185B; fill-opacity: 0.1; stroke: #C2185B; stroke-width: 3; stroke-dasharray: 8; rx: 20; }
+      .rep-learn-text { font-family: sans-serif; font-size: 16px; font-weight: bold; fill: #C2185B; }
+      .axis-label { font-family: sans-serif; font-size: 14px; font-weight: bold; fill: #1A237E; font-style: italic; }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="500" y="40" class="title" text-anchor="middle">Integrated Synthesis: AI Taxonomy &amp; Orthogonal Axes</text>
+
+  <!-- Containment Hierarchy (Backdrop) -->
+  <g transform="translate(50, 80)">
+    <!-- AI -->
+    <rect x="0" y="0" width="900" height="550" rx="15" fill="#E8EAF6" stroke="#1A237E" stroke-width="1.5" />
+    <text x="20" y="30" class="label">Artificial Intelligence (Any intelligent system)</text>
+
+    <!-- ML -->
+    <rect x="40" y="60" width="820" height="450" rx="15" fill="#C5CAE9" stroke="#1A237E" stroke-width="1.5" />
+    <text x="60" y="90" class="label">Machine Learning (Pattern learning from data)</text>
+  </g>
+
+  <!-- Orthogonal Axes (Inside ML) -->
+  <g transform="translate(130, 200)">
+    <!-- X-Axis: Paradigms -->
+    <line x1="0" y1="300" x2="700" y2="300" stroke="#FF6F00" stroke-width="2" />
+    <text x="350" y="340" class="axis-label" text-anchor="middle">Axis 1: Learning Paradigm (Supervised → Self-Supervised → RL)</text>
+
+    <!-- Y-Axis: Model Families -->
+    <line x1="0" y1="0" x2="0" y2="300" stroke="#1A237E" stroke-width="2" />
+    <text x="-40" y="150" class="axis-label" text-anchor="middle" transform="rotate(-90, -40, 150)">Axis 2: Model Complexity (Classical → Deep)</text>
+
+    <!-- The Representation Learning Region (The Diagonal Intersection) -->
+    <rect x="20" y="20" width="650" height="250" class="rep-learn-region" />
+    <text x="345" y="140" class="rep-learn-text" text-anchor="middle">REPRESENTATION LEARNING</text>
+    <text x="345" y="165" class="desc" text-anchor="middle" fill="#C2185B" font-weight="bold">Where models discover features automatically</text>
+
+    <!-- Deep Learning Sub-region -->
+    <rect x="150" y="50" width="500" height="150" rx="15" fill="#7986CB" stroke="#1A237E" stroke-width="2" />
+    <text x="400" y="120" class="label" fill="#ffffff" text-anchor="middle">Deep Learning (Neural Nets)</text>
+    <text x="400" y="140" class="desc" fill="#ffffff" text-anchor="middle">The dominant form of Representation Learning today</text>
+
+    <!-- Specific Classical methods in the Rep Learn region -->
+    <text x="100" y="230" class="desc" font-style="italic">PCA / Embeddings</text>
+  </g>
+
+  <!-- Outside Rep Learn but inside ML -->
+  <text x="180" y="480" class="desc" font-weight="bold">Linear Reg / Random Forests</text>
+  <text x="180" y="500" class="desc">(Manual feature engineering)</text>
+
+  <!-- Reinforcement Learning positioning -->
+  <text x="800" y="580" class="paradigm-label" text-anchor="middle">Reinforcement Learning</text>
+  <text x="800" y="600" class="desc" text-anchor="middle">"The Odd One Out"</text>
+
+  <text x="500" y="670" class="desc" text-anchor="middle" font-style="italic">The "Venn diagram" of AI: Nesting shows containment, while axes show how different goals and models intersect.</text>
+</svg>

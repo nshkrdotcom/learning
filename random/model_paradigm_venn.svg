@@ -67,12 +67,12 @@
   </g>
 
   <!-- Representation Learning Overlay -->
-  <!-- Covers all DL, but only specific parts of Classical -->
+  <!-- Covers all DL (excluding RL), and specific parts of Classical -->
   <rect x="305" y="110" width="290" height="80" class="rep-learn-box" /> <!-- Classical: PCA, Word2Vec -->
-  <rect x="145" y="305" width="610" height="210" class="rep-learn-box" /> <!-- All Deep Learning -->
+  <rect x="145" y="305" width="460" height="210" class="rep-learn-box" /> <!-- Deep Learning: Sup, Unsup, Self-Sup (Excludes RL) -->
 
-  <text x="450" y="560" class="rep-learn-label" text-anchor="middle">Pink Dash: Representation Learning Region</text>
-  <text x="450" y="580" class="content" text-anchor="middle">(Excludes hand-engineered Classical ML like Linear Reg / Random Forests)</text>
+  <text x="425" y="560" class="rep-learn-label" text-anchor="middle">Pink Dash: Representation Learning Region</text>
+  <text x="425" y="580" class="content" text-anchor="middle">(Excludes hand-engineered Classical ML and RL paradigm per text)</text>
 
   <!-- RL highlight -->
   <text x="675" y="620" class="content" text-anchor="middle" font-style="italic">RL is the "Odd one out" (Non-static data)</text>
