@@ -9,7 +9,12 @@ from self_ground.real_ranking import run_activation_ranking
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run real negation activation ranking.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run real negation activation ranking. SAE rankings require semantic "
+            "SAE metadata compatibility with the requested model and hook."
+        )
+    )
     parser.add_argument("--pairs", default=None)
     parser.add_argument("--out", required=True)
     parser.add_argument("--per-family", type=int, default=15)

@@ -16,6 +16,23 @@ metadata declares `model='pythia-70m-deduped'`.
 
 ## Commands Run
 
+Intentional metadata mismatch safety check:
+
+```bash
+uv run python scripts/check_sae_compatibility.py \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --device cpu \
+  --out runs/check_sae_compatibility_expected_mismatch.json
+```
+
+Result: failed closed with exit code `1`, `metadata_compatible=false`, and
+`compatible=false`. The artifact error stated that the SAE declares
+`pythia-70m-deduped` but the request used `EleutherAI/pythia-70m`; these are
+different checkpoints.
+
 ```bash
 uv run python scripts/check_sae_compatibility.py \
   --model EleutherAI/pythia-70m-deduped \
@@ -26,7 +43,8 @@ uv run python scripts/check_sae_compatibility.py \
   --out runs/check_sae_compatibility_pythia70m_deduped_res_sm.json
 ```
 
-Result: passed with `compatible=true`.
+Result: passed with `shape_compatible=true`, `metadata_compatible=true`,
+`reconstruction_compatible=true`, and `compatible=true`.
 
 ```bash
 uv run python scripts/run_real_activation_ranking.py \
@@ -68,6 +86,7 @@ uv run python scripts/run_real_sae_intervention.py \
 Result: passed with `compatible=true`, `n_pairs=4`, `n_features=2`.
 
 ```bash
+SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped \
 SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm \
 SELF_GROUND_SAE_ID=blocks.2.hook_resid_post \
 uv run pytest --run-integration
@@ -86,10 +105,21 @@ Result: `80 passed, 9 warnings`.
   "decoded_shape": [4, 6, 512],
   "d_model": 512,
   "d_sae": 32768,
+  "declared_model": "pythia-70m-deduped",
+  "declared_hook_point": "blocks.2.hook_resid_post",
+  "shape_compatible": true,
+  "metadata_compatible": true,
+  "reconstruction_compatible": true,
   "compatible": true,
-  "status": "ok"
+  "status": "ok",
+  "reconstruction_mse": 0.10763235735664922,
+  "reconstruction_l2_relative": 0.08672637083159064,
+  "reconstruction_max_abs_error": 9.915641784667969
 }
 ```
+
+The exact reconstruction metrics can vary slightly by dependency/runtime, but
+they must be finite and serialized.
 
 ## SAE Ranking Artifact Summary
 

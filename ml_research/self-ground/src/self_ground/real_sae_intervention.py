@@ -20,12 +20,7 @@ from self_ground.real_residual_intervention import (
     DEFAULT_NEGATIVE_TOKENS,
     DEFAULT_POSITIVE_TOKENS,
 )
-from self_ground.sae_compat import (
-    SAECompatibilityResult,
-    sae_encoded_shape_is_compatible,
-    sae_shapes_are_compatible,
-    verify_sae_compatibility,
-)
+from self_ground.sae_compat import SAECompatibilityResult, verify_sae_compatibility
 from self_ground.sae_interventions import run_sae_decoded_intervention_logits
 
 
@@ -131,19 +126,60 @@ def _write_readme(
     operation: str,
     patch_mode: str,
     feature_ids: list[str],
+    compatibility: SAECompatibilityResult,
     error: str | None = None,
 ) -> None:
     if not compatible:
+        corrected_model_command = ""
+        if compatibility.declared_model:
+            if "/" in compatibility.declared_model:
+                corrected_model = compatibility.declared_model
+            elif compatibility.declared_model.startswith("pythia-"):
+                corrected_model = f"EleutherAI/{compatibility.declared_model}"
+            else:
+                corrected_model = compatibility.declared_model
+            corrected_model_command = f"""
+If the declared SAE model is intended, rerun with:
+
+```bash
+uv run python scripts/check_sae_compatibility.py \\
+  --model {corrected_model} \\
+  --hook-point {hook_point} \\
+  --sae-release {sae_release} \\
+  --sae-id {sae_id} \\
+  --device cpu \\
+  --out runs/check_sae_compatibility.json
+```
+"""
         text = f"""# SAE Decoded Intervention Blocker
 
 The intervention was not run because SAE compatibility failed.
 
-- model: `{model_name}`
-- hook point: `{hook_point}`
+- requested model: `{model_name}`
+- requested hook point: `{hook_point}`
 - SAE release: `{sae_release}`
 - SAE id: `{sae_id}`
+- declared SAE model: `{compatibility.declared_model}`
+- declared SAE hook point: `{compatibility.declared_hook_point}`
+- declared SAE hook layer: `{compatibility.declared_hook_layer}`
+- declared SAE hook type: `{compatibility.declared_hook_type}`
+- shape compatible: `{compatibility.shape_compatible}`
+- metadata compatible: `{compatibility.metadata_compatible}`
+- reconstruction compatible: `{compatibility.reconstruction_compatible}`
 - error: `{error}`
 
+Rerun compatibility with:
+
+```bash
+uv run python scripts/check_sae_compatibility.py \\
+  --model {model_name} \\
+  --hook-point {hook_point} \\
+  --sae-release {sae_release} \\
+  --sae-id {sae_id} \\
+  --device cpu \\
+  --out runs/check_sae_compatibility.json
+```
+{corrected_model_command}
 No intervention rows were written.
 """
     else:
@@ -156,6 +192,16 @@ No intervention rows were written.
 - operation: `{operation}`
 - patch mode: `{patch_mode}`
 - selected features: `{", ".join(feature_ids)}`
+- shape compatible: `{compatibility.shape_compatible}`
+- metadata compatible: `{compatibility.metadata_compatible}`
+- reconstruction compatible: `{compatibility.reconstruction_compatible}`
+- declared SAE model: `{compatibility.declared_model}`
+- requested model: `{model_name}`
+- declared SAE hook point: `{compatibility.declared_hook_point}`
+- requested hook point: `{hook_point}`
+- reconstruction MSE: `{compatibility.reconstruction_mse}`
+- reconstruction relative L2: `{compatibility.reconstruction_l2_relative}`
+- reconstruction max absolute error: `{compatibility.reconstruction_max_abs_error}`
 
 This run encodes real hook activations with SAELens, modifies selected SAE
 features, decodes back to residual space, patches the real TransformerLens
@@ -170,8 +216,10 @@ Metric definitions:
 - signed_specificity_score = signed_negation_delta_mean - signed_control_delta_mean
 - absolute_specificity_score = absolute_negation_delta_mean - absolute_control_delta_mean
 
-Limitations: this is a decoded SAE feature intervention for the configured
-SAE only. It does not establish broad mechanism discovery or model introspection.
+Compatibility here means semantic metadata match plus shape compatibility plus
+finite reconstruction sanity metrics. Limitations: this is a decoded SAE feature
+intervention for the configured SAE only. It does not establish broad mechanism
+discovery or model introspection.
 """
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
@@ -209,58 +257,25 @@ def _verify_with_loaded_adapters(
     sae_release: str,
     sae_id: str,
 ) -> SAECompatibilityResult:
-    try:
-        texts = [
-            "The dog is friendly.",
-            "The dog is not friendly.",
-            "The dog is often friendly.",
-            "The dog isn't friendly.",
-        ]
-        activations = model_adapter.get_activations(texts, hook_point=hook_point)
-        encoded = sae_adapter.encode(activations)
-        decoded = sae_adapter.decode(encoded)
-        activation_shape = [int(dim) for dim in activations.shape]
-        encoded_shape = [int(dim) for dim in encoded.values.shape]
-        decoded_shape = [int(dim) for dim in decoded.shape]
-        if not sae_encoded_shape_is_compatible(activation_shape, encoded_shape):
-            raise ValueError(
-                "encoded SAE activations are not shape-compatible with hook activation: "
-                f"encoded={encoded_shape}, activation={activation_shape}"
-            )
-        compatible = sae_shapes_are_compatible(activation_shape, decoded_shape)
-        if not compatible:
-            raise ValueError(
-                "decoded SAE output is not shape-compatible with hook activation: "
-                f"decoded={decoded_shape}, activation={activation_shape}"
-            )
-        return SAECompatibilityResult(
-            model_name=model_name,
-            hook_point=hook_point,
-            sae_release=sae_release,
-            sae_id=sae_id,
-            activation_shape=activation_shape,
-            encoded_shape=encoded_shape,
-            decoded_shape=decoded_shape,
-            d_model=activation_shape[-1],
-            d_sae=encoded_shape[-1],
-            compatible=True,
-            status="ok",
-        )
-    except Exception as exc:
-        return SAECompatibilityResult(
-            model_name=model_name,
-            hook_point=hook_point,
-            sae_release=sae_release,
-            sae_id=sae_id,
-            activation_shape=[],
-            encoded_shape=[],
-            decoded_shape=[],
-            d_model=0,
-            d_sae=0,
-            compatible=False,
-            status="error",
-            error=str(exc),
-        )
+    return verify_sae_compatibility(
+        model_name=model_name,
+        hook_point=hook_point,
+        sae_release=sae_release,
+        sae_id=sae_id,
+        model_adapter=model_adapter,
+        sae_adapter=sae_adapter,
+    )
+
+
+def _remove_blocked_outputs(out_dir: Path) -> None:
+    for filename in [
+        "selected_features.json",
+        "intervention_results.jsonl",
+        "summary.csv",
+    ]:
+        path = out_dir / filename
+        if path.exists():
+            path.unlink()
 
 
 def run_real_sae_intervention(
@@ -270,7 +285,7 @@ def run_real_sae_intervention(
     pairs_path: str | Path | None = None,
     per_family: int = 15,
     seed: int = 7,
-    model_name: str = "EleutherAI/pythia-70m",
+    model_name: str = "EleutherAI/pythia-70m-deduped",
     hook_point: str = "blocks.2.hook_resid_post",
     sae_release: str = "",
     sae_id: str = "",
@@ -341,8 +356,10 @@ def run_real_sae_intervention(
             operation=operation,
             patch_mode=patch_mode,
             feature_ids=[],
+            compatibility=compatibility,
             error=compatibility.error,
         )
+        _remove_blocked_outputs(out_path)
         return SAEInterventionRun(
             out_dir=out_path,
             n_pairs=0,
@@ -465,6 +482,7 @@ def run_real_sae_intervention(
         operation=operation,
         patch_mode=patch_mode,
         feature_ids=feature_ids,
+        compatibility=compatibility,
     )
     return SAEInterventionRun(
         out_dir=out_path,

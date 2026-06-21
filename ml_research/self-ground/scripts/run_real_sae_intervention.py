@@ -9,13 +9,18 @@ from self_ground.real_sae_intervention import run_real_sae_intervention
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run real decoded SAE feature intervention.")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run real decoded SAE feature intervention after semantic SAE metadata, "
+            "shape, and reconstruction compatibility checks."
+        )
+    )
     parser.add_argument("--ranking-dir", default=None)
     parser.add_argument("--pairs", default=None)
     parser.add_argument("--out", required=True)
     parser.add_argument("--per-family", type=int, default=15)
     parser.add_argument("--seed", type=int, default=7)
-    parser.add_argument("--model", default="EleutherAI/pythia-70m")
+    parser.add_argument("--model", default="EleutherAI/pythia-70m-deduped")
     parser.add_argument("--hook-point", default="blocks.2.hook_resid_post")
     parser.add_argument("--sae-release", required=True)
     parser.add_argument("--sae-id", required=True)

@@ -52,7 +52,15 @@ def run_activation_ranking_command(
     pairs: Annotated[Path | None, typer.Option()] = None,
     model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m",
     hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
-    feature_source: Annotated[str, typer.Option()] = "residual_dimensions",
+    feature_source: Annotated[
+        str,
+        typer.Option(
+            help=(
+                "Feature source. When set to sae, SAE metadata must semantically "
+                "match the requested model and hook."
+            )
+        ),
+    ] = "residual_dimensions",
     pooling: Annotated[str, typer.Option()] = "final_token",
     per_family: Annotated[int, typer.Option(min=1)] = 15,
     seed: Annotated[int, typer.Option()] = 7,
@@ -120,14 +128,32 @@ def run_residual_intervention_command(
     )
 
 
-@app.command("check-sae-compatibility")
+@app.command(
+    "check-sae-compatibility",
+    help="Check semantic SAE compatibility; shape-only diagnostic is not production.",
+)
 def check_sae_compatibility_command(
     sae_release: Annotated[str, typer.Option()],
     sae_id: Annotated[str, typer.Option()],
-    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m",
+    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m-deduped",
     hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
     device: Annotated[str, typer.Option()] = "cpu",
     out: Annotated[Path, typer.Option()] = Path("runs/check_sae_compatibility.json"),
+    require_metadata_match: Annotated[
+        bool,
+        typer.Option(
+            "--require-metadata-match/--no-require-metadata-match",
+            help="Require SAE-declared model and hook metadata to match.",
+        ),
+    ] = True,
+    allow_shape_only_diagnostic: Annotated[
+        bool,
+        typer.Option(
+            help="Emit shape-only diagnostic fields; not production-compatible.",
+        ),
+    ] = False,
+    max_reconstruction_l2_relative: Annotated[float | None, typer.Option()] = None,
+    max_reconstruction_mse: Annotated[float | None, typer.Option()] = None,
 ) -> None:
     result = verify_sae_compatibility(
         model_name=model,
@@ -136,20 +162,27 @@ def check_sae_compatibility_command(
         sae_id=sae_id,
         device=device,
         out=out,
+        require_metadata_match=require_metadata_match,
+        allow_shape_only_diagnostic=allow_shape_only_diagnostic,
+        max_reconstruction_l2_relative=max_reconstruction_l2_relative,
+        max_reconstruction_mse=max_reconstruction_mse,
     )
     console.print_json(data=result.model_dump())
     if not result.compatible:
         raise typer.Exit(code=1)
 
 
-@app.command("run-sae-intervention")
+@app.command(
+    "run-sae-intervention",
+    help="Run decoded SAE intervention after semantic compatibility checks.",
+)
 def run_sae_intervention_command(
     sae_release: Annotated[str, typer.Option()],
     sae_id: Annotated[str, typer.Option()],
     out: Annotated[Path, typer.Option()],
     ranking_dir: Annotated[Path | None, typer.Option()] = None,
     pairs: Annotated[Path | None, typer.Option()] = None,
-    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m",
+    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m-deduped",
     hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
     per_family: Annotated[int, typer.Option(min=1)] = 15,
     seed: Annotated[int, typer.Option()] = 7,

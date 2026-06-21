@@ -10,6 +10,7 @@ import pytest
 def test_real_sae_intervention_optional(tmp_path) -> None:
     release = os.getenv("SELF_GROUND_SAE_RELEASE")
     sae_id = os.getenv("SELF_GROUND_SAE_ID")
+    model = os.getenv("SELF_GROUND_SAE_MODEL", "EleutherAI/pythia-70m-deduped")
     if not release or not sae_id:
         pytest.skip("set SELF_GROUND_SAE_RELEASE and SELF_GROUND_SAE_ID")
 
@@ -20,6 +21,7 @@ def test_real_sae_intervention_optional(tmp_path) -> None:
         out_dir=out_dir,
         per_family=1,
         top_k_features=2,
+        model_name=model,
         sae_release=release,
         sae_id=sae_id,
         device="cpu",
@@ -29,6 +31,11 @@ def test_real_sae_intervention_optional(tmp_path) -> None:
     compatibility = json.loads((out_dir / "compatibility.json").read_text())
     if result.compatible:
         assert compatibility["compatible"] is True
+        assert compatibility["metadata_compatible"] is True
+        assert compatibility["shape_compatible"] is True
+        assert compatibility["reconstruction_compatible"] is True
+        assert compatibility["declared_model"]
+        assert compatibility["declared_hook_point"]
         rows = [
             json.loads(line)
             for line in (out_dir / "intervention_results.jsonl").read_text().splitlines()

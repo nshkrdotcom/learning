@@ -43,6 +43,9 @@ def test_compatibility_result_json_serializes_cleanly() -> None:
         decoded_shape=[2, 4, 8],
         d_model=8,
         d_sae=16,
+        shape_compatible=True,
+        metadata_compatible=True,
+        reconstruction_compatible=True,
         compatible=True,
         status="ok",
     )

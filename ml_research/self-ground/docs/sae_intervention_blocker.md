@@ -22,9 +22,10 @@ Decoded SAE intervention requires all of the following to be known and tested:
 
 - SAELens release name.
 - SAE id.
-- Model and hook point compatibility.
+- Model and hook point metadata compatibility.
 - Encoder input dimension matching the captured residual activation width.
 - Decoder output shape matching the hook activation shape.
+- Finite reconstruction metrics.
 - A confirmed reconstruction or delta-patching convention.
 
 Without that information, the repo can still run Phase 1 and can write a structured SAE compatibility failure artifact, but it must not write decoded intervention rows.
@@ -48,7 +49,7 @@ Or run the Phase 2 compatibility command:
 
 ```bash
 uv run python scripts/check_sae_compatibility.py \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
   --sae-release "$SELF_GROUND_SAE_RELEASE" \
   --sae-id "$SELF_GROUND_SAE_ID" \
@@ -59,19 +60,26 @@ uv run python scripts/check_sae_compatibility.py \
 A successful verification confirms:
 
 - the SAE loads through `SAELensAdapter.from_pretrained`,
+- the SAE-declared model matches the requested model,
+- the SAE-declared hook matches the requested hook point,
 - `adapter.d_in` matches the residual activation width for the target hook point,
 - `encode` returns `[batch, d_sae]` or `[batch, position, d_sae]`,
-- `decode` can return residual-space activations compatible with the hook point.
+- `decode` can return residual-space activations compatible with the hook point,
+- reconstruction metrics are finite.
+
+`EleutherAI/pythia-70m` and `EleutherAI/pythia-70m-deduped` are distinct
+checkpoints. A deduped SAE must fail closed if requested against the non-deduped
+checkpoint.
 
 ## Decoded Intervention Command
 
-After a candidate SAE passes shape verification:
+After a candidate SAE passes semantic compatibility verification:
 
 ```bash
 uv run python scripts/run_real_sae_intervention.py \
   --ranking-dir runs/real_sae_ranking_pythia70m \
   --out runs/real_sae_intervention_pythia70m \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
   --sae-release "$SELF_GROUND_SAE_RELEASE" \
   --sae-id "$SELF_GROUND_SAE_ID" \

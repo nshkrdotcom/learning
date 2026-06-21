@@ -26,6 +26,7 @@ from self_ground.io import (
     write_jsonl,
 )
 from self_ground.negation import generate_negation_pairs
+from self_ground.sae_compat import SAECompatibilityResult, verify_sae_compatibility
 
 
 @dataclass(frozen=True)
@@ -164,7 +165,21 @@ def _write_ranking_readme(
     pooling: str,
     n_pairs: int,
     top_k_features: int,
+    compatibility: SAECompatibilityResult | None = None,
 ) -> None:
+    sae_metadata = ""
+    if compatibility is not None:
+        sae_metadata = f"""
+SAE semantic compatibility:
+
+- declared SAE model: `{compatibility.declared_model}`
+- requested model: `{model_name}`
+- declared SAE hook point: `{compatibility.declared_hook_point}`
+- requested hook point: `{hook_point}`
+- shape compatible: `{compatibility.shape_compatible}`
+- metadata compatible: `{compatibility.metadata_compatible}`
+- reconstruction compatible: `{compatibility.reconstruction_compatible}`
+"""
     text = f"""# Real Activation Ranking
 
 - model: `{model_name}`
@@ -177,6 +192,7 @@ def _write_ranking_readme(
 This run uses real TransformerLens activations. If `feature_source` is
 `residual_dimensions`, features are residual stream dimensions named `resid_N`.
 If `feature_source` is `sae`, features are encoded by SAELens and named `sae_N`.
+{sae_metadata}
 
 Ranking formula:
 
@@ -241,6 +257,23 @@ def run_activation_ranking(
             device=device or getattr(model_adapter, "device", "cpu"),
         )
 
+    sae_compatibility: SAECompatibilityResult | None = None
+    if feature_source == "sae":
+        sae_compatibility = verify_sae_compatibility(
+            model_name=model_name,
+            hook_point=hook_point,
+            sae_release=sae_release or "",
+            sae_id=sae_id or "",
+            device=device,
+            model_adapter=model_adapter,
+            sae_adapter=sae_adapter,
+        )
+        if not sae_compatibility.compatible:
+            raise ValueError(
+                "SAE metadata/shape/reconstruction compatibility failed: "
+                f"{sae_compatibility.error}"
+            )
+
     activations = model_adapter.get_activations(texts, hook_point=hook_point)
     activation_shape = list(_to_numpy(activations).shape)
     if not activation_shape or activation_shape[0] != len(texts):
@@ -280,6 +313,28 @@ def run_activation_ranking(
         "n_conditions": len(texts),
         "n_features": len(feature_activations.feature_ids),
     }
+    if sae_compatibility is not None:
+        metadata.update(
+            {
+                "shape_compatible": sae_compatibility.shape_compatible,
+                "metadata_compatible": sae_compatibility.metadata_compatible,
+                "reconstruction_compatible": sae_compatibility.reconstruction_compatible,
+                "declared_model": sae_compatibility.declared_model,
+                "declared_hook_point": sae_compatibility.declared_hook_point,
+                "declared_hook_layer": sae_compatibility.declared_hook_layer,
+                "declared_hook_type": sae_compatibility.declared_hook_type,
+                "requested_hook_layer": sae_compatibility.requested_hook_layer,
+                "requested_hook_type": sae_compatibility.requested_hook_type,
+                "reconstruction_mse": sae_compatibility.reconstruction_mse,
+                "reconstruction_l2_relative": (
+                    sae_compatibility.reconstruction_l2_relative
+                ),
+                "reconstruction_max_abs_error": (
+                    sae_compatibility.reconstruction_max_abs_error
+                ),
+                "metadata_report": sae_compatibility.metadata_report,
+            }
+        )
     config = {
         **metadata,
         "pairs_path": str(pairs_path) if pairs_path is not None else None,
@@ -304,6 +359,7 @@ def run_activation_ranking(
         pooling=pooling,
         n_pairs=len(pairs),
         top_k_features=top_k_features,
+        compatibility=sae_compatibility,
     )
 
     return ActivationRankingRun(

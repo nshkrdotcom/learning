@@ -40,6 +40,24 @@ are verified after this file is committed.
 - [x] SAE ranking requires real `--sae-release` and `--sae-id`
 - [x] optional SAE integration tests skip unless `SELF_GROUND_SAE_RELEASE` and `SELF_GROUND_SAE_ID` are configured
 
+## Phase 2: Semantic SAE Compatibility Hardening
+
+- [x] SAE metadata extraction implemented
+- [x] model identity compatibility enforced
+- [x] `pythia-70m` vs `pythia-70m-deduped` mismatch rejected
+- [x] hook point compatibility enforced
+- [x] hook layer compatibility enforced when metadata is available
+- [x] hook type compatibility enforced when metadata is available
+- [x] shape-only diagnostic cannot enable production intervention
+- [x] reconstruction metrics computed and serialized
+- [x] semantic mismatch writes blocker artifact and no intervention rows
+- [x] SAE ranking rejects semantic mismatch
+- [x] docs explain shape compatibility is not sufficient
+- [x] known-compatible deduped command documented
+- [x] mismatch command verified
+- [x] metadata-correct compatibility command verified
+- [x] decoded intervention command verified
+
 ## Documentation And Claims
 
 - [x] README updated

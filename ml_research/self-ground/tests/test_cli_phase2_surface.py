@@ -26,6 +26,25 @@ def test_phase2_cli_help_has_no_fake_adapter_options() -> None:
         assert "--adapter" not in result.output
 
 
+def test_check_sae_compatibility_help_mentions_semantic_metadata() -> None:
+    result = CliRunner().invoke(app, ["check-sae-compatibility", "--help"])
+
+    assert result.exit_code == 0
+    output = result.output.lower()
+    assert "metadata" in output
+    assert "shape-only diagnostic" in output
+    assert "not production" in output
+
+
+def test_run_sae_intervention_help_exposes_no_metadata_bypass() -> None:
+    result = CliRunner().invoke(app, ["run-sae-intervention", "--help"])
+
+    assert result.exit_code == 0
+    output = result.output.lower()
+    assert "metadata" not in output or "bypass" not in output
+    assert "shape-only" not in output
+
+
 def test_run_sae_intervention_requires_release_and_id() -> None:
     missing_release = CliRunner().invoke(
         app,

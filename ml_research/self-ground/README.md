@@ -30,6 +30,21 @@ real model activations
 
 If no compatible SAE release/id is available, Phase 2 writes a precise compatibility artifact and does not write fabricated intervention rows.
 
+## Semantic SAE Compatibility
+
+Shape compatibility is necessary but not sufficient. Production decoded SAE
+intervention requires:
+
+- matching SAE-declared model identity,
+- matching SAE-declared hook identity,
+- matching hook layer and hook type when metadata is available,
+- activation shape and encode/decode patch compatibility,
+- finite reconstruction metrics.
+
+`EleutherAI/pythia-70m` and `EleutherAI/pythia-70m-deduped` are different
+checkpoints. The known compatible SAE below declares `pythia-70m-deduped`, so
+all SAE commands for that release use `EleutherAI/pythia-70m-deduped`.
+
 ## Setup And Fast Tests
 
 ```bash
@@ -187,3 +202,6 @@ Feature-space proxy arithmetic is not causal evidence.
 Residual-dimension intervention is real TransformerLens intervention evidence, but it is not SAE feature intervention and not mechanism discovery.
 
 Decoded SAE intervention is real sparse-feature intervention only when compatibility succeeds and the run writes decoded SAE intervention artifacts.
+
+Blocked compatibility artifacts are expected safety behavior when metadata,
+shape, or reconstruction checks fail.
