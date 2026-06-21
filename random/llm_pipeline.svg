@@ -1,55 +1,74 @@
-<svg width="900" height="400" xmlns="http://www.w3.org/2000/svg">
-  <rect width="100%" height="100%" fill="#fffcf5"/>
-  <text x="450" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333" text-anchor="middle">The Modern LLM Training Pipeline</text>
-
-  <style>
-    .step-box { fill: #fff; stroke: #FF9800; stroke-width: 2; rx: 10; }
-    .step-title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #E65100; }
-    .step-desc { font-family: Arial, sans-serif; font-size: 12px; fill: #555; }
-    .arrow { stroke: #FFCC80; stroke-width: 4; fill: none; }
-    .arrow-head { fill: #FFCC80; }
-  </style>
+<svg width="950" height="500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1A237E" />
+    </marker>
+    <style>
+      .title { font-family: sans-serif; font-size: 24px; font-weight: bold; fill: #1A237E; }
+      .box { fill: #ffffff; stroke: #1A237E; stroke-width: 1.5; rx: 10; }
+      .header { font-family: sans-serif; font-size: 16px; font-weight: bold; fill: #1A237E; }
+      .text { font-family: sans-serif; font-size: 12px; fill: #444; }
+      .emergent { fill: #FFFDE7; stroke: #FBC02D; stroke-dasharray: 4; }
+      .sub-box { fill: #f9f9f9; stroke: #999; stroke-width: 1; rx: 5; }
+      .line { stroke: #1A237E; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="40" class="title" text-anchor="middle">LLM Training Pipeline &amp; Emergent Learning</text>
 
   <!-- Step 1: Architecture -->
-  <rect x="30" y="100" width="180" height="150" class="step-box" />
-  <text x="120" y="130" class="step-title" text-anchor="middle">1. Architecture</text>
-  <text x="120" y="160" class="step-desc" text-anchor="middle">Transformer</text>
-  <text x="120" y="180" class="step-desc" text-anchor="middle">(Deep Learning)</text>
-  <text x="120" y="210" class="step-desc" text-anchor="middle" font-style="italic">Parallel self-attention</text>
+  <rect x="30" y="80" width="180" height="150" class="box" />
+  <text x="120" y="110" class="header" text-anchor="middle">1. Architecture</text>
+  <text x="120" y="140" class="text" text-anchor="middle">Transformer</text>
+  <text x="120" y="160" class="text" text-anchor="middle">(Deep Learning)</text>
 
-  <!-- Arrow 1 -->
-  <path d="M210,175 L240,175" class="arrow" />
-  <polygon points="240,170 255,175 240,180" class="arrow-head" />
+  <path d="M210,155 L240,155" class="line" />
 
   <!-- Step 2: Pretraining -->
-  <rect x="255" y="100" width="180" height="150" class="step-box" />
-  <text x="345" y="130" class="step-title" text-anchor="middle">2. Pretraining</text>
-  <text x="345" y="160" class="step-desc" text-anchor="middle">Self-Supervised</text>
-  <text x="345" y="180" class="step-desc" text-anchor="middle">Predict next token</text>
-  <text x="345" y="210" class="step-desc" text-anchor="middle" font-style="italic">Learns representations</text>
+  <rect x="250" y="80" width="220" height="250" class="box" />
+  <text x="360" y="110" class="header" text-anchor="middle">2. Pretraining</text>
+  <text x="360" y="140" class="text" text-anchor="middle">Self-Supervised Learning</text>
+  <text x="360" y="160" class="text" text-anchor="middle">"Predict next token"</text>
 
-  <!-- Arrow 2 -->
-  <path d="M435,175 L465,175" class="arrow" />
-  <polygon points="465,170 480,175 465,180" class="arrow-head" />
+  <rect x="265" y="180" width="190" height="130" class="emergent" />
+  <text x="360" y="210" class="header" font-size="14" text-anchor="middle" fill="#F57F17">Emergent Result:</text>
+  <text x="280" y="235" class="text" font-weight="bold" fill="#F57F17">Implicit Representation</text>
+  <text x="280" y="255" class="text" fill="#F57F17">Learning of grammar, facts,</text>
+  <text x="280" y="275" class="text" fill="#F57F17">and reasoning logic as a</text>
+  <text x="280" y="295" class="text" fill="#F57F17">side effect of scale.</text>
+
+  <path d="M470,155 L500,155" class="line" />
 
   <!-- Step 3: SFT -->
-  <rect x="480" y="100" width="180" height="150" class="step-box" />
-  <text x="570" y="130" class="step-title" text-anchor="middle">3. SFT</text>
-  <text x="570" y="160" class="step-desc" text-anchor="middle">Supervised Fine-Tuning</text>
-  <text x="570" y="180" class="step-desc" text-anchor="middle">Instruction-Response</text>
-  <text x="570" y="210" class="step-desc" text-anchor="middle" font-style="italic">Alignment to tasks</text>
+  <rect x="510" y="80" width="180" height="150" class="box" />
+  <text x="600" y="110" class="header" text-anchor="middle">3. SFT</text>
+  <text x="600" y="140" class="text" text-anchor="middle">Supervised Fine-Tuning</text>
+  <text x="600" y="160" class="text" text-anchor="middle">Instruction-Response pairs</text>
 
-  <!-- Arrow 3 -->
-  <path d="M660,175 L690,175" class="arrow" />
-  <polygon points="690,170 705,175 690,180" class="arrow-head" />
+  <path d="M690,155 L720,155" class="line" />
 
   <!-- Step 4: RLHF -->
-  <rect x="705" y="100" width="180" height="150" class="step-box" />
-  <text x="795" y="130" class="step-title" text-anchor="middle">4. RLHF/RLAIF</text>
-  <text x="795" y="160" class="step-desc" text-anchor="middle">Reinforcement Learning</text>
-  <text x="795" y="180" class="step-desc" text-anchor="middle">Human Preference</text>
-  <text x="795" y="210" class="step-desc" text-anchor="middle" font-style="italic">Reward models (PPO/DPO)</text>
+  <rect x="730" y="80" width="200" height="300" class="box" />
+  <text x="830" y="110" class="header" text-anchor="middle">4. Alignment (RLHF)</text>
 
-  <!-- Summary Footer -->
-  <text x="450" y="320" class="step-desc" text-anchor="middle" font-weight="bold" font-size="14">An LLM is a tour through the entire taxonomy: Transformer (DL) + Next-token (Self-Sup) + SFT (Sup) + RLHF (RL)</text>
+  <g transform="translate(740, 130)">
+    <rect x="0" y="0" width="180" height="230" class="sub-box" />
+    <text x="90" y="25" class="text" font-weight="bold" text-anchor="middle">RL Pipeline:</text>
+
+    <!-- Sub-pipeline -->
+    <rect x="10" y="45" width="160" height="60" class="box" stroke-width="1" />
+    <text x="90" y="65" class="text" text-anchor="middle" font-weight="bold">A. Reward Model</text>
+    <text x="90" y="80" class="text" text-anchor="middle">(Supervised training on</text>
+    <text x="90" y="92" class="text" text-anchor="middle">human preferences)</text>
+
+    <path d="M90,105 L90,125" class="line" />
+
+    <rect x="10" y="135" width="160" height="60" class="box" stroke-width="1" />
+    <text x="90" y="155" class="text" text-anchor="middle" font-weight="bold">B. PPO / DPO</text>
+    <text x="90" y="170" class="text" text-anchor="middle">(Policy update via</text>
+    <text x="90" y="182" class="text" text-anchor="middle">reward signal)</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="475" y="460" class="text" text-anchor="middle" font-weight="bold">The pipeline synthesizes all paradigms: Transformer (DL) + Next-token (Self-Sup) + SFT (Sup) + RLHF (RL)</text>
 </svg>
