@@ -1,0 +1,68 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#f5f5f5"/>
+  <text x="400" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333" text-anchor="middle">Deep Learning Architectures</text>
+
+  <style>
+    .arch-box { fill: #fff; stroke: #2196F3; stroke-width: 2; rx: 8; }
+    .arch-title { font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; fill: #1565C0; }
+    .arch-desc { font-family: Arial, sans-serif; font-size: 11px; fill: #555; }
+    .conn-line { stroke: #90CAF9; stroke-width: 1; stroke-dasharray: 4; }
+  </style>
+
+  <!-- MLP -->
+  <rect x="50" y="80" width="160" height="100" class="arch-box" />
+  <text x="130" y="105" class="arch-title" text-anchor="middle">MLPs</text>
+  <text x="130" y="130" class="arch-desc" text-anchor="middle">Feedforward nets</text>
+  <text x="130" y="145" class="arch-desc" text-anchor="middle">Base case, no assumptions</text>
+
+  <!-- CNN -->
+  <rect x="230" y="80" width="160" height="100" class="arch-box" />
+  <text x="310" y="105" class="arch-title" text-anchor="middle">CNNs</text>
+  <text x="310" y="130" class="arch-desc" text-anchor="middle">Spatial structure (Images)</text>
+  <text x="310" y="145" class="arch-desc" text-anchor="middle">Local feature detectors</text>
+
+  <!-- RNN/LSTM -->
+  <rect x="410" y="80" width="160" height="100" class="arch-box" />
+  <text x="490" y="105" class="arch-title" text-anchor="middle">RNNs / LSTMs</text>
+  <text x="490" y="130" class="arch-desc" text-anchor="middle">Sequential structure</text>
+  <text x="490" y="145" class="arch-desc" text-anchor="middle">Hidden state recurrence</text>
+
+  <!-- Transformers -->
+  <rect x="590" y="80" width="160" height="100" class="arch-box" stroke="#E91E63" stroke-width="3" />
+  <text x="670" y="105" class="arch-title" text-anchor="middle" fill="#C2185B">Transformers</text>
+  <text x="670" y="130" class="arch-desc" text-anchor="middle">Parallel self-attention</text>
+  <text x="670" y="145" class="arch-desc" text-anchor="middle">LLM backbone (2017+)</text>
+
+  <!-- Autoencoders -->
+  <rect x="50" y="210" width="160" height="100" class="arch-box" />
+  <text x="130" y="235" class="arch-title" text-anchor="middle">Autoencoders</text>
+  <text x="130" y="260" class="arch-desc" text-anchor="middle">Bottleneck compression</text>
+  <text x="130" y="275" class="arch-desc" text-anchor="middle">Unsup. representations</text>
+
+  <!-- GNN -->
+  <rect x="230" y="210" width="160" height="100" class="arch-box" />
+  <text x="310" y="235" class="arch-title" text-anchor="middle">GNNs</text>
+  <text x="310" y="260" class="arch-desc" text-anchor="middle">Graph/Relational structure</text>
+  <text x="310" y="275" class="arch-desc" text-anchor="middle">Molecules, social nets</text>
+
+  <!-- GANs -->
+  <rect x="410" y="210" width="160" height="100" class="arch-box" />
+  <text x="490" y="235" class="arch-title" text-anchor="middle">GANs</text>
+  <text x="490" y="260" class="arch-desc" text-anchor="middle">Adversarial training</text>
+  <text x="490" y="275" class="arch-desc" text-anchor="middle">Generator vs Discriminator</text>
+
+  <!-- Diffusion -->
+  <rect x="590" y="210" width="160" height="100" class="arch-box" />
+  <text x="670" y="235" class="arch-title" text-anchor="middle">Diffusion Models</text>
+  <text x="670" y="260" class="arch-desc" text-anchor="middle">Iterative denoising</text>
+  <text x="670" y="275" class="arch-desc" text-anchor="middle">Modern image generation</text>
+
+  <!-- Legend -->
+  <rect x="50" y="350" width="700" height="200" fill="#fff" stroke="#ddd" rx="10" />
+  <text x="400" y="380" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#333" text-anchor="middle">Structural Assumptions</text>
+  <text x="100" y="410" class="arch-desc">Each architecture "bakes in" a different structural assumption about the input data:</text>
+  <text x="100" y="435" class="arch-desc">• CNN: Local spatial coherence</text>
+  <text x="100" y="455" class="arch-desc">• RNN: Order and sequence</text>
+  <text x="100" y="475" class="arch-desc">• Transformer: Global relationships (Attention)</text>
+  <text x="100" y="495" class="arch-desc">• GNN: Topological connections</text>
+</svg>

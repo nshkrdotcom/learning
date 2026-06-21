@@ -1,0 +1,55 @@
+<svg width="900" height="400" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#fffcf5"/>
+  <text x="450" y="40" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333" text-anchor="middle">The Modern LLM Training Pipeline</text>
+
+  <style>
+    .step-box { fill: #fff; stroke: #FF9800; stroke-width: 2; rx: 10; }
+    .step-title { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: #E65100; }
+    .step-desc { font-family: Arial, sans-serif; font-size: 12px; fill: #555; }
+    .arrow { stroke: #FFCC80; stroke-width: 4; fill: none; }
+    .arrow-head { fill: #FFCC80; }
+  </style>
+
+  <!-- Step 1: Architecture -->
+  <rect x="30" y="100" width="180" height="150" class="step-box" />
+  <text x="120" y="130" class="step-title" text-anchor="middle">1. Architecture</text>
+  <text x="120" y="160" class="step-desc" text-anchor="middle">Transformer</text>
+  <text x="120" y="180" class="step-desc" text-anchor="middle">(Deep Learning)</text>
+  <text x="120" y="210" class="step-desc" text-anchor="middle" font-style="italic">Parallel self-attention</text>
+
+  <!-- Arrow 1 -->
+  <path d="M210,175 L240,175" class="arrow" />
+  <polygon points="240,170 255,175 240,180" class="arrow-head" />
+
+  <!-- Step 2: Pretraining -->
+  <rect x="255" y="100" width="180" height="150" class="step-box" />
+  <text x="345" y="130" class="step-title" text-anchor="middle">2. Pretraining</text>
+  <text x="345" y="160" class="step-desc" text-anchor="middle">Self-Supervised</text>
+  <text x="345" y="180" class="step-desc" text-anchor="middle">Predict next token</text>
+  <text x="345" y="210" class="step-desc" text-anchor="middle" font-style="italic">Learns representations</text>
+
+  <!-- Arrow 2 -->
+  <path d="M435,175 L465,175" class="arrow" />
+  <polygon points="465,170 480,175 465,180" class="arrow-head" />
+
+  <!-- Step 3: SFT -->
+  <rect x="480" y="100" width="180" height="150" class="step-box" />
+  <text x="570" y="130" class="step-title" text-anchor="middle">3. SFT</text>
+  <text x="570" y="160" class="step-desc" text-anchor="middle">Supervised Fine-Tuning</text>
+  <text x="570" y="180" class="step-desc" text-anchor="middle">Instruction-Response</text>
+  <text x="570" y="210" class="step-desc" text-anchor="middle" font-style="italic">Alignment to tasks</text>
+
+  <!-- Arrow 3 -->
+  <path d="M660,175 L690,175" class="arrow" />
+  <polygon points="690,170 705,175 690,180" class="arrow-head" />
+
+  <!-- Step 4: RLHF -->
+  <rect x="705" y="100" width="180" height="150" class="step-box" />
+  <text x="795" y="130" class="step-title" text-anchor="middle">4. RLHF/RLAIF</text>
+  <text x="795" y="160" class="step-desc" text-anchor="middle">Reinforcement Learning</text>
+  <text x="795" y="180" class="step-desc" text-anchor="middle">Human Preference</text>
+  <text x="795" y="210" class="step-desc" text-anchor="middle" font-style="italic">Reward models (PPO/DPO)</text>
+
+  <!-- Summary Footer -->
+  <text x="450" y="320" class="step-desc" text-anchor="middle" font-weight="bold" font-size="14">An LLM is a tour through the entire taxonomy: Transformer (DL) + Next-token (Self-Sup) + SFT (Sup) + RLHF (RL)</text>
+</svg>
