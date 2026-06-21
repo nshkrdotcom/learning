@@ -25,10 +25,17 @@ class SAECompatibilityResult:
     decoded_shape: list[int]
     d_model: int
     d_sae: int
+    metadata_model_name: str | None = None
+    metadata_hook_point: str | None = None
+    metadata_matches_model: bool | None = None
+    metadata_matches_hook_point: bool | None = None
     shape_compatible: bool = False
     metadata_compatible: bool = False
     reconstruction_compatible: bool = False
+    semantically_compatible: bool = False
     compatible: bool = False
+    allow_metadata_mismatch: bool = False
+    diagnostic_only: bool = False
     status: str = "error"
     error: str | None = None
     declared_model: str | None = None
@@ -149,6 +156,7 @@ def verify_sae_compatibility(
     out: str | Path | None = None,
     require_metadata_match: bool = True,
     allow_shape_only_diagnostic: bool = False,
+    allow_metadata_mismatch: bool = False,
     max_reconstruction_l2_relative: float | None = None,
     max_reconstruction_mse: float | None = None,
     model_adapter=None,
@@ -169,7 +177,10 @@ def verify_sae_compatibility(
             shape_compatible=False,
             metadata_compatible=False,
             reconstruction_compatible=False,
+            semantically_compatible=False,
             compatible=False,
+            allow_metadata_mismatch=allow_metadata_mismatch,
+            diagnostic_only=allow_shape_only_diagnostic or allow_metadata_mismatch,
             status="error",
             error="sae_release and sae_id are required",
         )
@@ -187,6 +198,8 @@ def verify_sae_compatibility(
     declared_hook_type: str | None = None
     requested_hook_layer: int | None = None
     requested_hook_type: str | None = None
+    metadata_matches_model: bool | None = None
+    metadata_matches_hook_point: bool | None = None
     metadata_report: dict[str, Any] | None = None
     warnings: list[str] = []
     shape_compatible = False
@@ -238,6 +251,8 @@ def verify_sae_compatibility(
             require_metadata=require_metadata_match,
         )
         metadata_compatible = bool(metadata_report["metadata_compatible"])
+        metadata_matches_model = bool(metadata_report.get("model_match"))
+        metadata_matches_hook_point = bool(metadata_report.get("hook_point_match"))
         requested_hook_layer = metadata_report["requested_hook_layer"]
         requested_hook_type = metadata_report["requested_hook_type"]
         warnings.extend(metadata_report.get("warnings", []))
@@ -312,15 +327,19 @@ def verify_sae_compatibility(
             metadata_report=metadata_report,
             reconstruction_errors=reconstruction_errors,
         )
+        semantically_compatible = metadata_compatible and reconstruction_compatible
+        diagnostic_only = allow_shape_only_diagnostic or allow_metadata_mismatch
         compatible = (
             shape_compatible
-            and metadata_compatible
-            and reconstruction_compatible
-            and not allow_shape_only_diagnostic
+            and semantically_compatible
+            and not diagnostic_only
         )
         status = "ok" if compatible else "error"
         if allow_shape_only_diagnostic:
             status = "shape_only_diagnostic_not_production_compatible"
+            compatible = False
+        elif allow_metadata_mismatch:
+            status = "metadata_mismatch_diagnostic_not_production_compatible"
             compatible = False
 
         result = SAECompatibilityResult(
@@ -333,10 +352,17 @@ def verify_sae_compatibility(
             decoded_shape=decoded_shape,
             d_model=d_model,
             d_sae=d_sae,
+            metadata_model_name=declared_model,
+            metadata_hook_point=declared_hook_point,
+            metadata_matches_model=metadata_matches_model,
+            metadata_matches_hook_point=metadata_matches_hook_point,
             shape_compatible=shape_compatible,
             metadata_compatible=metadata_compatible,
             reconstruction_compatible=reconstruction_compatible,
+            semantically_compatible=semantically_compatible,
             compatible=compatible,
+            allow_metadata_mismatch=allow_metadata_mismatch,
+            diagnostic_only=diagnostic_only,
             status=status,
             error=error,
             declared_model=declared_model,
@@ -365,7 +391,10 @@ def verify_sae_compatibility(
             shape_compatible=shape_compatible,
             metadata_compatible=metadata_compatible,
             reconstruction_compatible=reconstruction_compatible,
+            semantically_compatible=False,
             compatible=False,
+            allow_metadata_mismatch=allow_metadata_mismatch,
+            diagnostic_only=allow_shape_only_diagnostic or allow_metadata_mismatch,
             status="error",
             error=str(exc),
             declared_model=declared_model,

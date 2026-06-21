@@ -31,6 +31,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Compute shape-only diagnostic fields; not production-compatible.",
     )
+    parser.add_argument(
+        "--allow-metadata-mismatch",
+        action="store_true",
+        help=(
+            "Record a metadata mismatch as diagnostic-only. This is never "
+            "production-compatible and cannot support candidate evidence."
+        ),
+    )
     parser.add_argument("--max-reconstruction-l2-relative", type=float, default=None)
     parser.add_argument("--max-reconstruction-mse", type=float, default=None)
     return parser.parse_args()
@@ -47,6 +55,7 @@ def main() -> int:
         out=Path(args.out),
         require_metadata_match=args.require_metadata_match,
         allow_shape_only_diagnostic=args.allow_shape_only_diagnostic,
+        allow_metadata_mismatch=args.allow_metadata_mismatch,
         max_reconstruction_l2_relative=args.max_reconstruction_l2_relative,
         max_reconstruction_mse=args.max_reconstruction_mse,
     )

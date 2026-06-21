@@ -117,4 +117,5 @@ failure unless the blocker reports a repo bug.
 
 ## Next Phase
 
-The next phase should compare SAE decoded intervention effects against richer behavioral tasks, alternative token contrasts, and cross-layer candidate mechanisms.
+Phase 3 is implemented as multi-task token-contrast evaluation and candidate
+evidence reporting. See `docs/phase3_token_contrast_evaluation.md`.

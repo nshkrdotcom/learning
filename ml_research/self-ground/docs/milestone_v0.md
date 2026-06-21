@@ -96,14 +96,11 @@ This tests whether the residual patch moves negation conditions more than matche
 - No report head is trained.
 - No broad generalization claim is made.
 
-## Next Phase
+## Current Phase Map
 
-Phase 2 is decoded SAE feature intervention. The implementation details live in
-`docs/phase2_sae_intervention.md`.
+Current repo numbering:
 
-1. Select a tested SAE release/id compatible with the model and hook point.
-2. Confirm encode/decode tensor shapes against real activations.
-3. Modify selected SAE features.
-4. Decode back to residual space.
-5. Patch decoded residual activations into TransformerLens.
-6. Measure logit-contrast changes on negation controls.
+- Phase 1: real residual activation ranking and residual intervention.
+- Phase 2: decoded SAE feature intervention. See `docs/phase2_sae_intervention.md`.
+- Phase 3: multi-task token-contrast evaluation and candidate evidence reports.
+  See `docs/phase3_token_contrast_evaluation.md`.

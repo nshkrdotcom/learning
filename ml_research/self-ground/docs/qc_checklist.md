@@ -68,6 +68,23 @@ are verified after this file is committed.
 - [x] no residual-dimension result is described as sparse SAE mechanism discovery
 - [x] no complete SELF-GROUND, broad mechanism discovery, or genuine introspection claim is made
 
+## Phase 3: Token-Contrast Evaluation
+
+- [x] deterministic behavioral token-contrast tasks implemented
+- [x] task tokenization validation implemented
+- [x] excluded task artifacts implemented
+- [x] baseline task score artifacts implemented
+- [x] deterministic top/random/bottom SAE feature-set baselines implemented
+- [x] residual decoded SAE intervention telemetry implemented
+- [x] Phase 3 runner writes target and matched-control deltas
+- [x] behavioral summary preserves per-family and aggregate rows
+- [x] mechanism evidence report implemented
+- [x] diagnostic metadata mismatch cannot support candidate evidence
+- [x] tiny smoke runs cannot produce strong candidate evidence
+- [x] Phase 3 CLI command implemented
+- [x] optional Phase 3 SAE integration test is gated by SAE env vars
+- [x] Phase 3 docs explain token-contrast scope and limitations
+
 ## Final Review Evidence
 
 - [x] `uv run ruff check .`

@@ -6,6 +6,7 @@ import torch
 
 from self_ground.activations import FeatureActivations
 from self_ground.hooking import run_with_residual_patch
+from self_ground.intervention_telemetry import InterventionTelemetry
 from self_ground.model import TransformerLensModelAdapter
 from self_ground.sae import SAELensAdapter
 
@@ -164,6 +165,85 @@ def decoded_sae_patch_from_activation(
     return activation + (modified_residual - original_residual)
 
 
+def _feature_slice(encoded: torch.Tensor, feature_indices: list[int], token_position: int | None):
+    if encoded.ndim == 2:
+        return encoded[:, feature_indices]
+    if token_position is None:
+        return encoded[:, :, feature_indices]
+    position = _normalise_token_position(token_position, encoded.shape[1])
+    return encoded[:, position, feature_indices]
+
+
+def _mean_norm(value: torch.Tensor) -> float:
+    flat = value.reshape(value.shape[0], -1)
+    return float(torch.linalg.vector_norm(flat, dim=-1).mean().detach().cpu().item())
+
+
+def decoded_sae_patch_with_telemetry_from_activation(
+    *,
+    activation: torch.Tensor,
+    sae_adapter: SAELensAdapter,
+    feature_ids: list[str],
+    operation: Literal["ablate", "amplify"],
+    factor: float = 1.0,
+    token_position: int | None = -1,
+    patch_mode: Literal["replace", "delta"] = "replace",
+) -> tuple[torch.Tensor, InterventionTelemetry]:
+    if patch_mode not in {"replace", "delta"}:
+        raise ValueError("patch_mode must be 'replace' or 'delta'")
+    feature_indices = [parse_sae_feature_id(feature_id) for feature_id in feature_ids]
+    encoded_original = _encode_to_tensor(activation, sae_adapter)
+    encoded_modified = modify_sae_features(
+        encoded_original,
+        feature_indices,
+        operation=operation,
+        factor=factor,
+        token_position=token_position,
+    )
+    decoded_original = _decode_to_tensor(encoded_original, sae_adapter)
+    decoded_modified = _decode_to_tensor(encoded_modified, sae_adapter)
+    original_residual = _align_decoded_to_activation(
+        activation=activation,
+        decoded=decoded_original,
+        token_position=token_position,
+    )
+    modified_residual = _align_decoded_to_activation(
+        activation=activation,
+        decoded=decoded_modified,
+        token_position=token_position,
+    )
+    if patch_mode == "replace":
+        patched = modified_residual
+    else:
+        patched = activation + (modified_residual - original_residual)
+
+    selected_original = _feature_slice(encoded_original, feature_indices, token_position)
+    selected_modified = _feature_slice(encoded_modified, feature_indices, token_position)
+    selected_delta = selected_modified - selected_original
+    decoded_delta = modified_residual - original_residual
+    activation_norm = _mean_norm(activation)
+    decoded_delta_norm = _mean_norm(decoded_delta)
+    patched_norm = _mean_norm(patched)
+    telemetry = InterventionTelemetry(
+        selected_feature_activation_mean=float(selected_original.mean().detach().cpu().item()),
+        selected_feature_activation_abs_mean=float(
+            selected_original.abs().mean().detach().cpu().item()
+        ),
+        selected_feature_modified_mean=float(selected_modified.mean().detach().cpu().item()),
+        selected_feature_delta_abs_mean=float(
+            selected_delta.abs().mean().detach().cpu().item()
+        ),
+        decoded_delta_norm_mean=decoded_delta_norm,
+        activation_norm_mean=activation_norm,
+        patched_activation_norm_mean=patched_norm,
+        relative_norm_drift_mean=float(
+            abs(patched_norm - activation_norm) / (activation_norm + 1e-12)
+        ),
+        decoded_delta_norm_ratio=float(decoded_delta_norm / (activation_norm + 1e-12)),
+    )
+    return patched, telemetry
+
+
 def run_sae_decoded_intervention_logits(
     model_adapter: TransformerLensModelAdapter,
     sae_adapter: SAELensAdapter,
@@ -189,3 +269,40 @@ def run_sae_decoded_intervention_logits(
             patch_mode=patch_mode,
         ),
     )
+
+
+def run_sae_decoded_intervention_logits_with_telemetry(
+    model_adapter: TransformerLensModelAdapter,
+    sae_adapter: SAELensAdapter,
+    texts: list[str],
+    hook_point: str,
+    feature_ids: list[str],
+    operation: Literal["ablate", "amplify"],
+    factor: float = 1.0,
+    token_position: int | None = -1,
+    patch_mode: Literal["replace", "delta"] = "delta",
+) -> tuple[torch.Tensor, InterventionTelemetry]:
+    telemetry: InterventionTelemetry | None = None
+
+    def patch_fn(activation: torch.Tensor) -> torch.Tensor:
+        nonlocal telemetry
+        patched, telemetry = decoded_sae_patch_with_telemetry_from_activation(
+            activation=activation,
+            sae_adapter=sae_adapter,
+            feature_ids=feature_ids,
+            operation=operation,
+            factor=factor,
+            token_position=token_position,
+            patch_mode=patch_mode,
+        )
+        return patched
+
+    logits = run_with_residual_patch(
+        model_adapter,
+        texts,
+        hook_point,
+        patch_fn=patch_fn,
+    )
+    if telemetry is None:
+        raise RuntimeError("decoded SAE intervention telemetry was not captured")
+    return logits, telemetry

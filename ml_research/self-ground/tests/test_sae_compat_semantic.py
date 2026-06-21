@@ -143,6 +143,26 @@ def test_missing_metadata_shape_only_diagnostic_never_becomes_compatible(
     assert result.status == "shape_only_diagnostic_not_production_compatible"
 
 
+def test_metadata_mismatch_override_is_diagnostic_only(tiny_model_adapter) -> None:
+    result = verify_sae_compatibility(
+        model_name="EleutherAI/pythia-70m",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        model_adapter=tiny_model_adapter,
+        sae_adapter=TinySemanticSAE(model_name="pythia-70m-deduped"),
+        allow_metadata_mismatch=True,
+    )
+
+    assert result.shape_compatible is True
+    assert result.metadata_compatible is False
+    assert result.semantically_compatible is False
+    assert result.compatible is False
+    assert result.allow_metadata_mismatch is True
+    assert result.diagnostic_only is True
+    assert "diagnostic" in result.status
+
+
 def test_reconstruction_nan_or_inf_is_incompatible(tiny_model_adapter) -> None:
     result = verify_sae_compatibility(
         model_name="test-local",

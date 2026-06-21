@@ -9,6 +9,12 @@ from rich.table import Table
 
 from self_ground.io import read_jsonl, read_minimal_pairs, write_jsonl
 from self_ground.negation import generate_negation_pairs
+from self_ground.real_behavioral_intervention import (
+    parse_amplify_factors,
+    parse_int_list,
+    parse_operations,
+    run_real_behavioral_sae_intervention,
+)
 from self_ground.real_model_check import check_real_model
 from self_ground.real_ranking import run_activation_ranking
 from self_ground.real_residual_intervention import run_real_residual_intervention
@@ -152,6 +158,15 @@ def check_sae_compatibility_command(
             help="Emit shape-only diagnostic fields; not production-compatible.",
         ),
     ] = False,
+    allow_metadata_mismatch: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Record metadata mismatch as diagnostic-only. This cannot support "
+                "candidate evidence."
+            )
+        ),
+    ] = False,
     max_reconstruction_l2_relative: Annotated[float | None, typer.Option()] = None,
     max_reconstruction_mse: Annotated[float | None, typer.Option()] = None,
 ) -> None:
@@ -164,6 +179,7 @@ def check_sae_compatibility_command(
         out=out,
         require_metadata_match=require_metadata_match,
         allow_shape_only_diagnostic=allow_shape_only_diagnostic,
+        allow_metadata_mismatch=allow_metadata_mismatch,
         max_reconstruction_l2_relative=max_reconstruction_l2_relative,
         max_reconstruction_mse=max_reconstruction_mse,
     )
@@ -226,6 +242,69 @@ def run_sae_intervention_command(
         }
     )
     if not result.compatible:
+        raise typer.Exit(code=1)
+
+
+@app.command(
+    "run-phase3-behavioral-evaluation",
+    help="Run Phase 3 token-contrast evaluation for decoded SAE interventions.",
+)
+def run_phase3_behavioral_evaluation_command(
+    ranking_dir: Annotated[Path, typer.Option()],
+    sae_release: Annotated[str, typer.Option()],
+    sae_id: Annotated[str, typer.Option()],
+    out: Annotated[Path, typer.Option()] = Path("runs/test_phase3_behavioral_evaluation"),
+    tasks: Annotated[Path | None, typer.Option()] = None,
+    per_family: Annotated[int, typer.Option(min=1)] = 10,
+    seed: Annotated[int, typer.Option()] = 7,
+    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m-deduped",
+    hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
+    top_k_features: Annotated[int, typer.Option(min=1)] = 5,
+    baseline_mode: Annotated[str, typer.Option()] = "top-vs-random-multiseed",
+    random_seeds: Annotated[str, typer.Option()] = "7,11,13",
+    operations: Annotated[str, typer.Option()] = "ablate",
+    amplify_factors: Annotated[str, typer.Option("--amplify-factors")] = "2.0",
+    patch_mode: Annotated[str, typer.Option()] = "delta",
+    token_position: Annotated[int, typer.Option()] = -1,
+    device: Annotated[str, typer.Option()] = "cpu",
+    reduction: Annotated[str, typer.Option()] = "mean",
+    min_valid_tasks_per_family: Annotated[int, typer.Option(min=1)] = 2,
+    allow_metadata_mismatch: Annotated[
+        bool,
+        typer.Option(
+            help=(
+                "Run diagnostic-only if SAE metadata mismatches. This cannot support "
+                "candidate evidence."
+            )
+        ),
+    ] = False,
+    write_report: Annotated[bool, typer.Option("--write-report/--no-write-report")] = True,
+) -> None:
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out,
+        ranking_dir=ranking_dir,
+        tasks_path=tasks,
+        per_family=per_family,
+        seed=seed,
+        model_name=model,
+        hook_point=hook_point,
+        sae_release=sae_release,
+        sae_id=sae_id,
+        top_k_features=top_k_features,
+        baseline_mode=baseline_mode,  # type: ignore[arg-type]
+        random_seeds=parse_int_list(random_seeds),
+        operations=parse_operations(operations),
+        amplify_factors=parse_amplify_factors(amplify_factors),
+        patch_mode=patch_mode,  # type: ignore[arg-type]
+        token_position=token_position,
+        device=device,
+        reduction=reduction,  # type: ignore[arg-type]
+        min_valid_tasks_per_family=min_valid_tasks_per_family,
+        allow_metadata_mismatch=allow_metadata_mismatch,
+        write_report=write_report,
+    )
+    console.print_json(data=result.__dict__ | {"out_dir": str(result.out_dir)})
+    if not result.compatible or not result.task_validation_passed:
         raise typer.Exit(code=1)
 
 

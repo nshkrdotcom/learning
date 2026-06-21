@@ -1,6 +1,10 @@
 # SELF-GROUND
 
-SELF-GROUND is a negation-scope interpretability experiment harness. The repo now has a Phase 1 real residual-dimension pipeline and Phase 2 decoded SAE intervention infrastructure. It does not claim complete SELF-GROUND, broad mechanism discovery, or genuine model introspection.
+SELF-GROUND is a negation-scope interpretability experiment harness. The repo
+now has a Phase 1 real residual-dimension pipeline, Phase 2 decoded SAE
+intervention infrastructure, and Phase 3 token-contrast evaluation reports. It
+does not claim complete SELF-GROUND, broad mechanism discovery, broad behavioral
+understanding, or genuine model introspection.
 
 ## Phase 1 Recap
 
@@ -29,6 +33,17 @@ real model activations
 ```
 
 If no compatible SAE release/id is available, Phase 2 writes a precise compatibility artifact and does not write fabricated intervention rows.
+
+## Phase 3 Goal
+
+Phase 3 evaluates decoded SAE interventions across deterministic
+negation-sensitive token-contrast tasks. It validates tokenization, records
+baseline task calibration, compares top SAE feature sets against deterministic
+control feature sets, scores both target prompts and matched non-negation
+control prompts, records intervention telemetry, and writes a thresholded
+mechanism evidence report.
+
+This is token-contrast evaluation, not broad behavioral understanding.
 
 ## Semantic SAE Compatibility
 
@@ -129,6 +144,48 @@ uv run python scripts/run_real_sae_intervention.py \
   --device cpu
 ```
 
+## Phase 3 Token-Contrast Evaluation
+
+Run this after producing the SAE ranking above:
+
+```bash
+uv run python scripts/run_phase3_behavioral_evaluation.py \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/phase3_behavioral_evaluation_pythia70m \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --per-family 2 \
+  --top-k-features 2 \
+  --baseline-mode top-vs-random-multiseed \
+  --random-seeds 7,11,13 \
+  --operations ablate \
+  --patch-mode delta \
+  --device cpu \
+  --write-report
+```
+
+Equivalent CLI:
+
+```bash
+uv run self-ground run-phase3-behavioral-evaluation \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/phase3_behavioral_evaluation_pythia70m \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
+  --per-family 2 \
+  --top-k-features 2 \
+  --baseline-mode top-vs-random-multiseed \
+  --random-seeds 7,11,13 \
+  --operations ablate \
+  --patch-mode delta \
+  --device cpu \
+  --write-report
+```
+
 Equivalent CLI:
 
 ```bash
@@ -150,6 +207,7 @@ uv run self-ground run-sae-intervention \
 Real SAE integration tests require:
 
 ```bash
+export SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped
 export SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm
 export SELF_GROUND_SAE_ID=blocks.2.hook_resid_post
 uv run pytest --run-integration
@@ -195,6 +253,22 @@ Phase 2 SAE intervention:
 
 If compatibility fails, Phase 2 writes only `config.json`, `compatibility.json`, and `README.md`.
 
+Phase 3 token-contrast evaluation:
+
+- `config.json`
+- `behavioral_tasks.jsonl`
+- `behavioral_task_validation.json`
+- `excluded_behavioral_tasks.jsonl`
+- `compatibility.json`
+- `feature_sets.json`
+- `baseline_task_scores.jsonl`
+- `baseline_task_summary.csv`
+- `behavioral_intervention_results.jsonl`
+- `behavioral_summary.csv`
+- `mechanism_report.json`
+- `mechanism_report.md`
+- `README.md`
+
 ## Interpretation Boundaries
 
 Feature-space proxy arithmetic is not causal evidence.
@@ -205,3 +279,7 @@ Decoded SAE intervention is real sparse-feature intervention only when compatibi
 
 Blocked compatibility artifacts are expected safety behavior when metadata,
 shape, or reconstruction checks fail.
+
+Phase 3 reports are thresholded and cautious. A diagnostic metadata mismatch
+run, a tiny smoke run, failed task validation, zero/non-finite deltas, or weak
+top-vs-control comparison cannot support strong candidate evidence.
