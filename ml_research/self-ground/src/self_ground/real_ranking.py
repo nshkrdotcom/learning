@@ -8,6 +8,7 @@ import numpy as np
 
 from self_ground.activations import (
     CONDITIONS,
+    POOLING_MODES,
     FeatureActivations,
     PairFeatureActivations,
     RankedFeature,
@@ -113,6 +114,7 @@ def _top_condition_examples(
             {
                 "pair_id": pair_id,
                 "template_family": pair.template_family,
+                "condition": condition,
                 "text": condition_text(pair, condition),
                 "activation": float(features.values[idx, feature_idx]),
             }
@@ -204,6 +206,17 @@ def run_activation_ranking(
     model_adapter=None,
     sae_adapter=None,
 ) -> ActivationRankingRun:
+    if per_family < 1:
+        raise ValueError("per_family must be >= 1")
+    if top_k_features < 1:
+        raise ValueError("top_k_features must be >= 1")
+    if feature_source not in {"residual_dimensions", "sae"}:
+        raise ValueError("feature_source must be 'residual_dimensions' or 'sae'")
+    if pooling not in POOLING_MODES:
+        raise ValueError("pooling must be 'final_token' or 'mean'")
+    if feature_source == "sae" and sae_adapter is None and (not sae_release or not sae_id):
+        raise ValueError("feature_source='sae' requires --sae-release and --sae-id")
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -220,8 +233,6 @@ def run_activation_ranking(
         model_adapter = TransformerLensModelAdapter(model_name=model_name, device=device)
 
     if feature_source == "sae" and sae_adapter is None:
-        if not sae_release or not sae_id:
-            raise ValueError("feature_source='sae' requires --sae-release and --sae-id")
         from self_ground.sae import SAELensAdapter
 
         sae_adapter = SAELensAdapter.from_pretrained(
@@ -231,6 +242,12 @@ def run_activation_ranking(
         )
 
     activations = model_adapter.get_activations(texts, hook_point=hook_point)
+    activation_shape = list(_to_numpy(activations).shape)
+    if not activation_shape or activation_shape[0] != len(texts):
+        raise ValueError(
+            "activation batch count mismatch: "
+            f"expected {len(texts)} rows, got shape {activation_shape}"
+        )
     feature_activations = feature_activations_from_real_activations(
         activations,
         feature_source=feature_source,
@@ -242,6 +259,8 @@ def run_activation_ranking(
         feature_activations=feature_activations,
     )
     rankings = rank_candidate_features(pair_features)
+    if not rankings:
+        raise ValueError("ranking output is empty")
     top_examples = build_top_examples(
         pairs=pairs,
         features=pair_features,
@@ -252,7 +271,7 @@ def run_activation_ranking(
     metadata = {
         "model": model_name,
         "hook_point": hook_point,
-        "activation_shape": list(_to_numpy(activations).shape),
+        "activation_shape": activation_shape,
         "feature_source": feature_source,
         "pooling": pooling,
         "n_pairs": len(pairs),

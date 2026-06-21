@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import pytest
+import torch
 
 from self_ground.activations import FeatureActivations
 from self_ground.negation import contains_negation_marker
@@ -37,24 +38,74 @@ class TinyActivationBatch:
 class TinyModelAdapter:
     """Test-local deterministic adapter; not shipped in self_ground.src."""
 
+    def __init__(self) -> None:
+        self.model = TinyHookedModel(self)
+
+    def _feature_row(self, text: str) -> list[float]:
+        lowered = text.lower()
+        is_negation = float(contains_negation_marker(text))
+        is_frequency = float(" often " in lowered or " sometimes " in lowered)
+        return [
+            is_negation,
+            is_frequency,
+            1.0,
+            (0.7 * is_negation) + 0.6,
+        ]
+
     def get_activations(self, texts: list[str], hook_point: str) -> np.ndarray:
-        rows = []
-        for text in texts:
-            lowered = text.lower()
-            is_negation = float(contains_negation_marker(text))
-            is_frequency = float(" often " in lowered or " sometimes " in lowered)
-            rows.append(
-                [
-                    is_negation,
-                    is_frequency,
-                    1.0,
-                    (0.7 * is_negation) + 0.6,
-                ]
-            )
-        return np.asarray(rows, dtype=float)
+        return np.asarray([[self._feature_row(text)] for text in texts], dtype=float)
+
+    def logits_for_texts(self, texts: list[str]) -> torch.Tensor:
+        activations = torch.tensor(
+            [[self._feature_row(text)] for text in texts],
+            dtype=torch.float32,
+        )
+        return self._logits_from_activations(activations)
+
+    def token_ids_for_strings(self, strings: list[str]) -> list[int]:
+        ids = []
+        for token in strings:
+            if token in {" not", " no", " never"}:
+                ids.append(0)
+            elif token in {" often", " always", " sometimes"}:
+                ids.append(1)
+            else:
+                raise ValueError(f"unknown test token: {token}")
+        return ids
+
+    def logit_contrast(
+        self,
+        texts: list[str],
+        positive: list[str],
+        negative: list[str],
+    ) -> torch.Tensor:
+        logits = self.logits_for_texts(texts)[:, -1, :]
+        pos_ids = self.token_ids_for_strings(positive)
+        neg_ids = self.token_ids_for_strings(negative)
+        return logits[:, pos_ids].mean(dim=-1) - logits[:, neg_ids].mean(dim=-1)
+
+    def _logits_from_activations(self, activations: torch.Tensor) -> torch.Tensor:
+        logits = torch.zeros((activations.shape[0], 1, 6), dtype=torch.float32)
+        logits[:, 0, 0] = activations[:, -1, 0]
+        logits[:, 0, 1] = activations[:, -1, 1]
+        return logits
 
     def score_negation_behavior(self, text: str) -> float:
         return float(contains_negation_marker(text))
+
+
+class TinyHookedModel:
+    def __init__(self, adapter: TinyModelAdapter) -> None:
+        self.adapter = adapter
+
+    def run_with_hooks(self, texts: list[str], fwd_hooks):
+        activations = torch.tensor(
+            [[self.adapter._feature_row(text)] for text in texts],
+            dtype=torch.float32,
+        )
+        for _, hook_fn in fwd_hooks:
+            activations = hook_fn(activations, hook=None)
+        return self.adapter._logits_from_activations(activations)
 
 
 class TinySAEAdapter:

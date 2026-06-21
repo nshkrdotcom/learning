@@ -65,3 +65,4 @@ def test_activation_ranking_artifacts_with_test_local_activations(
         "top_decoy_examples",
     }
     assert first_top["top_pos_examples"]
+    assert first_top["top_pos_examples"][0]["condition"] == "x_pos"
