@@ -251,9 +251,9 @@ uv run python scripts/probe_saebench_ravel_bridge.py --out runs/tooling_spikes/s
 Observed results:
 
 - [x] `uv run ruff check .` passed
-- [x] `uv run pytest` passed: `168 passed, 12 skipped`
-- [x] `uv run pytest --run-integration` passed without SAE env: `175 passed, 5 skipped`
-- [x] SAE-configured integration passed: `180 passed`
+- [x] `uv run pytest` passed: `175 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `182 passed, 5 skipped`
+- [x] SAE-configured integration passed: `187 passed`
 - [x] diagnostic run wrote `runs/diagnostic_negation_ravel_eval_density_matched`
 - [x] diagnostic run used `engine_backend=transformer_lens`
 - [x] diagnostic run used `sae_backend=sae_lens`
@@ -263,3 +263,42 @@ Observed results:
 - [x] inspector reports `claim_status=insufficient_evidence`
 - [x] inspector reports `top_target_delta=0.0`, `top_control_delta=0.0`, and `specificity_gap=0.0`
 - [x] SAEBench/RAVEL probe status is `not_installed`; no upstream integration claimed
+
+## E002 Gate And Zero-Effect Diagnosis
+
+- [x] CUDA capability artifact written
+- [x] serious E002 GPU ranking completed
+- [x] serious E002 GPU evaluation completed
+- [x] E002 inspection summary written
+- [x] serious E002 claim status remains artifact-backed
+- [x] prior zero-effect diagnostic run diagnosed
+- [x] decoded SAE patch sanity check completed for old diagnostic ranking
+- [x] decoded SAE patch sanity check completed for E002 ranking
+- [x] optional ablate+amplify diagnostic completed
+- [x] ledgers updated
+
+Commands run for this pass:
+
+```bash
+uv run python scripts/check_run_capability.py --out runs/capability_check --model EleutherAI/pythia-70m-deduped --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post
+uv run python scripts/run_e002_negation_sae_density_matched.py --device cuda --ranking-per-family 10 --eval-per-family 10 --ranking-top-k 50 --eval-top-k 5 --operations ablate --random-seeds 7,11,13 --out-root runs --allow-cpu-serious-run false
+uv run python scripts/inspect_claim_run.py --run-dir runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density
+uv run python scripts/diagnose_zero_effect_run.py --run-dir runs/diagnostic_negation_ravel_eval_density_matched --ranking-dir runs/test_real_sae_ranking --out runs/diagnostics/zero_effect_diagnostic_negation_ravel_eval_density_matched
+uv run python scripts/check_decoded_sae_patch_nonzero.py --ranking-dir runs/test_real_sae_ranking --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --top-k-features 2 --operation ablate --patch-mode delta --prompt "The movie was not" --device cpu --out runs/diagnostics/check_decoded_sae_patch_nonzero
+uv run python scripts/check_decoded_sae_patch_nonzero.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --top-k-features 5 --operation ablate --patch-mode delta --prompt "The movie was not" --device cuda --out runs/diagnostics/check_decoded_sae_patch_nonzero_e002
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50 --out runs/diagnostic_negation_ravel_eval_density_matched_ablate_amplify --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 2 --top-k-features 2 --baseline-mode top-vs-density-matched-multiseed --random-seeds 7,11,13 --operations ablate,amplify --amplify-factors 2.0 --patch-mode delta --device cpu
+```
+
+Observed results:
+
+- [x] capability says `can_attempt_e002_gpu=true`
+- [x] CUDA device is `NVIDIA GeForce RTX 5060 Ti`
+- [x] E002 inspection reports `run_classification=serious_gpu_evidence_run`
+- [x] E002 inspection reports `claim_status=insufficient_evidence`
+- [x] E002 inspection reports `top_target_delta=0.03419952392578125`
+- [x] E002 inspection reports `top_control_delta=0.0546810785929362`
+- [x] E002 inspection reports `specificity_gap=-0.02048155466715495`
+- [x] zero-effect diagnosis labels prior diagnostic as `all_row_deltas_zero`, `decoded_delta_norm_zero_or_missing`, and `task_baseline_not_calibrated`
+- [x] old-ranking patch sanity reports selected features inactive and logits unchanged
+- [x] E002-ranking patch sanity reports nonzero decoded patch and changed logits
+- [x] ablate+amplify diagnostic remains `insufficient_evidence`

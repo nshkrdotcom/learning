@@ -79,18 +79,25 @@ def _top_vs_control_ratio(summary_rows: list[dict[str, str]]) -> float | None:
     return top_value / control_mean
 
 
-def _classify_run(config: dict[str, Any]) -> str:
+def _classify_run(config: dict[str, Any], feature_set_rows: list[dict[str, Any]]) -> str:
     per_family = int(config.get("per_family") or 0)
     top_k = int(config.get("top_k_features") or 0)
-    baseline_mode = str(config.get("baseline_mode") or "")
     device = str(config.get("device") or "")
+    labels = {str(row.get("label")) for row in feature_set_rows}
+    density_present = any(label.startswith("density_matched_seed_") for label in labels)
+    random_present = any(label.startswith("random_seed_") for label in labels)
+    bottom_active_present = "bottom_active" in labels
     if (
-        per_family >= 10
+        device.startswith("cuda")
+        and per_family >= 10
         and top_k >= 5
-        and "density" in baseline_mode
-        and device.startswith("cuda")
+        and density_present
+        and random_present
+        and bottom_active_present
     ):
         return "serious_gpu_evidence_run"
+    if device == "cpu" and per_family >= 3 and top_k >= 5 and density_present:
+        return "large_cpu_diagnostic"
     return "diagnostic_or_smoke_run"
 
 
@@ -160,7 +167,7 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
         "run_dir": str(run_dir),
         "ok": not missing,
         "missing_required_artifacts": missing,
-        "run_classification": _classify_run(config),
+        "run_classification": _classify_run(config, feature_set_rows),
         "config": {
             "model_name": config.get("model_name"),
             "hook_point": config.get("hook_point"),

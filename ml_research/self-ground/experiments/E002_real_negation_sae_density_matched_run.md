@@ -130,3 +130,37 @@ Failure outcomes must be recorded honestly:
 - decoded intervention resource failure,
 - insufficient target/control separation,
 - density matching approximation or relaxed matching limitation.
+
+## 2026-06-21 Execution Result
+
+The E002 CUDA run completed in this environment.
+
+Capability:
+
+- CUDA available: yes
+- device: `NVIDIA GeForce RTX 5060 Ti`
+- capability artifact: `runs/capability_check/capability.json`
+
+Artifacts:
+
+- ranking: `runs/e002_real_sae_ranking_pythia70m_deduped_l2_pf10_top50`
+- evaluation: `runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density`
+- inspection: `runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density/inspection_summary.json`
+
+Result:
+
+- run classification: `serious_gpu_evidence_run`
+- valid tasks: 30
+- behavioral rows: 240
+- skipped rows: 0
+- claim status: `insufficient_evidence`
+- top target delta: `0.03419952392578125`
+- top control delta: `0.0546810785929362`
+- specificity gap: `-0.02048155466715495`
+
+Interpretation:
+
+The decoded SAE intervention moved logits under the serious setting, so the
+pipeline is not globally no-op. The result does not support candidate evidence
+because matched-control movement exceeded target movement and baseline
+calibration remained below threshold.
