@@ -98,7 +98,8 @@ This tests whether the residual patch moves negation conditions more than matche
 
 ## Next Phase
 
-Phase 2 is decoded SAE feature intervention:
+Phase 2 is decoded SAE feature intervention. The implementation details live in
+`docs/phase2_sae_intervention.md`.
 
 1. Select a tested SAE release/id compatible with the model and hook point.
 2. Confirm encode/decode tensor shapes against real activations.

@@ -1,111 +1,143 @@
 # SELF-GROUND
 
-SELF-GROUND Phase 1 is a real negation-scope activation and residual-intervention pipeline for a small TransformerLens model. It generates matched negation controls, captures real activations from `EleutherAI/pythia-70m`, ranks raw residual dimensions by negation contrast, patches selected residual dimensions, and measures real logit-contrast deltas.
+SELF-GROUND is a negation-scope interpretability experiment harness. The repo now has a Phase 1 real residual-dimension pipeline and Phase 2 decoded SAE intervention infrastructure. It does not claim complete SELF-GROUND, broad mechanism discovery, or genuine model introspection.
 
-This repo does not train a report head, train a new SAE, ship fake production adapters, or claim mechanism discovery.
+## Phase 1 Recap
 
-## Phase 1 Command Sequence
+Phase 1 implements:
+
+- deterministic negation minimal pairs,
+- real TransformerLens activation capture,
+- real residual-dimension activation ranking,
+- real residual-dimension intervention through TransformerLens hooks,
+- real logit-contrast deltas after residual patching.
+
+Phase 1 does not claim sparse SAE mechanisms. Raw residual dimensions are basis-dependent.
+
+## Phase 2 Goal
+
+Phase 2 adds decoded SAE feature intervention:
+
+```text
+real model activations
+  -> real SAELens encode
+  -> modify selected SAE feature activations
+  -> decode back to residual space
+  -> patch the real TransformerLens model
+  -> rerun logits
+  -> write intervention artifacts
+```
+
+If no compatible SAE release/id is available, Phase 2 writes a precise compatibility artifact and does not write fabricated intervention rows.
+
+## Setup And Fast Tests
 
 ```bash
 uv sync
 uv run pytest
+```
+
+## Phase 1 Commands
+
+```bash
 uv run python scripts/check_real_model.py --device cpu
+
 uv run python scripts/run_real_activation_ranking.py \
   --device cpu \
   --out runs/real_activation_ranking_pythia70m
+
 uv run python scripts/run_real_residual_intervention.py \
   --ranking-dir runs/real_activation_ranking_pythia70m \
   --device cpu \
   --out runs/real_residual_intervention_pythia70m
 ```
 
-Equivalent CLI commands:
+## Phase 2 SAE Compatibility
 
 ```bash
-uv run self-ground check-real-model \
+uv run python scripts/check_sae_compatibility.py \
   --model EleutherAI/pythia-70m \
   --hook-point blocks.2.hook_resid_post \
+  --sae-release <release> \
+  --sae-id <id> \
   --device cpu \
-  --out runs/check_real_model.json
-
-uv run self-ground run-activation-ranking \
-  --model EleutherAI/pythia-70m \
-  --hook-point blocks.2.hook_resid_post \
-  --feature-source residual_dimensions \
-  --pooling final_token \
-  --per-family 15 \
-  --top-k-features 50 \
-  --device cpu \
-  --out runs/real_activation_ranking_pythia70m
-
-uv run self-ground run-residual-intervention \
-  --ranking-dir runs/real_activation_ranking_pythia70m \
-  --model EleutherAI/pythia-70m \
-  --hook-point blocks.2.hook_resid_post \
-  --top-k-features 5 \
-  --operation zero \
-  --device cpu \
-  --out runs/real_residual_intervention_pythia70m
+  --out runs/check_sae_compatibility.json
 ```
 
-## What Is Real In Phase 1
-
-- real TransformerLens activation capture
-- real residual-dimension negation ranking
-- real residual-dimension intervention through TransformerLens hooks
-- real logit-contrast deltas after patching residual activations
-- inspectable JSONL/CSV artifacts
-
-## What Is Not Claimed
-
-- no SAE decoded intervention
-- no sparse-feature causal intervention
-- no mechanism discovery
-- no report-head training
-- no broad generalization claim
-- no genuine model introspection claim
-
-## Optional Integration Tests
+Equivalent CLI:
 
 ```bash
-uv run pytest --run-integration
-```
-
-These tests load `EleutherAI/pythia-70m`, capture real activations, run real residual-dimension ranking, and verify real residual patching changes logits. The optional SAELens test skips unless `SELF_GROUND_SAE_RELEASE` and `SELF_GROUND_SAE_ID` are set.
-
-## Data Generation
-
-```bash
-uv run self-ground generate-negation --per-family 15 --out data/negation_pairs.jsonl
-```
-
-## Optional SAE Ranking
-
-SAE ranking is available only when a real SAELens release/id is configured:
-
-```bash
-uv run self-ground run-activation-ranking \
+uv run self-ground check-sae-compatibility \
   --model EleutherAI/pythia-70m \
   --hook-point blocks.2.hook_resid_post \
+  --sae-release <release> \
+  --sae-id <id> \
+  --device cpu \
+  --out runs/check_sae_compatibility.json
+```
+
+## Phase 2 SAE Ranking
+
+```bash
+uv run python scripts/run_real_activation_ranking.py \
+  --device cpu \
   --feature-source sae \
   --sae-release <release> \
   --sae-id <id> \
-  --pooling final_token \
-  --per-family 15 \
-  --top-k-features 50 \
-  --device cpu \
   --out runs/real_sae_ranking_pythia70m
 ```
 
-SAE decoded reinjection is not implemented in Phase 1. See `docs/sae_intervention_blocker.md`.
+## Phase 2 SAE Intervention
+
+```bash
+uv run python scripts/run_real_sae_intervention.py \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/real_sae_intervention_pythia70m \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release <release> \
+  --sae-id <id> \
+  --top-k-features 5 \
+  --operation ablate \
+  --patch-mode delta \
+  --device cpu
+```
+
+Equivalent CLI:
+
+```bash
+uv run self-ground run-sae-intervention \
+  --ranking-dir runs/real_sae_ranking_pythia70m \
+  --out runs/real_sae_intervention_pythia70m \
+  --model EleutherAI/pythia-70m \
+  --hook-point blocks.2.hook_resid_post \
+  --sae-release <release> \
+  --sae-id <id> \
+  --top-k-features 5 \
+  --operation ablate \
+  --patch-mode delta \
+  --device cpu
+```
+
+## Optional Integration Tests
+
+Real SAE integration tests require:
+
+```bash
+export SELF_GROUND_SAE_RELEASE=<release>
+export SELF_GROUND_SAE_ID=<id>
+uv run pytest --run-integration
+```
+
+Without those variables, SAE integration tests skip and the Phase 2 blocker workflow remains the executable path.
 
 ## Artifacts
 
-Real model check:
+Phase 1 model check:
 
 - `runs/check_real_model.json`
 
-Real activation ranking:
+Phase 1 residual ranking:
 
 - `config.json`
 - `pairs.jsonl`
@@ -114,7 +146,7 @@ Real activation ranking:
 - `top_examples.jsonl`
 - `README.md`
 
-Real residual intervention:
+Phase 1 residual intervention:
 
 - `config.json`
 - `selected_features.json`
@@ -122,12 +154,25 @@ Real residual intervention:
 - `summary.csv`
 - `README.md`
 
-Legacy/internal proxy scoring, where used in tests, writes `feature_space_proxy_results.jsonl` and is explicitly not behavioral causal evidence.
+Phase 2 compatibility:
 
-## Interpretation Boundary
+- `runs/check_sae_compatibility.json`
 
-Residual-dimension ranking is real activation analysis over a fixed residual basis. It can identify dimensions whose activation contrasts with negation controls, but it is not mechanism discovery.
+Phase 2 SAE intervention:
 
-Residual intervention is real behavioral measurement at the logit level: the model is rerun with selected residual dimensions patched and logit contrasts are compared. Raw residual dimensions are basis-dependent and should not be interpreted as sparse semantic features.
+- `config.json`
+- `compatibility.json`
+- `selected_features.json`
+- `intervention_results.jsonl`
+- `summary.csv`
+- `README.md`
 
-Phase 2 is decoded SAE feature intervention: encode activations, modify selected SAE features, decode to residual space, patch the model, and measure logit/behavior changes.
+If compatibility fails, Phase 2 writes only `config.json`, `compatibility.json`, and `README.md`.
+
+## Interpretation Boundaries
+
+Feature-space proxy arithmetic is not causal evidence.
+
+Residual-dimension intervention is real TransformerLens intervention evidence, but it is not SAE feature intervention and not mechanism discovery.
+
+Decoded SAE intervention is real sparse-feature intervention only when compatibility succeeds and the run writes decoded SAE intervention artifacts.

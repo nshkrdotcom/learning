@@ -5,11 +5,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-import torch
-
 from self_ground.activations import CONDITIONS, condition_text
 from self_ground.data import MinimalPair
 from self_ground.io import read_minimal_pairs, write_config, write_jsonl
+from self_ground.logit_scoring import condition_dict, contrast_from_logits, delta_dict
 from self_ground.negation import generate_negation_pairs
 from self_ground.real_ranking import run_activation_ranking
 from self_ground.residual_intervention import run_residual_intervention_logits
@@ -59,21 +58,6 @@ def _read_top_residual_features(ranking_dir: Path, top_k_features: int) -> list[
             f"got invalid ids: {invalid}"
         )
     return feature_ids
-
-
-def _contrast_from_logits(
-    *,
-    model_adapter,
-    logits: torch.Tensor,
-    positive_tokens: list[str],
-    negative_tokens: list[str],
-) -> list[float]:
-    pos_ids = model_adapter.token_ids_for_strings(positive_tokens)
-    neg_ids = model_adapter.token_ids_for_strings(negative_tokens)
-    final_logits = logits[:, -1, :]
-    pos = final_logits[:, pos_ids].mean(dim=-1)
-    neg = final_logits[:, neg_ids].mean(dim=-1)
-    return (pos - neg).detach().cpu().tolist()
 
 
 def _mean_abs(values: list[float]) -> float:
@@ -247,19 +231,16 @@ def run_real_residual_intervention(
             factor=factor,
             token_position=-1,
         )
-        patched_values = _contrast_from_logits(
+        patched_values = contrast_from_logits(
             model_adapter=model_adapter,
             logits=patched_logits,
             positive_tokens=positive,
             negative_tokens=negative,
         )
 
-        baseline = dict(zip(CONDITIONS, baseline_values, strict=True))
-        patched = dict(zip(CONDITIONS, patched_values, strict=True))
-        delta = {
-            condition: patched[condition] - baseline[condition]
-            for condition in CONDITIONS
-        }
+        baseline = condition_dict(baseline_values)
+        patched = condition_dict(patched_values)
+        delta = delta_dict(baseline, patched)
         negation_specific_delta = _mean_abs([delta["x_pos"], delta["x_para"]])
         control_delta = _mean_abs([delta["x_neg"], delta["x_decoy"]])
         specificity_score = negation_specific_delta - control_delta

@@ -21,22 +21,6 @@ class MinimalPair(BaseModel):
     control_purity: float = Field(ge=0.0, le=1.0)
 
 
-class FeatureEffect(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    feature_id: str
-    operation: Literal["ablate", "amplify", "patch"]
-    delta_pos: float
-    delta_neg: float
-    delta_para: float
-    delta_decoy: float
-    necessity: float
-    sufficiency: float
-    collateral: float
-    specificity: float
-    cleanliness: float
-
-
 class FeatureProxyEffect(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

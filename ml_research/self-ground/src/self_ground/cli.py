@@ -12,6 +12,8 @@ from self_ground.negation import generate_negation_pairs
 from self_ground.real_model_check import check_real_model
 from self_ground.real_ranking import run_activation_ranking
 from self_ground.real_residual_intervention import run_real_residual_intervention
+from self_ground.real_sae_intervention import run_real_sae_intervention
+from self_ground.sae_compat import verify_sae_compatibility
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -116,6 +118,82 @@ def run_residual_intervention_command(
         f"wrote residual intervention with {result.n_pairs} pairs and "
         f"{result.n_features} residual features to {result.out_dir}"
     )
+
+
+@app.command("check-sae-compatibility")
+def check_sae_compatibility_command(
+    sae_release: Annotated[str, typer.Option()],
+    sae_id: Annotated[str, typer.Option()],
+    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m",
+    hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
+    device: Annotated[str, typer.Option()] = "cpu",
+    out: Annotated[Path, typer.Option()] = Path("runs/check_sae_compatibility.json"),
+) -> None:
+    result = verify_sae_compatibility(
+        model_name=model,
+        hook_point=hook_point,
+        sae_release=sae_release,
+        sae_id=sae_id,
+        device=device,
+        out=out,
+    )
+    console.print_json(data=result.model_dump())
+    if not result.compatible:
+        raise typer.Exit(code=1)
+
+
+@app.command("run-sae-intervention")
+def run_sae_intervention_command(
+    sae_release: Annotated[str, typer.Option()],
+    sae_id: Annotated[str, typer.Option()],
+    out: Annotated[Path, typer.Option()],
+    ranking_dir: Annotated[Path | None, typer.Option()] = None,
+    pairs: Annotated[Path | None, typer.Option()] = None,
+    model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m",
+    hook_point: Annotated[str, typer.Option()] = "blocks.2.hook_resid_post",
+    per_family: Annotated[int, typer.Option(min=1)] = 15,
+    seed: Annotated[int, typer.Option()] = 7,
+    top_k_features: Annotated[int, typer.Option(min=1)] = 5,
+    operation: Annotated[str, typer.Option()] = "ablate",
+    factor: Annotated[float, typer.Option()] = 1.0,
+    patch_mode: Annotated[str, typer.Option()] = "delta",
+    device: Annotated[str, typer.Option()] = "cpu",
+) -> None:
+    if operation not in {"ablate", "amplify"}:
+        raise typer.BadParameter("--operation must be ablate or amplify")
+    if patch_mode not in {"replace", "delta"}:
+        raise typer.BadParameter("--patch-mode must be replace or delta")
+    if operation == "amplify" and factor == 1.0:
+        raise typer.BadParameter("--operation amplify requires --factor not equal to 1.0")
+    result = run_real_sae_intervention(
+        out_dir=out,
+        ranking_dir=ranking_dir,
+        pairs_path=pairs,
+        per_family=per_family,
+        seed=seed,
+        model_name=model,
+        hook_point=hook_point,
+        sae_release=sae_release,
+        sae_id=sae_id,
+        top_k_features=top_k_features,
+        operation=operation,  # type: ignore[arg-type]
+        factor=factor,
+        patch_mode=patch_mode,  # type: ignore[arg-type]
+        device=device,
+    )
+    console.print_json(
+        data={
+            "out_dir": str(result.out_dir),
+            "n_pairs": result.n_pairs,
+            "n_features": result.n_features,
+            "operation": result.operation,
+            "patch_mode": result.patch_mode,
+            "top_features": result.top_features,
+            "compatible": result.compatible,
+        }
+    )
+    if not result.compatible:
+        raise typer.Exit(code=1)
 
 
 @app.command("summarize-run")

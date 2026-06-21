@@ -214,7 +214,7 @@ def run_activation_ranking(
         raise ValueError("feature_source must be 'residual_dimensions' or 'sae'")
     if pooling not in POOLING_MODES:
         raise ValueError("pooling must be 'final_token' or 'mean'")
-    if feature_source == "sae" and sae_adapter is None and (not sae_release or not sae_id):
+    if feature_source == "sae" and (not sae_release or not sae_id):
         raise ValueError("feature_source='sae' requires --sae-release and --sae-id")
 
     out_dir = Path(out_dir)
@@ -274,6 +274,8 @@ def run_activation_ranking(
         "activation_shape": activation_shape,
         "feature_source": feature_source,
         "pooling": pooling,
+        "sae_release": sae_release if feature_source == "sae" else None,
+        "sae_id": sae_id if feature_source == "sae" else None,
         "n_pairs": len(pairs),
         "n_conditions": len(texts),
         "n_features": len(feature_activations.feature_ids),

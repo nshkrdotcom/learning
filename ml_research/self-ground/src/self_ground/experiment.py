@@ -54,7 +54,7 @@ def _write_run_readme(
     layer: str,
     top_k_features: int,
 ) -> None:
-    sae_label = f"{sae_release} / {sae_id}" if sae_release and sae_id else "injected test adapter"
+    sae_label = f"{sae_release} / {sae_id}" if sae_release and sae_id else "test-local fixture"
     text = f"""# SELF-GROUND Negation Proxy Run
 
 - model: `{model_name}`

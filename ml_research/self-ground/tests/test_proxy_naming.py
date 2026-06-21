@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import self_ground.data as data
 from self_ground.data import FeatureProxyEffect
 from self_ground.experiment import run_negation_experiment
 from self_ground.io import write_jsonl
@@ -26,6 +27,10 @@ def test_proxy_schema_uses_proxy_field_names() -> None:
     assert "proxy_cleanliness" in dumped
     assert "necessity" not in dumped
     assert "cleanliness" not in dumped
+
+
+def test_no_stale_non_proxy_feature_effect_schema_exists() -> None:
+    assert not hasattr(data, "FeatureEffect")
 
 
 def test_proxy_experiment_writes_proxy_filename_only(
