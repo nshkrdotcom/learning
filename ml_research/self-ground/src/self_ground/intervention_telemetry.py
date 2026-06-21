@@ -44,3 +44,17 @@ def telemetry_warnings(
         "decoded_delta_norm_ratio_warning": float(values.get("decoded_delta_norm_ratio", 0.0))
         > max_decoded_delta_norm_ratio_warning,
     }
+
+
+def mean_telemetry(
+    left: InterventionTelemetry | dict[str, Any],
+    right: InterventionTelemetry | dict[str, Any],
+) -> dict[str, float]:
+    left_values = left.model_dump() if isinstance(left, InterventionTelemetry) else left
+    right_values = right.model_dump() if isinstance(right, InterventionTelemetry) else right
+    keys = set(left_values) | set(right_values)
+    return {
+        key: (float(left_values[key]) + float(right_values[key])) / 2.0
+        for key in keys
+        if key in left_values and key in right_values
+    }

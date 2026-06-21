@@ -49,6 +49,14 @@ class TinyBehavioralModel:
         return self.adapter._logits_from_activations(texts, activations)
 
 
+class TinyNaNHookBehavioralModel(TinyBehavioralModel):
+    def run_with_hooks(self, texts: list[str], fwd_hooks):
+        activations = self.adapter._activations_for_texts(texts)
+        for _, hook_fn in fwd_hooks:
+            hook_fn(activations, hook=None)
+        return torch.full((len(texts), 1, 17), float("nan"), dtype=torch.float32)
+
+
 class TinyBehavioralModelAdapter:
     model_name = "test-local"
     device = "cpu"
@@ -87,6 +95,12 @@ class TinyBehavioralModelAdapter:
                 logits[idx, 0, 5] = signal + 0.6
                 logits[idx, 0, 6] = 1.0 - signal
         return logits
+
+
+class TinyNaNHookBehavioralModelAdapter(TinyBehavioralModelAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = TinyNaNHookBehavioralModel(self)
 
 
 class TinyBehavioralSAE:
@@ -166,6 +180,7 @@ def test_phase3_behavioral_intervention_artifacts(tmp_path) -> None:
         "baseline_task_summary.csv",
         "behavioral_intervention_results.jsonl",
         "behavioral_summary.csv",
+        "skipped_behavioral_rows.json",
         "mechanism_report.json",
         "mechanism_report.md",
         "README.md",
@@ -177,13 +192,32 @@ def test_phase3_behavioral_intervention_artifacts(tmp_path) -> None:
         for line in (out_dir / "behavioral_intervention_results.jsonl").read_text().splitlines()
     ]
     assert rows
+    baseline_by_id = {
+        row["task_id"]: row
+        for row in [
+            json.loads(line)
+            for line in (out_dir / "baseline_task_scores.jsonl").read_text().splitlines()
+        ]
+    }
     assert {"baseline_contrast", "patched_contrast", "control_signed_delta"} <= set(rows[0])
     assert rows[0]["feature_ids"][0].startswith("sae_")
     assert rows[0]["control_type"] == "matched_non_negation"
     assert rows[0]["target_absolute_delta"] >= 0
     assert "relative_norm_drift_mean" in rows[0]
+    assert rows[0]["telemetry_provenance"] == "separate_target_and_control_interventions"
+    assert "target_intervention_telemetry" in rows[0]
+    assert "control_intervention_telemetry" in rows[0]
+    assert rows[0]["baseline_contrast"] == baseline_by_id[rows[0]["task_id"]][
+        "baseline_prompt_contrast"
+    ]
+    assert rows[0]["control_baseline_contrast"] == baseline_by_id[rows[0]["task_id"]][
+        "baseline_control_contrast"
+    ]
+    skipped = json.loads((out_dir / "skipped_behavioral_rows.json").read_text())
+    assert skipped == {"n_skipped_rows": 0, "reason_counts": {}, "examples": []}
     report = json.loads((out_dir / "mechanism_report.json").read_text())
     assert report["claim_status"] != "strong_candidate_evidence"
+    assert report["row_accounting"]["n_skipped_rows"] == 0
 
 
 def test_phase3_blocks_on_semantic_mismatch_without_rows(tmp_path) -> None:
@@ -210,3 +244,38 @@ def test_phase3_blocks_on_semantic_mismatch_without_rows(tmp_path) -> None:
     assert (out_dir / "compatibility.json").exists()
     assert not (out_dir / "behavioral_intervention_results.jsonl").exists()
     assert "SAE compatibility failed" in (out_dir / "README.md").read_text()
+
+
+def test_phase3_nonfinite_rows_are_accounted_and_blocked(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "phase3_nonfinite"
+    _write_sae_ranking(ranking_dir)
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        baseline_mode="top",
+        operations=["ablate"],
+        patch_mode="delta",
+        model_adapter=TinyNaNHookBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    assert result.compatible is True
+    assert result.n_rows == 0
+    skipped = json.loads((out_dir / "skipped_behavioral_rows.json").read_text())
+    assert skipped["n_skipped_rows"] > 0
+    assert skipped["reason_counts"]["nonfinite_row_value"] > 0
+    assert (out_dir / "behavioral_intervention_results.jsonl").read_text() == ""
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["claim_status"] == "blocked"
+    assert report["row_accounting"]["all_rows_skipped"] is True
+    readme = (out_dir / "README.md").read_text()
+    assert "Skipped Rows" in readme
+    assert "nonfinite_row_value" in readme

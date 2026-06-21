@@ -14,7 +14,11 @@ from self_ground.behavioral_tasks import (
     read_behavioral_tasks_jsonl,
     write_behavioral_tasks_jsonl,
 )
-from self_ground.intervention_telemetry import telemetry_has_nonfinite, telemetry_warnings
+from self_ground.intervention_telemetry import (
+    mean_telemetry,
+    telemetry_has_nonfinite,
+    telemetry_warnings,
+)
 from self_ground.io import write_config, write_jsonl
 from self_ground.logit_scoring import score_behavioral_task_logits
 from self_ground.mechanism_report import build_mechanism_evidence_report
@@ -80,6 +84,37 @@ BEHAVIORAL_SUMMARY_COLUMNS = [
     "decoded_delta_norm_mean",
     "norm_drift_warning_rate",
 ]
+
+
+def _empty_skipped_accounting() -> dict[str, Any]:
+    return {
+        "n_skipped_rows": 0,
+        "reason_counts": {},
+        "examples": [],
+    }
+
+
+def _record_skipped(
+    accounting: dict[str, Any],
+    *,
+    reason: str,
+    task_id: str,
+    feature_set_label: str,
+    operation: str,
+    factor: float | None,
+) -> None:
+    accounting["n_skipped_rows"] += 1
+    accounting["reason_counts"][reason] = accounting["reason_counts"].get(reason, 0) + 1
+    if len(accounting["examples"]) < 20:
+        accounting["examples"].append(
+            {
+                "reason": reason,
+                "task_id": task_id,
+                "feature_set_label": feature_set_label,
+                "operation": operation,
+                "factor": factor,
+            }
+        )
 
 
 def parse_operations(value: str | list[str] | None) -> list[Literal["ablate", "amplify"]]:
@@ -236,10 +271,16 @@ def _factor_values(
 
 
 def _finite_row(row: dict[str, Any]) -> bool:
-    for value in row.values():
-        if isinstance(value, float) and not math.isfinite(value):
-            return False
-    return True
+    def finite_value(value: Any) -> bool:
+        if isinstance(value, float):
+            return math.isfinite(value)
+        if isinstance(value, dict):
+            return all(finite_value(child) for child in value.values())
+        if isinstance(value, list):
+            return all(finite_value(child) for child in value)
+        return True
+
+    return finite_value(row)
 
 
 def _collateral_ratio(control_abs: float, target_abs: float) -> float | None:
@@ -268,29 +309,37 @@ def _result_rows(
     reduction: Literal["mean", "max"],
     max_relative_norm_drift_warning: float,
     max_decoded_delta_norm_ratio_warning: float,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     validation_by_id = {result.task_id: result for result in validations if result.valid}
     rows: list[dict[str, Any]] = []
+    skipped = _empty_skipped_accounting()
     for feature_set in feature_sets["feature_sets"]:
         feature_ids = list(feature_set["feature_ids"])
         for operation, factor in _factor_values(operations, amplify_factors):
             effective_factor = 1.0 if factor is None else factor
             for task in tasks:
                 validation = validation_by_id[task.id]
-                baseline_logits = model_adapter.logits_for_texts(
-                    [task.prompt, task.control_prompt]
-                )
-                baseline_score = score_behavioral_task_logits(
-                    task=task,
-                    validation=validation,
-                    prompt_logits=baseline_logits[0:1],
-                    control_logits=baseline_logits[1:2],
-                    reduction=reduction,
-                )
-                logits, telemetry = run_sae_decoded_intervention_logits_with_telemetry(
+                (
+                    prompt_logits,
+                    prompt_telemetry,
+                ) = run_sae_decoded_intervention_logits_with_telemetry(
                     model_adapter,
                     sae_adapter,
-                    [task.prompt, task.control_prompt],
+                    [task.prompt],
+                    hook_point,
+                    feature_ids,
+                    operation=operation,  # type: ignore[arg-type]
+                    factor=effective_factor,
+                    token_position=token_position,
+                    patch_mode=patch_mode,
+                )
+                (
+                    control_logits,
+                    control_telemetry,
+                ) = run_sae_decoded_intervention_logits_with_telemetry(
+                    model_adapter,
+                    sae_adapter,
+                    [task.control_prompt],
                     hook_point,
                     feature_ids,
                     operation=operation,  # type: ignore[arg-type]
@@ -301,25 +350,11 @@ def _result_rows(
                 prompt_score = score_behavioral_task_logits(
                     task=task,
                     validation=validation,
-                    prompt_logits=logits[0:1],
-                    control_logits=logits[1:2],
+                    prompt_logits=prompt_logits,
+                    control_logits=control_logits,
                     reduction=reduction,
                 )
-                calibration_baseline = baseline_rows[task.id]
-                baseline = {
-                    "baseline_prompt_target_score": baseline_score.prompt_result.target_score,
-                    "baseline_prompt_foil_score": baseline_score.prompt_result.foil_score,
-                    "baseline_prompt_contrast": baseline_score.prompt_result.contrast,
-                    "baseline_control_target_score": baseline_score.control_result.target_score,
-                    "baseline_control_foil_score": baseline_score.control_result.foil_score,
-                    "baseline_control_contrast": baseline_score.control_result.contrast,
-                    "calibration_baseline_prompt_contrast": calibration_baseline[
-                        "baseline_prompt_contrast"
-                    ],
-                    "calibration_baseline_control_contrast": calibration_baseline[
-                        "baseline_control_contrast"
-                    ],
-                }
+                baseline = baseline_rows[task.id]
                 target_delta = (
                     prompt_score.prompt_result.contrast - baseline["baseline_prompt_contrast"]
                 )
@@ -328,12 +363,29 @@ def _result_rows(
                 )
                 target_abs = abs(target_delta)
                 control_abs = abs(control_delta)
-                telemetry_data = telemetry.model_dump()
-                warnings = telemetry_warnings(
-                    telemetry_data,
+                target_telemetry = prompt_telemetry.model_dump()
+                control_telemetry_data = control_telemetry.model_dump()
+                telemetry_data = mean_telemetry(target_telemetry, control_telemetry_data)
+                target_warnings = telemetry_warnings(
+                    target_telemetry,
                     max_relative_norm_drift_warning=max_relative_norm_drift_warning,
                     max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
                 )
+                control_warnings = telemetry_warnings(
+                    control_telemetry_data,
+                    max_relative_norm_drift_warning=max_relative_norm_drift_warning,
+                    max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
+                )
+                warnings = {
+                    "norm_drift_warning": (
+                        target_warnings["norm_drift_warning"]
+                        or control_warnings["norm_drift_warning"]
+                    ),
+                    "decoded_delta_norm_ratio_warning": (
+                        target_warnings["decoded_delta_norm_ratio_warning"]
+                        or control_warnings["decoded_delta_norm_ratio_warning"]
+                    ),
+                }
                 row = {
                     "model_name": model_name,
                     "hook_point": hook_point,
@@ -380,14 +432,39 @@ def _result_rows(
                     "control_absolute_delta": control_abs,
                     "specificity_gap": target_abs - control_abs,
                     "collateral_ratio": _collateral_ratio(control_abs, target_abs),
+                    "target_intervention_telemetry": target_telemetry,
+                    "control_intervention_telemetry": control_telemetry_data,
+                    "telemetry_provenance": "separate_target_and_control_interventions",
                     **telemetry_data,
                     **warnings,
                     "metadata": {},
                 }
-                if telemetry_has_nonfinite(telemetry_data) or not _finite_row(row):
+                if (
+                    telemetry_has_nonfinite(target_telemetry)
+                    or telemetry_has_nonfinite(control_telemetry_data)
+                    or telemetry_has_nonfinite(telemetry_data)
+                ):
+                    _record_skipped(
+                        skipped,
+                        reason="nonfinite_telemetry",
+                        task_id=task.id,
+                        feature_set_label=str(feature_set["label"]),
+                        operation=operation,
+                        factor=factor,
+                    )
+                    continue
+                if not _finite_row(row):
+                    _record_skipped(
+                        skipped,
+                        reason="nonfinite_row_value",
+                        task_id=task.id,
+                        feature_set_label=str(feature_set["label"]),
+                        operation=operation,
+                        factor=factor,
+                    )
                     continue
                 rows.append(row)
-    return rows
+    return rows, skipped
 
 
 def _summary_row(key: tuple, rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -461,6 +538,7 @@ def _write_readme(
     feature_sets: dict[str, Any] | None,
     claim_status: str | None,
     blocker: str | None,
+    skipped_rows: dict[str, Any] | None = None,
 ) -> None:
     compatibility_text = "not reached"
     if compatibility is not None:
@@ -483,6 +561,15 @@ def _write_readme(
             f"- {row['label']}: {', '.join(row['feature_ids'])}"
             for row in feature_sets["feature_sets"]
         )
+    skipped_text = ""
+    if skipped_rows is not None:
+        skipped_text = f"""
+## Skipped Rows
+
+- skipped intervention rows: `{skipped_rows.get("n_skipped_rows", 0)}`
+- skipped reason counts: `{skipped_rows.get("reason_counts", {})}`
+
+"""
     text = f"""# Phase 3 Token-Contrast Evaluation
 
 - model: `{config['model_name']}`
@@ -500,6 +587,7 @@ def _write_readme(
 - claim status: `{claim_status}`
 {diagnostic}
 {blocker_text}
+{skipped_text}
 ## Feature Sets
 
 {feature_text}
@@ -623,6 +711,7 @@ def run_real_behavioral_sae_intervention(
             feature_sets=None,
             claim_status="blocked" if write_report else None,
             blocker="task validation failed",
+            skipped_rows=None,
         )
         return BehavioralInterventionRun(
             out_dir=out_path,
@@ -678,6 +767,7 @@ def run_real_behavioral_sae_intervention(
             feature_sets=None,
             claim_status="blocked" if write_report else None,
             blocker=f"SAE compatibility failed: {compatibility.error}",
+            skipped_rows=None,
         )
         return BehavioralInterventionRun(
             out_dir=out_path,
@@ -713,7 +803,7 @@ def run_real_behavioral_sae_intervention(
         validations=[result for result in validation_results if result.valid],
         baseline_rows=list(baseline_rows.values()),
     )
-    rows = _result_rows(
+    rows, skipped_rows = _result_rows(
         model_adapter=model_adapter,
         sae_adapter=sae_adapter,
         tasks=valid_tasks,
@@ -733,6 +823,7 @@ def run_real_behavioral_sae_intervention(
         max_relative_norm_drift_warning=max_relative_norm_drift_warning,
         max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
     )
+    write_config(skipped_rows, out_path / "skipped_behavioral_rows.json")
     write_jsonl(rows, out_path / "behavioral_intervention_results.jsonl")
     _write_behavioral_summary(rows, out_path / "behavioral_summary.csv")
     claim_status = None
@@ -751,6 +842,7 @@ def run_real_behavioral_sae_intervention(
         feature_sets=feature_sets,
         claim_status=claim_status,
         blocker=None,
+        skipped_rows=skipped_rows,
     )
     return BehavioralInterventionRun(
         out_dir=out_path,

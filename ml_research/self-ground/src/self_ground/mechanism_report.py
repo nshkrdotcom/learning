@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import math
 from pathlib import Path
 from typing import Any, Literal
 
@@ -76,6 +77,8 @@ class MechanismEvidenceReport(BaseModel):
     ]
     recommended_claim: str
     not_supported_claims: list[str]
+    limitations: list[str]
+    row_accounting: dict[str, Any]
     artifacts: dict[str, str]
     qc: dict[str, bool]
     thresholds: EvidenceThresholds
@@ -89,6 +92,16 @@ NOT_SUPPORTED = [
     "This does not prove behavior outside the evaluated token-contrast tasks.",
 ]
 
+REQUIRED_EVIDENCE_ARTIFACTS = [
+    "config.json",
+    "compatibility.json",
+    "behavioral_task_validation.json",
+    "feature_sets.json",
+    "baseline_task_scores.jsonl",
+    "behavioral_intervention_results.jsonl",
+    "behavioral_summary.csv",
+]
+
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as handle:
@@ -99,20 +112,24 @@ def _float(row: dict[str, Any], key: str) -> float | None:
     value = row.get(key)
     if value in {None, ""}:
         return None
-    return float(value)
+    parsed = float(value)
+    if not math.isfinite(parsed):
+        raise ValueError(f"{key} is not finite: {value!r}")
+    return parsed
 
 
 def _artifact_paths(run_dir: Path) -> dict[str, str]:
     names = [
-        "config.json",
-        "compatibility.json",
-        "behavioral_task_validation.json",
-        "feature_sets.json",
-        "baseline_task_scores.jsonl",
-        "behavioral_intervention_results.jsonl",
-        "behavioral_summary.csv",
+        *REQUIRED_EVIDENCE_ARTIFACTS,
+        "skipped_behavioral_rows.json",
+        "mechanism_report.json",
+        "mechanism_report.md",
     ]
     return {name: str(run_dir / name) for name in names if (run_dir / name).exists()}
+
+
+def _required_artifact_status(run_dir: Path) -> dict[str, bool]:
+    return {name: (run_dir / name).exists() for name in REQUIRED_EVIDENCE_ARTIFACTS}
 
 
 def _baseline_pass_rate(run_dir: Path) -> float | None:
@@ -125,11 +142,13 @@ def _baseline_pass_rate(run_dir: Path) -> float | None:
     return sum(1 for row in rows if bool(row.get("intended_direction_pass"))) / len(rows)
 
 
-def _valid_families(run_dir: Path) -> list[str]:
+def _raw_behavioral_rows(run_dir: Path) -> list[dict[str, Any]]:
     path = run_dir / "behavioral_intervention_results.jsonl"
-    if not path.exists():
-        return []
-    return sorted({str(row["family"]) for row in read_jsonl(path) if row.get("family")})
+    return read_jsonl(path) if path.exists() else []
+
+
+def _valid_families(raw_rows: list[dict[str, Any]]) -> list[str]:
+    return sorted({str(row["family"]) for row in raw_rows if row.get("family")})
 
 
 def _feature_ids(feature_sets: dict[str, Any], label: str) -> list[str]:
@@ -139,15 +158,71 @@ def _feature_ids(feature_sets: dict[str, Any], label: str) -> list[str]:
     return []
 
 
-def _top_vs_control_ratio(rows: list[dict[str, str]]) -> float | None:
-    top = next((row for row in rows if row.get("feature_set_label") == "top"), None)
-    controls = [row for row in rows if row.get("feature_set_label") != "top"]
-    if top is None or not controls:
+def _load_row_accounting(run_dir: Path, raw_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    path = run_dir / "skipped_behavioral_rows.json"
+    if path.exists():
+        accounting = read_json(path)
+    else:
+        accounting = {"n_skipped_rows": 0, "reason_counts": {}, "examples": []}
+    accounting["n_written_rows"] = len(raw_rows)
+    accounting["all_rows_skipped"] = (
+        int(accounting.get("n_skipped_rows", 0)) > 0 and len(raw_rows) == 0
+    )
+    return accounting
+
+
+def _valid_all_family_summary_rows(
+    rows: list[dict[str, str]],
+) -> tuple[list[dict[str, str]], dict[str, Any]]:
+    required_numeric = [
+        "n_tasks",
+        "target_absolute_delta_mean",
+        "control_absolute_delta_mean",
+        "specificity_gap_mean",
+        "baseline_contrast_mean",
+        "relative_norm_drift_mean",
+        "norm_drift_warning_rate",
+    ]
+    valid: list[dict[str, str]] = []
+    reasons: dict[str, int] = {}
+    for row in rows:
+        try:
+            for key in required_numeric:
+                if row.get(key) in {None, ""}:
+                    raise ValueError(f"{key} is missing")
+                _float(row, key)
+            valid.append(row)
+        except Exception as exc:
+            reason = str(exc)
+            reasons[reason] = reasons.get(reason, 0) + 1
+    return valid, {
+        "n_summary_rows": len(rows),
+        "n_valid_summary_rows": len(valid),
+        "n_invalid_summary_rows": len(rows) - len(valid),
+        "invalid_summary_reason_counts": reasons,
+    }
+
+
+def _top_vs_control_ratio(rows: list[dict[str, str]], top_row: dict[str, str]) -> float | None:
+    controls = [
+        row
+        for row in rows
+        if row.get("feature_set_label") != "top"
+        and row.get("operation") == top_row.get("operation")
+        and row.get("factor") == top_row.get("factor")
+        and row.get("patch_mode") == top_row.get("patch_mode")
+    ]
+    if not controls:
         return None
-    control_mean = sum(float(row["target_absolute_delta_mean"]) for row in controls) / len(controls)
+    control_mean = sum(_float(row, "target_absolute_delta_mean") or 0.0 for row in controls) / len(
+        controls
+    )
     if control_mean <= 0:
         return None
-    return float(top["target_absolute_delta_mean"]) / control_mean
+    top_value = _float(top_row, "target_absolute_delta_mean")
+    if top_value is None:
+        return None
+    return top_value / control_mean
 
 
 def _build_feature_evidence(
@@ -158,14 +233,16 @@ def _build_feature_evidence(
     baseline_pass_rate: float | None,
     families: list[str],
 ) -> list[FeatureSetEvidence]:
-    ratio = _top_vs_control_ratio(rows)
     evidence: list[FeatureSetEvidence] = []
     for row in rows:
         label = str(row["feature_set_label"])
-        target_abs = float(row["target_absolute_delta_mean"])
+        target_abs = _float(row, "target_absolute_delta_mean") or 0.0
         control_abs = _float(row, "control_absolute_delta_mean")
         collateral = _float(row, "collateral_ratio_mean")
-        baseline_gap = abs(float(row.get("baseline_contrast_mean") or 0.0))
+        baseline_gap = abs(_float(row, "baseline_contrast_mean") or 0.0)
+        relative_norm_drift = _float(row, "relative_norm_drift_mean") or 0.0
+        norm_drift_warning_rate = _float(row, "norm_drift_warning_rate") or 0.0
+        ratio = _top_vs_control_ratio(rows, row) if label == "top" else None
         checks = [
             ThresholdCheck(
                 name="nonzero_target_delta",
@@ -197,6 +274,13 @@ def _build_feature_evidence(
                 threshold=thresholds.max_collateral_ratio_for_candidate,
                 details="Matched non-negation control movement must remain bounded.",
             ),
+            ThresholdCheck(
+                name="norm_drift_not_dominant",
+                passed=norm_drift_warning_rate < 0.5,
+                value=norm_drift_warning_rate,
+                threshold=0.5,
+                details="Norm drift warnings must not dominate evaluated rows.",
+            ),
         ]
         if label == "top":
             checks.append(
@@ -211,7 +295,14 @@ def _build_feature_evidence(
         limitations = [
             "Evidence is limited to deterministic next-token contrast tasks.",
             "Residual decoded SAE patching is configuration-specific.",
+            "Activation-matched feature-set controls are not implemented in Phase 3.",
         ]
+        if collateral is None:
+            limitations.append("Collateral ratio is null because target deltas are zero.")
+        if norm_drift_warning_rate > 0:
+            limitations.append("Some rows exceeded configured norm-drift warning thresholds.")
+        if relative_norm_drift > thresholds.max_relative_norm_drift_for_strong:
+            limitations.append("Relative norm drift exceeds the strong-evidence threshold.")
         evidence.append(
             FeatureSetEvidence(
                 feature_set_label=label,
@@ -223,10 +314,10 @@ def _build_feature_evidence(
                 collateral_ratio_mean=collateral,
                 n_null_collateral_ratio=int(row.get("n_null_collateral_ratio") or 0),
                 baseline_gap_absolute=baseline_gap,
-                top_vs_control_ratio=ratio if label == "top" else None,
+                top_vs_control_ratio=ratio,
                 intended_direction_pass_rate=baseline_pass_rate,
                 n_activation_pairs=None,
-                n_behavioral_tasks=int(row.get("n_tasks") or 0),
+                n_behavioral_tasks=int(_float(row, "n_tasks") or 0),
                 families=families,
                 threshold_checks=checks,
                 limitations=limitations,
@@ -242,7 +333,17 @@ def _claim_status(
     evidence: list[FeatureSetEvidence],
     config: dict[str, Any],
     thresholds: EvidenceThresholds,
+    required_artifacts: dict[str, bool],
+    row_accounting: dict[str, Any],
+    summary_quality: dict[str, Any],
+    summary_rows: list[dict[str, str]],
 ) -> str:
+    if not all(required_artifacts.values()):
+        return "blocked"
+    if summary_quality.get("n_summary_rows", 0) and not summary_rows:
+        return "blocked"
+    if bool(row_accounting.get("all_rows_skipped")):
+        return "blocked"
     if not compatibility or not validation:
         return "blocked"
     if not bool(compatibility.get("compatible")) and not bool(compatibility.get("diagnostic_only")):
@@ -264,17 +365,85 @@ def _claim_status(
         or top.target_absolute_delta_mean <= thresholds.min_abs_delta_mean
     ):
         return "insufficient_evidence"
-    operations = set(config.get("operations", []))
-    random_seed_count = len(config.get("random_seeds", []))
+    actual_operations = {
+        str(row.get("operation"))
+        for row in summary_rows
+        if row.get("feature_set_label") == "top"
+    }
+    random_control_count = len(
+        {
+            str(row.get("feature_set_label"))
+            for row in summary_rows
+            if str(row.get("feature_set_label", "")).startswith("random_seed_")
+        }
+    )
+    top_rows = [row for row in summary_rows if row.get("feature_set_label") == "top"]
+    max_top_norm_drift = max(
+        [_float(row, "relative_norm_drift_mean") or 0.0 for row in top_rows],
+        default=0.0,
+    )
+    max_top_warning_rate = max(
+        [_float(row, "norm_drift_warning_rate") or 0.0 for row in top_rows],
+        default=0.0,
+    )
+    if int(row_accounting.get("n_skipped_rows", 0)) > 0:
+        return "insufficient_evidence"
     if (
         top.n_behavioral_tasks >= thresholds.min_valid_tasks_for_strong
         and len(top.families) >= thresholds.min_task_family_count_for_strong
-        and random_seed_count >= thresholds.min_random_baseline_seeds_for_strong
-        and {"ablate", "amplify"} <= operations
+        and random_control_count >= thresholds.min_random_baseline_seeds_for_strong
+        and {"ablate", "amplify"} <= actual_operations
         and (top.collateral_ratio_mean or 999.0) <= thresholds.max_collateral_ratio_for_strong
+        and max_top_norm_drift <= thresholds.max_relative_norm_drift_for_strong
+        and max_top_warning_rate == 0.0
     ):
         return "strong_candidate_evidence"
     return "candidate_evidence"
+
+
+def _top_level_limitations(
+    *,
+    config: dict[str, Any],
+    compatibility: dict[str, Any] | None,
+    baseline_pass_rate: float | None,
+    evidence: list[FeatureSetEvidence],
+    row_accounting: dict[str, Any],
+    summary_quality: dict[str, Any],
+    summary_rows: list[dict[str, str]],
+    thresholds: EvidenceThresholds,
+) -> list[str]:
+    limitations = ["Activation-matched control feature sets are not implemented in Phase 3."]
+    if compatibility and (
+        compatibility.get("diagnostic_only") or config.get("allow_metadata_mismatch")
+    ):
+        limitations.append("Metadata mismatch override was used; run is diagnostic-only.")
+    if baseline_pass_rate is not None and baseline_pass_rate < (
+        thresholds.min_intended_direction_pass_rate_for_candidate
+    ):
+        limitations.append("Baseline intended-direction pass rate is below candidate threshold.")
+    if int(row_accounting.get("n_skipped_rows", 0)) > 0:
+        limitations.append("Some intervention rows were skipped due to non-finite values.")
+    if summary_quality.get("n_invalid_summary_rows", 0):
+        limitations.append("Some behavioral summary rows were malformed or non-finite.")
+    operations = {
+        str(row.get("operation"))
+        for row in summary_rows
+        if row.get("feature_set_label") == "top"
+    }
+    if "amplify" not in operations:
+        limitations.append("No amplification sweep is present in the actual summary rows.")
+    top = next((item for item in evidence if item.feature_set_label == "top"), None)
+    if top and top.n_null_collateral_ratio:
+        limitations.append("Some collateral ratios are null because target deltas are zero.")
+    high_drift = any(
+        (_float(row, "relative_norm_drift_mean") or 0.0)
+        > thresholds.max_relative_norm_drift_for_strong
+        for row in summary_rows
+        if row.get("feature_set_label") == "top"
+    )
+    if high_drift:
+        limitations.append("Top feature-set relative norm drift exceeds strong threshold.")
+    return limitations
 
 
 def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
@@ -291,9 +460,12 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 
 {report.recommended_claim}
 
-## Threshold Checks
+## Limitations
 
 """
+    for limitation in report.limitations:
+        text += f"- {limitation}\n"
+    text += "\n## Threshold Checks\n\n"
     for feature_set in report.feature_sets:
         text += f"### {feature_set.feature_set_label}\n\n"
         for check in feature_set.threshold_checks:
@@ -302,12 +474,16 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
                 f"threshold=`{check.threshold}`\n"
             )
         text += "\n"
-    text += """## Not Supported
-
-"""
+    text += "## Not Supported\n\n"
     for claim in report.not_supported_claims:
         text += f"- {claim}\n"
-    text += """
+    text += f"""
+## Row Accounting
+
+```json
+{report.row_accounting}
+```
+
 ## Rerun
 
 ```bash
@@ -356,7 +532,7 @@ def build_mechanism_evidence_report(
     feature_sets = (
         read_json(run_dir / "feature_sets.json") if (run_dir / "feature_sets.json").exists() else {}
     )
-    summary_rows = (
+    raw_summary_rows = (
         [
             row
             for row in _read_csv(run_dir / "behavioral_summary.csv")
@@ -365,8 +541,12 @@ def build_mechanism_evidence_report(
         if (run_dir / "behavioral_summary.csv").exists()
         else []
     )
+    summary_rows, summary_quality = _valid_all_family_summary_rows(raw_summary_rows)
+    raw_rows = _raw_behavioral_rows(run_dir)
+    row_accounting = _load_row_accounting(run_dir, raw_rows)
+    required_artifacts = _required_artifact_status(run_dir)
     baseline_pass_rate = _baseline_pass_rate(run_dir)
-    families = _valid_families(run_dir)
+    families = _valid_families(raw_rows)
     if not families and validation is not None:
         summary = validation.get("summary", validation)
         families = sorted(
@@ -386,6 +566,20 @@ def build_mechanism_evidence_report(
         validation=validation,
         evidence=evidence,
         config=config,
+        thresholds=threshold_config,
+        required_artifacts=required_artifacts,
+        row_accounting=row_accounting,
+        summary_quality=summary_quality,
+        summary_rows=summary_rows,
+    )
+    limitations = _top_level_limitations(
+        config=config,
+        compatibility=compatibility,
+        baseline_pass_rate=baseline_pass_rate,
+        evidence=evidence,
+        row_accounting=row_accounting,
+        summary_quality=summary_quality,
+        summary_rows=summary_rows,
         thresholds=threshold_config,
     )
     recommended_claim = (
@@ -410,11 +604,17 @@ def build_mechanism_evidence_report(
         claim_status=claim_status,  # type: ignore[arg-type]
         recommended_claim=recommended_claim,
         not_supported_claims=NOT_SUPPORTED,
+        limitations=limitations,
+        row_accounting={
+            **row_accounting,
+            **summary_quality,
+        },
         artifacts=_artifact_paths(run_dir),
         qc={
             "compatibility_artifact_present": compatibility is not None,
             "task_validation_artifact_present": validation is not None,
             "behavioral_rows_present": (run_dir / "behavioral_intervention_results.jsonl").exists(),
+            "required_artifacts_present": all(required_artifacts.values()),
         },
         thresholds=threshold_config,
     )

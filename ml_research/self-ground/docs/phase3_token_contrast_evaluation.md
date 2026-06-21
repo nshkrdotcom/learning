@@ -93,7 +93,14 @@ remain a limitation.
 
 ## Telemetry
 
-Each intervention row records aggregate perturbation telemetry:
+Each intervention row records separate target-prompt and matched-control
+telemetry in:
+
+- `target_intervention_telemetry`
+- `control_intervention_telemetry`
+
+The row also records `telemetry_provenance` and aggregate perturbation
+telemetry derived from the two separate interventions:
 
 - selected feature activation mean and absolute mean,
 - selected feature modified mean and delta absolute mean,
@@ -102,6 +109,12 @@ Each intervention row records aggregate perturbation telemetry:
 - relative norm drift.
 
 Large norm drift is reported as a limitation and blocks strong evidence.
+
+Rows with non-finite telemetry, logits, or derived scores are not silently
+dropped. They are counted in `skipped_behavioral_rows.json`, summarized in the
+run README, and included in `mechanism_report.json` row accounting. An
+all-skipped run is `blocked`; a partially skipped run cannot become
+`strong_candidate_evidence`.
 
 ## Artifact Layout
 
@@ -118,6 +131,7 @@ baseline_task_scores.jsonl
 baseline_task_summary.csv
 behavioral_intervention_results.jsonl
 behavioral_summary.csv
+skipped_behavioral_rows.json
 mechanism_report.json
 mechanism_report.md
 README.md
@@ -139,6 +153,19 @@ A tiny smoke run cannot produce `strong_candidate_evidence`. Diagnostic metadata
 mismatch runs cannot produce candidate evidence. Reports include unsupported
 claims explicitly, including no complete mechanism discovery, no broad model
 understanding, no genuine introspection, and no monosemanticity claim.
+
+Strong evidence also requires actual artifact rows, not config-only claims:
+
+- finite aggregate summary rows,
+- top-feature rows for both ablation and amplification,
+- at least three actual random control feature-set result labels,
+- norm drift below the configured strong-evidence threshold,
+- zero norm-drift warning rate,
+- no skipped rows,
+- sufficient task and family counts.
+
+Missing required artifacts produce `blocked`. Malformed or non-finite summary
+rows produce `blocked` or `insufficient_evidence` rather than candidate status.
 
 ## Commands
 
@@ -175,6 +202,13 @@ uv run python scripts/run_phase3_behavioral_evaluation.py \
   --patch-mode delta \
   --device cpu \
   --write-report
+```
+
+The script and Typer CLI also expose:
+
+```bash
+--max-relative-norm-drift-warning 0.5
+--max-decoded-delta-norm-ratio-warning 0.5
 ```
 
 Optional integration:

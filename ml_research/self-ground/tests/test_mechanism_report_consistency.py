@@ -79,6 +79,9 @@ def _write_minimal_report_inputs(run_dir) -> None:
         "collateral_ratio_mean",
         "n_null_collateral_ratio",
         "baseline_contrast_mean",
+        "relative_norm_drift_mean",
+        "decoded_delta_norm_mean",
+        "norm_drift_warning_rate",
     ]
     rows = [
         {
@@ -95,6 +98,9 @@ def _write_minimal_report_inputs(run_dir) -> None:
             "collateral_ratio_mean": 0.08,
             "n_null_collateral_ratio": 0,
             "baseline_contrast_mean": 1.0,
+            "relative_norm_drift_mean": 0.1,
+            "decoded_delta_norm_mean": 0.2,
+            "norm_drift_warning_rate": 0.0,
         },
         {
             "feature_set_label": "random_seed_7",
@@ -110,6 +116,9 @@ def _write_minimal_report_inputs(run_dir) -> None:
             "collateral_ratio_mean": 0.2,
             "n_null_collateral_ratio": 0,
             "baseline_contrast_mean": 1.0,
+            "relative_norm_drift_mean": 0.1,
+            "decoded_delta_norm_mean": 0.1,
+            "norm_drift_warning_rate": 0.0,
         },
     ]
     with (run_dir / "behavioral_summary.csv").open("w", newline="") as handle:
@@ -119,6 +128,10 @@ def _write_minimal_report_inputs(run_dir) -> None:
     write_jsonl(
         [{"family": "sentiment_negation", "target_absolute_delta": 0.25}],
         run_dir / "behavioral_intervention_results.jsonl",
+    )
+    write_config(
+        {"n_skipped_rows": 0, "reason_counts": {}, "examples": []},
+        run_dir / "skipped_behavioral_rows.json",
     )
 
 

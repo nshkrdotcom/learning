@@ -42,6 +42,8 @@ def main() -> int:
     parser.add_argument("--allow-metadata-mismatch", action="store_true")
     parser.add_argument("--write-report", dest="write_report", action="store_true", default=True)
     parser.add_argument("--no-write-report", dest="write_report", action="store_false")
+    parser.add_argument("--max-relative-norm-drift-warning", type=float, default=0.5)
+    parser.add_argument("--max-decoded-delta-norm-ratio-warning", type=float, default=0.5)
     args = parser.parse_args()
 
     try:
@@ -67,6 +69,10 @@ def main() -> int:
             min_valid_tasks_per_family=args.min_valid_tasks_per_family,
             allow_metadata_mismatch=args.allow_metadata_mismatch,
             write_report=args.write_report,
+            max_relative_norm_drift_warning=args.max_relative_norm_drift_warning,
+            max_decoded_delta_norm_ratio_warning=(
+                args.max_decoded_delta_norm_ratio_warning
+            ),
         )
     except Exception as exc:
         print(f"Phase 3 token-contrast evaluation failed: {exc}", file=sys.stderr)
@@ -84,7 +90,7 @@ def main() -> int:
         "report_written": result.report_written,
     }
     print(json.dumps(payload, indent=2, sort_keys=True))
-    return 0 if result.compatible and result.task_validation_passed else 1
+    return 0 if result.compatible and result.task_validation_passed and result.n_rows > 0 else 1
 
 
 if __name__ == "__main__":

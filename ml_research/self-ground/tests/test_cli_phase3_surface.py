@@ -23,4 +23,6 @@ def test_phase3_command_surface() -> None:
     assert "operations" in output
     assert "amplify-facto" in output
     assert "allow-metadat" in output
+    assert "max-relative-" in output
+    assert "max-decoded-d" in output
     assert "fake" not in output

@@ -4,6 +4,7 @@ import torch
 
 from self_ground.activations import FeatureActivations
 from self_ground.intervention_telemetry import (
+    mean_telemetry,
     telemetry_has_nonfinite,
     telemetry_warnings,
 )
@@ -55,3 +56,23 @@ def test_norm_drift_warning_triggers() -> None:
 
     assert warnings["norm_drift_warning"] is True
     assert warnings["decoded_delta_norm_ratio_warning"] is True
+
+
+def test_mean_telemetry_averages_common_numeric_fields() -> None:
+    averaged = mean_telemetry(
+        {
+            "relative_norm_drift_mean": 0.2,
+            "decoded_delta_norm_ratio": 0.4,
+            "target_only": 99.0,
+        },
+        {
+            "relative_norm_drift_mean": 0.6,
+            "decoded_delta_norm_ratio": 1.0,
+            "control_only": 12.0,
+        },
+    )
+
+    assert averaged == {
+        "relative_norm_drift_mean": 0.4,
+        "decoded_delta_norm_ratio": 0.7,
+    }

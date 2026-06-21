@@ -44,6 +44,8 @@ control prompts, records intervention telemetry, and writes a thresholded
 mechanism evidence report.
 
 This is token-contrast evaluation, not broad behavioral understanding.
+Phase 3 records target-prompt and matched-control intervention telemetry
+separately, then writes aggregate row-level telemetry for summary thresholds.
 
 ## Semantic SAE Compatibility
 
@@ -186,22 +188,6 @@ uv run self-ground run-phase3-behavioral-evaluation \
   --write-report
 ```
 
-Equivalent CLI:
-
-```bash
-uv run self-ground run-sae-intervention \
-  --ranking-dir runs/real_sae_ranking_pythia70m \
-  --out runs/real_sae_intervention_pythia70m \
-  --model EleutherAI/pythia-70m-deduped \
-  --hook-point blocks.2.hook_resid_post \
-  --sae-release pythia-70m-deduped-res-sm \
-  --sae-id blocks.2.hook_resid_post \
-  --top-k-features 5 \
-  --operation ablate \
-  --patch-mode delta \
-  --device cpu
-```
-
 ## Optional Integration Tests
 
 Real SAE integration tests require:
@@ -265,6 +251,7 @@ Phase 3 token-contrast evaluation:
 - `baseline_task_summary.csv`
 - `behavioral_intervention_results.jsonl`
 - `behavioral_summary.csv`
+- `skipped_behavioral_rows.json`
 - `mechanism_report.json`
 - `mechanism_report.md`
 - `README.md`
@@ -283,3 +270,6 @@ shape, or reconstruction checks fail.
 Phase 3 reports are thresholded and cautious. A diagnostic metadata mismatch
 run, a tiny smoke run, failed task validation, zero/non-finite deltas, or weak
 top-vs-control comparison cannot support strong candidate evidence.
+Rows with non-finite telemetry or logits are explicitly counted in
+`skipped_behavioral_rows.json`; all-skipped runs are blocked and partially
+skipped runs cannot support strong candidate evidence.

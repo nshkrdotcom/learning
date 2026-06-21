@@ -279,6 +279,8 @@ def run_phase3_behavioral_evaluation_command(
         ),
     ] = False,
     write_report: Annotated[bool, typer.Option("--write-report/--no-write-report")] = True,
+    max_relative_norm_drift_warning: Annotated[float, typer.Option()] = 0.5,
+    max_decoded_delta_norm_ratio_warning: Annotated[float, typer.Option()] = 0.5,
 ) -> None:
     result = run_real_behavioral_sae_intervention(
         out_dir=out,
@@ -302,9 +304,11 @@ def run_phase3_behavioral_evaluation_command(
         min_valid_tasks_per_family=min_valid_tasks_per_family,
         allow_metadata_mismatch=allow_metadata_mismatch,
         write_report=write_report,
+        max_relative_norm_drift_warning=max_relative_norm_drift_warning,
+        max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
     )
     console.print_json(data=result.__dict__ | {"out_dir": str(result.out_dir)})
-    if not result.compatible or not result.task_validation_passed:
+    if not result.compatible or not result.task_validation_passed or result.n_rows == 0:
         raise typer.Exit(code=1)
 
 
