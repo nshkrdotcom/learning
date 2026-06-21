@@ -29,6 +29,10 @@ are verified after this file is committed.
 - [x] SAE compatibility checker implemented
 - [x] SAE compatibility checker writes structured JSON
 - [x] missing SAE release/id produces explicit blocker artifact
+- [x] concrete SAE release/id identified from SAELens metadata
+- [x] concrete SAE compatibility run passes
+- [x] concrete SAE ranking run passes
+- [x] concrete SAE decoded intervention run passes
 - [x] SAE encoded shape validation checks batch and sequence dimensions
 - [x] decoded SAE patching primitives implemented
 - [x] decoded SAE intervention experiment implemented
@@ -55,3 +59,12 @@ are verified after this file is committed.
 - [x] overclaiming scan reviewed
 - [x] artifact contents inspected
 - [x] code reviewed systematically against implementation prompt
+
+## Git Finalization
+
+- [x] `git status` reviewed before implementation closeout
+- [x] commit `0cd9742` created for the Phase 2 implementation
+- [x] commit `0cd9742` pushed to `origin/main`
+- [x] additional real SAE evidence prepared for commit
+- [x] evidence commit created
+- [x] evidence commit pushed

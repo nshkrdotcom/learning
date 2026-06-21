@@ -54,12 +54,21 @@ uv run python scripts/run_real_residual_intervention.py \
 
 ## Phase 2 SAE Compatibility
 
+The repo has one verified small SAE path:
+
+- model: `EleutherAI/pythia-70m-deduped`
+- hook point: `blocks.2.hook_resid_post`
+- SAE release: `pythia-70m-deduped-res-sm`
+- SAE id: `blocks.2.hook_resid_post`
+
+The Phase 2 evidence run is documented in `docs/phase2_run_evidence.md`.
+
 ```bash
 uv run python scripts/check_sae_compatibility.py \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
-  --sae-release <release> \
-  --sae-id <id> \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
   --device cpu \
   --out runs/check_sae_compatibility.json
 ```
@@ -68,10 +77,10 @@ Equivalent CLI:
 
 ```bash
 uv run self-ground check-sae-compatibility \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
-  --sae-release <release> \
-  --sae-id <id> \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
   --device cpu \
   --out runs/check_sae_compatibility.json
 ```
@@ -80,10 +89,12 @@ uv run self-ground check-sae-compatibility \
 
 ```bash
 uv run python scripts/run_real_activation_ranking.py \
+  --model EleutherAI/pythia-70m-deduped \
+  --hook-point blocks.2.hook_resid_post \
   --device cpu \
   --feature-source sae \
-  --sae-release <release> \
-  --sae-id <id> \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
   --out runs/real_sae_ranking_pythia70m
 ```
 
@@ -93,10 +104,10 @@ uv run python scripts/run_real_activation_ranking.py \
 uv run python scripts/run_real_sae_intervention.py \
   --ranking-dir runs/real_sae_ranking_pythia70m \
   --out runs/real_sae_intervention_pythia70m \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
-  --sae-release <release> \
-  --sae-id <id> \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
   --top-k-features 5 \
   --operation ablate \
   --patch-mode delta \
@@ -109,10 +120,10 @@ Equivalent CLI:
 uv run self-ground run-sae-intervention \
   --ranking-dir runs/real_sae_ranking_pythia70m \
   --out runs/real_sae_intervention_pythia70m \
-  --model EleutherAI/pythia-70m \
+  --model EleutherAI/pythia-70m-deduped \
   --hook-point blocks.2.hook_resid_post \
-  --sae-release <release> \
-  --sae-id <id> \
+  --sae-release pythia-70m-deduped-res-sm \
+  --sae-id blocks.2.hook_resid_post \
   --top-k-features 5 \
   --operation ablate \
   --patch-mode delta \
@@ -124,8 +135,8 @@ uv run self-ground run-sae-intervention \
 Real SAE integration tests require:
 
 ```bash
-export SELF_GROUND_SAE_RELEASE=<release>
-export SELF_GROUND_SAE_ID=<id>
+export SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm
+export SELF_GROUND_SAE_ID=blocks.2.hook_resid_post
 uv run pytest --run-integration
 ```
 

@@ -4,6 +4,18 @@ Phase 2 includes compatibility verification and decoded SAE intervention infrast
 
 If no SAE release/id is available, this document is the blocker workflow. It is not a reason to fabricate decoded intervention outputs.
 
+## Known Compatible Evidence Run
+
+The repo has a verified small SAE path:
+
+- model: `EleutherAI/pythia-70m-deduped`
+- hook point: `blocks.2.hook_resid_post`
+- SAE release: `pythia-70m-deduped-res-sm`
+- SAE id: `blocks.2.hook_resid_post`
+
+The successful compatibility, ranking, and decoded intervention evidence is
+summarized in `docs/phase2_run_evidence.md`.
+
 ## What Is Needed
 
 Decoded SAE intervention requires all of the following to be known and tested:
