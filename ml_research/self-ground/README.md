@@ -55,6 +55,8 @@ The current scoring is RAVEL-shaped: target-prompt movement is the cause score,
 matched non-negation control movement is the isolation score, and the historical
 `specificity_gap` is treated as cause minus isolation. The custom evaluator is
 kept only as a negation adapter until SAEBench/RAVEL can be repointed cleanly.
+Activation-density-matched control feature sets are now available and are
+required for `strong_candidate_evidence`.
 
 This is token-contrast evaluation, not broad behavioral understanding.
 Phase 3 records target-prompt and matched-control intervention telemetry
@@ -190,8 +192,10 @@ uv run python scripts/run_phase3_behavioral_evaluation.py \
   --sae-id blocks.2.hook_resid_post \
   --per-family 2 \
   --top-k-features 2 \
-  --baseline-mode top-vs-random-multiseed \
+  --baseline-mode top-vs-density-matched-multiseed \
   --random-seeds 7,11,13 \
+  --density-tolerance 0.10 \
+  --abs-mean-tolerance 0.10 \
   --operations ablate \
   --patch-mode delta \
   --device cpu \
@@ -210,9 +214,18 @@ uv run python scripts/run_negation_ravel_eval.py \
   --sae-id blocks.2.hook_resid_post \
   --per-family 2 \
   --top-k-features 2 \
+  --baseline-mode top-vs-density-matched-multiseed \
+  --random-seeds 7,11,13 \
   --operations ablate \
   --patch-mode delta \
   --device cpu
+```
+
+SAEBench/RAVEL feasibility probe:
+
+```bash
+uv run python scripts/probe_saebench_ravel_bridge.py \
+  --out runs/probe_saebench_ravel_bridge
 ```
 
 Equivalent CLI:
@@ -325,6 +338,10 @@ shape, or reconstruction checks fail.
 Phase 3 reports are thresholded and cautious. A diagnostic metadata mismatch
 run, a tiny smoke run, failed task validation, zero/non-finite deltas, or weak
 top-vs-control comparison cannot support strong candidate evidence.
+Strong candidate evidence also requires at least three activation-density-matched
+control feature sets. Without them, candidate evidence remains possible
+but carries an explicit limitation that top-vs-random comparisons may be
+confounded by baseline feature activity.
 Rows with non-finite telemetry or logits are explicitly counted in
 `skipped_behavioral_rows.json`; all-skipped runs are blocked and partially
 skipped runs cannot support strong candidate evidence.

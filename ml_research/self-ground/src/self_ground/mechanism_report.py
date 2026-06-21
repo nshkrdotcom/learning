@@ -24,6 +24,7 @@ class EvidenceThresholds(BaseModel):
     min_valid_tasks_for_candidate: int = 6
     min_valid_tasks_for_strong: int = 30
     min_random_baseline_seeds_for_strong: int = 3
+    min_density_matched_baseline_seeds_for_strong: int = 3
     min_top_vs_control_ratio: float = 1.05
     max_collateral_ratio_for_candidate: float = 1.0
     max_collateral_ratio_for_strong: float = 0.5
@@ -251,6 +252,7 @@ def _build_feature_evidence(
     thresholds: EvidenceThresholds,
     baseline_pass_rate: float | None,
     families: list[str],
+    has_density_matched_controls: bool,
 ) -> list[FeatureSetEvidence]:
     evidence: list[FeatureSetEvidence] = []
     for row in rows:
@@ -314,8 +316,12 @@ def _build_feature_evidence(
         limitations = [
             "Evidence is limited to deterministic next-token contrast tasks.",
             "Residual decoded SAE patching is configuration-specific.",
-            "Activation-matched feature-set controls are not implemented in Phase 3.",
         ]
+        if not has_density_matched_controls:
+            limitations.append(
+                "Activation-density-matched control feature sets are absent. "
+                "Top-vs-random comparisons may be confounded by baseline feature activity."
+            )
         if collateral is None:
             limitations.append("Collateral ratio is null because target deltas are zero.")
         if norm_drift_warning_rate > 0:
@@ -402,6 +408,13 @@ def _claim_status(
             if str(row.get("feature_set_label", "")).startswith("random_seed_")
         }
     )
+    density_matched_control_count = len(
+        {
+            str(row.get("feature_set_label"))
+            for row in summary_rows
+            if str(row.get("feature_set_label", "")).startswith("density_matched_seed_")
+        }
+    )
     top_rows = [row for row in summary_rows if row.get("feature_set_label") == "top"]
     max_top_norm_drift = max(
         [_float(row, "relative_norm_drift_mean") or 0.0 for row in top_rows],
@@ -417,6 +430,8 @@ def _claim_status(
         top.n_behavioral_tasks >= thresholds.min_valid_tasks_for_strong
         and len(top.families) >= thresholds.min_task_family_count_for_strong
         and random_control_count >= thresholds.min_random_baseline_seeds_for_strong
+        and density_matched_control_count
+        >= thresholds.min_density_matched_baseline_seeds_for_strong
         and {"ablate", "amplify"} <= actual_operations
         and (top.collateral_ratio_mean or 999.0) <= thresholds.max_collateral_ratio_for_strong
         and max_top_norm_drift <= thresholds.max_relative_norm_drift_for_strong
@@ -482,8 +497,36 @@ def _top_level_limitations(
     summary_quality: dict[str, Any],
     summary_rows: list[dict[str, str]],
     thresholds: EvidenceThresholds,
+    feature_sets: dict[str, Any],
 ) -> list[str]:
-    limitations = ["Activation-matched control feature sets are not implemented in Phase 3."]
+    density_matched_control_count = len(
+        {
+            str(row.get("feature_set_label"))
+            for row in summary_rows
+            if str(row.get("feature_set_label", "")).startswith("density_matched_seed_")
+        }
+    )
+    limitations = []
+    if density_matched_control_count == 0:
+        limitations.append(
+            "Activation-density-matched control feature sets are absent. "
+            "Top-vs-random comparisons may be confounded by baseline feature activity."
+        )
+    density_metadata = [
+        row.get("matched_control_metadata", {})
+        for row in feature_sets.get("feature_sets", [])
+        if row.get("selection_method") == "activation_density_matched"
+    ]
+    if any(
+        metadata.get("stats_source") == "per_condition_mean_approximation"
+        for metadata in density_metadata
+    ):
+        limitations.append(
+            "Activation-density matching used per-condition mean approximations, "
+            "not true per-example activation density."
+        )
+    if any(bool(metadata.get("relaxed")) for metadata in density_metadata):
+        limitations.append("Some activation-density matched controls required relaxed tolerances.")
     if compatibility and (
         compatibility.get("diagnostic_only") or config.get("allow_metadata_mismatch")
     ):
@@ -537,6 +580,7 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     validation = artifact_json("behavioral_task_validation.json") or {}
     validation_summary = validation.get("summary", validation)
     feature_sets = artifact_json("feature_sets.json") or {}
+    feature_set_rows = feature_sets.get("feature_sets", [])
     baseline_rows = artifact_rows("baseline_task_summary.csv")
     behavior_rows = artifact_rows("behavioral_summary.csv")
     skipped = artifact_json("skipped_behavioral_rows.json") or {}
@@ -557,6 +601,21 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
                 "collateral_ratio_mean": row.get("collateral_ratio_mean"),
             }
             for row in all_behavior_rows
+        ][:10]
+        if all_behavior_rows
+        else "not available"
+    )
+    density_matched_feature_sets = [
+        row
+        for row in feature_set_rows
+        if row.get("selection_method") == "activation_density_matched"
+        or str(row.get("label", "")).startswith("density_matched_seed_")
+    ]
+    density_matched_evidence = (
+        [
+            row
+            for row in all_behavior_rows
+            if str(row.get("feature_set_label", "")).startswith("density_matched_seed_")
         ][:10]
         if all_behavior_rows
         else "not available"
@@ -641,7 +700,15 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 
 ## Feature Sets
 
-{json_block(feature_sets.get("feature_sets", "not available"))}
+{json_block(feature_set_rows or "not available")}
+
+## Activation-Density-Matched Controls
+
+{json_block(density_matched_feature_sets or "not available")}
+
+## Density-Matched Control Evidence
+
+{json_block(density_matched_evidence or "not available")}
 
 ## Target-Prompt Intervention Evidence
 
@@ -761,6 +828,11 @@ def build_mechanism_evidence_report(
     baseline_accounting = _load_baseline_accounting(run_dir)
     required_artifacts = _required_artifact_status(run_dir)
     baseline_pass_rate = _baseline_pass_rate(run_dir)
+    has_density_matched_controls = any(
+        str(row.get("label", "")).startswith("density_matched_seed_")
+        or row.get("selection_method") == "activation_density_matched"
+        for row in feature_sets.get("feature_sets", [])
+    )
     families = _valid_families(raw_rows)
     if not families and validation is not None:
         summary = validation.get("summary", validation)
@@ -775,6 +847,7 @@ def build_mechanism_evidence_report(
         thresholds=threshold_config,
         baseline_pass_rate=baseline_pass_rate,
         families=families,
+        has_density_matched_controls=has_density_matched_controls,
     )
     claim_status = _claim_status(
         compatibility=compatibility,
@@ -810,6 +883,7 @@ def build_mechanism_evidence_report(
         summary_quality=summary_quality,
         summary_rows=summary_rows,
         thresholds=threshold_config,
+        feature_sets=feature_sets,
     )
     recommended_claim = (
         "The selected SAE feature set has candidate evidence for a negation-scope "

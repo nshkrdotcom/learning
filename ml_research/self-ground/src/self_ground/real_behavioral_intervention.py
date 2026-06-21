@@ -779,6 +779,10 @@ def run_real_behavioral_sae_intervention(
         "top-vs-random-multiseed",
         "top-vs-bottom-active",
         "top-vs-random-and-bottom-active",
+        "top-vs-density-matched",
+        "top-vs-density-matched-multiseed",
+        "top-vs-random-and-density-matched",
+        "top-vs-random-density-and-bottom-active",
     ] = "top-vs-random-multiseed",
     random_seeds: list[int] | None = None,
     operations: list[Literal["ablate", "amplify"]] | None = None,
@@ -792,6 +796,9 @@ def run_real_behavioral_sae_intervention(
     write_report: bool = True,
     max_relative_norm_drift_warning: float = 0.5,
     max_decoded_delta_norm_ratio_warning: float = 0.5,
+    density_tolerance: float = 0.10,
+    abs_mean_tolerance: float = 0.10,
+    allow_relaxed_density_matching: bool = True,
     model_adapter=None,
     sae_adapter=None,
 ) -> BehavioralInterventionRun:
@@ -831,6 +838,9 @@ def run_real_behavioral_sae_intervention(
         "allow_metadata_mismatch": allow_metadata_mismatch,
         "max_relative_norm_drift_warning": max_relative_norm_drift_warning,
         "max_decoded_delta_norm_ratio_warning": max_decoded_delta_norm_ratio_warning,
+        "density_tolerance": density_tolerance,
+        "abs_mean_tolerance": abs_mean_tolerance,
+        "allow_relaxed_density_matching": allow_relaxed_density_matching,
         "engine_backend": TRANSFORMER_LENS_BACKEND,
         "sae_backend": SAE_LENS_BACKEND,
         "evaluation_adapter": NEGATION_RAVEL_ADAPTER,
@@ -975,6 +985,9 @@ def run_real_behavioral_sae_intervention(
         top_k=top_k_features,
         baseline_mode=baseline_mode,
         random_seeds=seeds,
+        density_tolerance=density_tolerance,
+        abs_mean_tolerance=abs_mean_tolerance,
+        allow_relaxed_density_matching=allow_relaxed_density_matching,
     )
     write_config(feature_sets, out_path / "feature_sets.json")
     try:

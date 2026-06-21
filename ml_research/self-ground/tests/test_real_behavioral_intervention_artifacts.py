@@ -138,7 +138,18 @@ class TinyBehavioralSAE:
 def _write_sae_ranking(path) -> None:
     path.mkdir(parents=True)
     with (path / "feature_rankings.csv").open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["feature_id", "score", "abs_score"])
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "feature_id",
+                "score",
+                "abs_score",
+                "mean_pos",
+                "mean_neg",
+                "mean_para",
+                "mean_decoy",
+            ],
+        )
         writer.writeheader()
         for idx, score in enumerate([10.0, 6.0, 1.0, 0.5, 0.2, 0.1, 0.05, 0.04]):
             writer.writerow(
@@ -146,6 +157,10 @@ def _write_sae_ranking(path) -> None:
                     "feature_id": f"sae_{idx}",
                     "score": score,
                     "abs_score": abs(score),
+                    "mean_pos": 1.0,
+                    "mean_neg": 1.0,
+                    "mean_para": 1.0,
+                    "mean_decoy": 1.0,
                 }
             )
 
@@ -224,6 +239,40 @@ def test_phase3_behavioral_intervention_artifacts(tmp_path) -> None:
     report = json.loads((out_dir / "mechanism_report.json").read_text())
     assert report["claim_status"] != "strong_candidate_evidence"
     assert report["row_accounting"]["n_skipped_rows"] == 0
+
+
+def test_phase3_density_matched_feature_set_metadata(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "phase3_density"
+    _write_sae_ranking(ranking_dir)
+
+    run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=2,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        baseline_mode="top-vs-density-matched-multiseed",
+        random_seeds=[7, 11],
+        operations=["ablate"],
+        patch_mode="delta",
+        model_adapter=TinyBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    feature_sets = json.loads((out_dir / "feature_sets.json").read_text())["feature_sets"]
+    density_rows = [
+        row for row in feature_sets if row["selection_method"] == "activation_density_matched"
+    ]
+    assert len(density_rows) == 2
+    top_ids = set(feature_sets[0]["feature_ids"])
+    assert all(not (top_ids & set(row["feature_ids"])) for row in density_rows)
+    assert density_rows[0]["matched_control_metadata"]["stats_source"] == (
+        "per_condition_mean_approximation"
+    )
 
 
 def test_phase3_blocks_on_semantic_mismatch_without_rows(tmp_path) -> None:

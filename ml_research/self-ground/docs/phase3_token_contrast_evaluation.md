@@ -136,11 +136,28 @@ Feature sets are selected only from the provided SAE ranking artifact:
 
 - `top`
 - seeded random controls excluding the top ranking fraction,
+- activation-density-matched controls,
 - optional bottom-active controls.
 
 Random controls are deterministic by seed and never come from another SAE or
-ranking file. Activation-matched controls are not implemented in Phase 3 and
-remain a limitation.
+ranking file. Activation-density-matched controls are also deterministic by
+seed. They match the top feature set on activation absolute mean and nonzero
+fraction using the same ranking/task activation distribution.
+
+Current ranking artifacts contain per-condition means rather than true
+per-example activation densities. When true per-example density fields are not
+available, SELF-GROUND records `stats_source=per_condition_mean_approximation`
+in `feature_sets.json`. This prevents treating approximate density matching as
+exact density matching.
+
+Strong candidate evidence requires at least three actual
+`density_matched_seed_*` control result rows. Candidate evidence can still be
+reported without these controls, but the report includes this limitation:
+
+```text
+Activation-density-matched control feature sets are absent. Top-vs-random
+comparisons may be confounded by baseline feature activity.
+```
 
 Baseline scoring is fail-closed. If any baseline target score, foil score,
 prompt contrast, control target score, control foil score, or control contrast
@@ -268,8 +285,10 @@ uv run python scripts/run_phase3_behavioral_evaluation.py \
   --sae-id blocks.2.hook_resid_post \
   --per-family 2 \
   --top-k-features 2 \
-  --baseline-mode top-vs-random-multiseed \
+  --baseline-mode top-vs-density-matched-multiseed \
   --random-seeds 7,11,13 \
+  --density-tolerance 0.10 \
+  --abs-mean-tolerance 0.10 \
   --operations ablate \
   --patch-mode delta \
   --device cpu \
@@ -281,7 +300,25 @@ The script and Typer CLI also expose:
 ```bash
 --max-relative-norm-drift-warning 0.5
 --max-decoded-delta-norm-ratio-warning 0.5
+--density-tolerance 0.10
+--abs-mean-tolerance 0.10
+--allow-relaxed-density-matching / --no-allow-relaxed-density-matching
 ```
+
+## SAEBench/RAVEL Probe
+
+Before expanding the custom evaluator, run the bounded upstream feasibility
+probe:
+
+```bash
+uv run python scripts/probe_saebench_ravel_bridge.py \
+  --out runs/probe_saebench_ravel_bridge
+```
+
+The probe does not add SAEBench to core dependencies. It records whether
+upstream packages are missing, importable but API-incompatible, or feasible for
+a thin bridge that accepts custom negation tasks, a custom SAE, precomputed
+activations, and cause/isolation scoring.
 
 Optional integration:
 
@@ -297,5 +334,6 @@ uv run pytest --run-integration
 - Next-token contrasts are narrow tests, not broad behavioral understanding.
 - Task tokenization can exclude tasks for a given tokenizer.
 - Baseline task calibration is recorded but does not prove model understanding.
-- Feature sets are not activation-matched in Phase 3.
+- Density matching currently uses per-condition mean approximations unless
+  future ranking artifacts include true per-example activation density fields.
 - Candidate reports are thresholded evidence summaries, not mechanism discovery.

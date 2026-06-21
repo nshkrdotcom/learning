@@ -180,3 +180,41 @@ Boundary artifact inspection:
 - [x] `runs/test_real_sae_ranking/activation_metadata.json` shows `engine_backend=transformer_lens`
 - [x] `runs/test_negation_ravel_eval/config.json` shows `evaluation_adapter=negation_ravel_adapter`
 - [x] `runs/test_negation_ravel_eval/mechanism_report.json` shows `engine_backend=transformer_lens`
+
+## Density-Matched Controls And SAEBench Probe
+
+- [x] activation-density-matched control sampler implemented
+- [x] `feature_sets.json` records `matched_control_metadata`
+- [x] density-matched labels are emitted as `density_matched_seed_*`
+- [x] density-matched controls exclude top feature IDs
+- [x] stats source is recorded as `per_condition_mean_approximation` when true per-example density is unavailable
+- [x] relaxed tolerance metadata is recorded
+- [x] strong candidate evidence requires at least three actual density-matched control rows
+- [x] candidate reports without density-matched controls carry an explicit limitation
+- [x] SAEBench/RAVEL probe writes `config.json`, `probe_result.json`, and `README.md`
+- [x] probe status in this environment is `not_installed`
+
+Commands run for this pass:
+
+```bash
+uv sync
+uv run ruff check .
+uv run pytest
+uv run pytest --run-integration
+SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm SELF_GROUND_SAE_ID=blocks.2.hook_resid_post uv run pytest --run-integration
+uv run python scripts/run_negation_ravel_eval.py --ranking-dir runs/test_real_sae_ranking --out runs/test_negation_ravel_eval_density_matched --model EleutherAI/pythia-70m-deduped --hook-point blocks.2.hook_resid_post --sae-release pythia-70m-deduped-res-sm --sae-id blocks.2.hook_resid_post --per-family 2 --top-k-features 2 --baseline-mode top-vs-density-matched-multiseed --random-seeds 7,11,13 --operations ablate --patch-mode delta --device cpu
+uv run python scripts/probe_saebench_ravel_bridge.py --out runs/probe_saebench_ravel_bridge
+```
+
+Observed results:
+
+- [x] `uv run pytest` passed: `161 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env: `168 passed, 5 skipped`
+- [x] SAE-configured integration passed: `173 passed`
+- [x] density-matched run wrote `runs/test_negation_ravel_eval_density_matched`
+- [x] density-matched run wrote three `density_matched_seed_*` feature sets
+- [x] density-matched feature sets had no overlap with top feature IDs
+- [x] density-matched metadata records `stats_source=per_condition_mean_approximation`
+- [x] density-matched metadata records relaxed tolerances for the tiny ranking artifact
+- [x] density-matched mechanism report status is `insufficient_evidence`
+- [x] probe artifact status is `not_installed` with `ModuleNotFoundError` blockers for attempted SAEBench/RAVEL packages

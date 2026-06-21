@@ -17,6 +17,7 @@ def _write_report_inputs(
     random_delta: float = 0.05,
     families: list[str] | None = None,
     random_labels: list[str] | None = None,
+    density_labels: list[str] | None = None,
     operations: list[str] | None = None,
     relative_norm_drift: float = 0.1,
     norm_drift_warning_rate: float = 0.0,
@@ -27,6 +28,7 @@ def _write_report_inputs(
 ) -> None:
     families = families or ["sentiment_negation", "property_negation"]
     random_labels = random_labels or ["random_seed_7"]
+    density_labels = density_labels or []
     operations = operations or ["ablate"]
     write_config(
         {
@@ -111,6 +113,40 @@ def _write_report_inputs(
                         "seed": int(label.rsplit("_", 1)[-1]),
                     }
                     for idx, label in enumerate(random_labels)
+                ],
+                *[
+                    {
+                        "label": label,
+                        "selection_method": "activation_density_matched",
+                        "feature_ids": [f"sae_{idx + 20}", f"sae_{idx + 21}"],
+                        "seed": int(label.rsplit("_", 1)[-1]),
+                        "matched_control_metadata": {
+                            "label": label,
+                            "selection_method": "activation_density_matched",
+                            "feature_ids": [f"sae_{idx + 20}", f"sae_{idx + 21}"],
+                            "seed": int(label.rsplit("_", 1)[-1]),
+                            "matched_on": [
+                                "activation_nonzero_fraction",
+                                "activation_abs_mean",
+                            ],
+                            "tolerance_used": {
+                                "density_tolerance": 0.1,
+                                "abs_mean_tolerance": 0.1,
+                            },
+                            "top_stats_summary": {
+                                "activation_abs_mean": 1.0,
+                                "activation_nonzero_fraction": 1.0,
+                            },
+                            "control_stats_summary": {
+                                "activation_abs_mean": 1.0,
+                                "activation_nonzero_fraction": 1.0,
+                            },
+                            "candidate_pool_size": 10,
+                            "relaxed": False,
+                            "stats_source": "per_condition_mean_approximation",
+                        },
+                    }
+                    for idx, label in enumerate(density_labels)
                 ],
             ]
         },
@@ -260,6 +296,36 @@ def _write_report_inputs(
                     "norm_drift_warning_rate": 0.0,
                 }
             )
+        for label in density_labels:
+            rows.append(
+                {
+                    "feature_set_label": label,
+                    "feature_selection_method": "activation_density_matched",
+                    "operation": operation,
+                    "factor": "" if operation == "ablate" else "2.0",
+                    "patch_mode": "delta",
+                    "family": "__all__",
+                    "n_tasks": n_tasks,
+                    "target_signed_delta_mean": random_delta,
+                    "target_signed_delta_abs_mean": abs(random_delta),
+                    "target_absolute_delta_mean": abs(random_delta),
+                    "control_signed_delta_mean": 0.01,
+                    "control_signed_delta_abs_mean": 0.01,
+                    "control_absolute_delta_mean": 0.01,
+                    "specificity_gap_mean": abs(random_delta) - 0.01,
+                    "collateral_ratio_mean": 0.2,
+                    "n_null_collateral_ratio": 0,
+                    "baseline_contrast_mean": 1.0,
+                    "patched_contrast_mean": 1.05,
+                    "control_baseline_contrast_mean": 1.0,
+                    "control_patched_contrast_mean": 1.01,
+                    "target_score_delta_mean": 0.03,
+                    "foil_score_delta_mean": -0.02,
+                    "relative_norm_drift_mean": 0.1,
+                    "decoded_delta_norm_mean": 0.1,
+                    "norm_drift_warning_rate": 0.0,
+                }
+            )
     with (run_dir / "behavioral_summary.csv").open("w", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -322,6 +388,7 @@ def test_candidate_report_contains_limitations_and_threshold_checks(tmp_path) ->
     assert report.feature_sets[0].threshold_checks
     assert report.feature_sets[0].limitations
     assert report.engine_backend == "transformer_lens"
+    assert any("Activation-density-matched" in item for item in report.limitations)
 
 
 def test_forbidden_engine_backend_blocks_claim_report(tmp_path) -> None:
@@ -390,6 +457,41 @@ def test_strong_evidence_uses_actual_random_control_rows_not_config(tmp_path) ->
     report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
 
     assert report.claim_status != "strong_candidate_evidence"
+
+
+def test_strong_evidence_requires_density_matched_control_rows(tmp_path) -> None:
+    _write_report_inputs(
+        tmp_path,
+        n_tasks=30,
+        families=["sentiment_negation", "property_negation", "state_negation"],
+        operations=["ablate", "amplify"],
+        random_labels=["random_seed_7", "random_seed_11", "random_seed_13"],
+    )
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status != "strong_candidate_evidence"
+    assert any("Activation-density-matched" in item for item in report.limitations)
+
+
+def test_strong_evidence_can_pass_with_density_matched_controls(tmp_path) -> None:
+    _write_report_inputs(
+        tmp_path,
+        n_tasks=30,
+        families=["sentiment_negation", "property_negation", "state_negation"],
+        operations=["ablate", "amplify"],
+        random_labels=["random_seed_7", "random_seed_11", "random_seed_13"],
+        density_labels=[
+            "density_matched_seed_7",
+            "density_matched_seed_11",
+            "density_matched_seed_13",
+        ],
+    )
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status == "strong_candidate_evidence"
+    assert not any("Activation-density-matched" in item for item in report.limitations)
 
 
 def test_zero_top_delta_is_insufficient(tmp_path) -> None:

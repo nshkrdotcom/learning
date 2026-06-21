@@ -15,24 +15,39 @@ from self_ground.baselines import (
 
 def _write_ranking(path, prefix: str = "sae_") -> None:
     rows = [
-        ("0", 10.0),
-        ("1", -8.0),
-        ("2", 0.0),
-        ("3", 0.3),
-        ("4", -0.2),
-        ("5", 0.1),
-        ("6", 0.05),
-        ("7", -0.04),
+        ("0", 10.0, [1.0, 1.0, 1.0, 1.0]),
+        ("1", -8.0, [1.0, 1.0, 1.0, 1.0]),
+        ("2", 0.0, [0.1, 0.0, 0.0, 0.0]),
+        ("3", 0.3, [1.0, 1.0, 1.0, 1.0]),
+        ("4", -0.2, [1.0, 1.0, 1.0, 1.0]),
+        ("5", 0.1, [0.2, 0.0, 0.0, 0.0]),
+        ("6", 0.05, [1.0, 1.0, 1.0, 1.0]),
+        ("7", -0.04, [1.0, 1.0, 1.0, 1.0]),
     ]
     with path.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["feature_id", "score", "abs_score"])
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "feature_id",
+                "score",
+                "abs_score",
+                "mean_pos",
+                "mean_neg",
+                "mean_para",
+                "mean_decoy",
+            ],
+        )
         writer.writeheader()
-        for suffix, score in rows:
+        for suffix, score, means in rows:
             writer.writerow(
                 {
                     "feature_id": f"{prefix}{suffix}",
                     "score": score,
                     "abs_score": abs(score),
+                    "mean_pos": means[0],
+                    "mean_neg": means[1],
+                    "mean_para": means[2],
+                    "mean_decoy": means[3],
                 }
             )
 
@@ -94,3 +109,24 @@ def test_feature_set_artifact_shape(tmp_path) -> None:
     labels = [row["label"] for row in artifact["feature_sets"]]
     assert labels == ["top", "random_seed_7", "random_seed_11"]
     assert artifact["feature_sets"][0]["selection_method"] == "ranking_abs_score_top_k"
+
+
+def test_density_matched_feature_set_artifact_shape(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_ranking(ranking)
+
+    artifact = build_feature_sets(
+        ranking,
+        top_k=2,
+        baseline_mode="top-vs-density-matched-multiseed",
+        random_seeds=[7, 11],
+    )
+
+    labels = [row["label"] for row in artifact["feature_sets"]]
+    assert labels == ["top", "density_matched_seed_7", "density_matched_seed_11"]
+    density_row = artifact["feature_sets"][1]
+    assert density_row["selection_method"] == "activation_density_matched"
+    assert density_row["matched_control_metadata"]["stats_source"] == (
+        "per_condition_mean_approximation"
+    )
+    assert not set(density_row["feature_ids"]) & {"sae_0", "sae_1"}

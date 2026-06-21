@@ -5,6 +5,12 @@ import random
 from pathlib import Path
 from typing import Any
 
+from self_ground.baseline_samplers import (
+    MatchedControlConfig,
+    matched_control_result_to_dict,
+    select_activation_density_matched_features,
+)
+
 
 def _read_ranking(ranking_path: Path) -> list[dict[str, Any]]:
     path = Path(ranking_path)
@@ -100,6 +106,9 @@ def build_feature_sets(
     top_k: int,
     baseline_mode: str = "top-vs-random-multiseed",
     random_seeds: list[int] | None = None,
+    density_tolerance: float = 0.10,
+    abs_mean_tolerance: float = 0.10,
+    allow_relaxed_density_matching: bool = True,
 ) -> dict[str, Any]:
     if baseline_mode not in {
         "top",
@@ -107,14 +116,19 @@ def build_feature_sets(
         "top-vs-random-multiseed",
         "top-vs-bottom-active",
         "top-vs-random-and-bottom-active",
+        "top-vs-density-matched",
+        "top-vs-density-matched-multiseed",
+        "top-vs-random-and-density-matched",
+        "top-vs-random-density-and-bottom-active",
     }:
         raise ValueError("unknown baseline_mode")
     seeds = random_seeds or [7, 11, 13]
+    top_feature_ids = select_top_features(ranking_path, top_k=top_k)
     rows: list[dict[str, Any]] = [
         {
             "label": "top",
             "selection_method": "ranking_abs_score_top_k",
-            "feature_ids": select_top_features(ranking_path, top_k=top_k),
+            "feature_ids": top_feature_ids,
             "seed": None,
         }
     ]
@@ -122,6 +136,8 @@ def build_feature_sets(
         "top-vs-random",
         "top-vs-random-multiseed",
         "top-vs-random-and-bottom-active",
+        "top-vs-random-and-density-matched",
+        "top-vs-random-density-and-bottom-active",
     }
     if baseline_mode in random_modes:
         used_seeds = seeds[:1] if baseline_mode == "top-vs-random" else seeds
@@ -138,7 +154,45 @@ def build_feature_sets(
                     "seed": seed,
                 }
             )
+    density_modes = {
+        "top-vs-density-matched",
+        "top-vs-density-matched-multiseed",
+        "top-vs-random-and-density-matched",
+        "top-vs-random-density-and-bottom-active",
+    }
+    if baseline_mode in density_modes:
+        used_seeds = seeds[:1] if baseline_mode == "top-vs-density-matched" else seeds
+        for seed in used_seeds:
+            matched = select_activation_density_matched_features(
+                ranking_path,
+                top_feature_ids=top_feature_ids,
+                config=MatchedControlConfig(
+                    top_k=top_k,
+                    seed=seed,
+                    density_tolerance=density_tolerance,
+                    abs_mean_tolerance=abs_mean_tolerance,
+                    allow_relaxed_tolerance=allow_relaxed_density_matching,
+                ),
+            )
+            rows.append(
+                {
+                    "label": matched.label,
+                    "selection_method": matched.selection_method,
+                    "feature_ids": matched.feature_ids,
+                    "seed": seed,
+                    "matched_control_metadata": matched_control_result_to_dict(matched),
+                }
+            )
     if baseline_mode in {"top-vs-bottom-active", "top-vs-random-and-bottom-active"}:
+        rows.append(
+            {
+                "label": "bottom_active",
+                "selection_method": "bottom_active_abs_score",
+                "feature_ids": select_bottom_active_features(ranking_path, top_k=top_k),
+                "seed": None,
+            }
+        )
+    if baseline_mode == "top-vs-random-density-and-bottom-active":
         rows.append(
             {
                 "label": "bottom_active",

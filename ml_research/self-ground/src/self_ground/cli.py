@@ -284,6 +284,14 @@ def run_phase3_behavioral_evaluation_command(
     write_report: Annotated[bool, typer.Option("--write-report/--no-write-report")] = True,
     max_relative_norm_drift_warning: Annotated[float, typer.Option()] = 0.5,
     max_decoded_delta_norm_ratio_warning: Annotated[float, typer.Option()] = 0.5,
+    density_tolerance: Annotated[float, typer.Option()] = 0.10,
+    abs_mean_tolerance: Annotated[float, typer.Option()] = 0.10,
+    allow_relaxed_density_matching: Annotated[
+        bool,
+        typer.Option(
+            "--allow-relaxed-density-matching/--no-allow-relaxed-density-matching"
+        ),
+    ] = True,
 ) -> None:
     result = run_real_behavioral_sae_intervention(
         out_dir=out,
@@ -309,6 +317,9 @@ def run_phase3_behavioral_evaluation_command(
         write_report=write_report,
         max_relative_norm_drift_warning=max_relative_norm_drift_warning,
         max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
+        density_tolerance=density_tolerance,
+        abs_mean_tolerance=abs_mean_tolerance,
+        allow_relaxed_density_matching=allow_relaxed_density_matching,
     )
     console.print_json(data=result.__dict__ | {"out_dir": str(result.out_dir)})
     if not result.compatible or not result.task_validation_passed or result.n_rows == 0:

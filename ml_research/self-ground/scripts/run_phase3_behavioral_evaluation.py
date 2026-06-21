@@ -44,6 +44,19 @@ def main() -> int:
     parser.add_argument("--no-write-report", dest="write_report", action="store_false")
     parser.add_argument("--max-relative-norm-drift-warning", type=float, default=0.5)
     parser.add_argument("--max-decoded-delta-norm-ratio-warning", type=float, default=0.5)
+    parser.add_argument("--density-tolerance", type=float, default=0.10)
+    parser.add_argument("--abs-mean-tolerance", type=float, default=0.10)
+    parser.add_argument(
+        "--allow-relaxed-density-matching",
+        dest="allow_relaxed_density_matching",
+        action="store_true",
+        default=True,
+    )
+    parser.add_argument(
+        "--no-allow-relaxed-density-matching",
+        dest="allow_relaxed_density_matching",
+        action="store_false",
+    )
     args = parser.parse_args()
 
     try:
@@ -73,6 +86,9 @@ def main() -> int:
             max_decoded_delta_norm_ratio_warning=(
                 args.max_decoded_delta_norm_ratio_warning
             ),
+            density_tolerance=args.density_tolerance,
+            abs_mean_tolerance=args.abs_mean_tolerance,
+            allow_relaxed_density_matching=args.allow_relaxed_density_matching,
         )
     except Exception as exc:
         print(f"Phase 3 token-contrast evaluation failed: {exc}", file=sys.stderr)
