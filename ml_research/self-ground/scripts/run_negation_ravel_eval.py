@@ -52,10 +52,33 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--allow-family-drop", default="false")
     parser.add_argument(
         "--feature-selection-mode",
-        choices=["top", "top-positive", "top-absolute", "top-family-consistent"],
+        choices=[
+            "top",
+            "top-positive",
+            "top-absolute",
+            "top-family-consistent",
+            "top-target-control-gap",
+            "top-target-control-ratio",
+            "top-family-consistent-gap",
+            "top-low-control-activation",
+            "ensemble-specificity",
+        ],
         default="top",
     )
     parser.add_argument("--min-family-consistency", type=int, default=3)
+    parser.add_argument("--max-control-activation-quantile", type=float, default=0.5)
+    parser.add_argument(
+        "--control-suite",
+        choices=[
+            "matched_non_negation_current",
+            "lexical_identity_control",
+            "semantic_unrelated_control",
+            "shuffled_target_control",
+            "hard_negative_control",
+            "multi_control",
+        ],
+        default="matched_non_negation_current",
+    )
     parser.add_argument(
         "--allow-relaxed-density-matching",
         dest="allow_relaxed_density_matching",
@@ -141,6 +164,8 @@ def main() -> int:
             allow_family_drop=_parse_bool(args.allow_family_drop),
             feature_selection_mode=args.feature_selection_mode,
             min_family_consistency=args.min_family_consistency,
+            max_control_activation_quantile=args.max_control_activation_quantile,
+            control_suite=args.control_suite,
         )
     except Exception as exc:
         print(

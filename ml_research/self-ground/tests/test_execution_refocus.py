@@ -69,6 +69,7 @@ def _write_synthetic_claim_run(run_dir: Path) -> None:
                 "sae_backend": "sae_lens",
                 "evaluation_adapter": "negation_ravel_adapter",
                 "baseline_mode": "top-vs-density-matched-multiseed",
+                "control_suite": "matched_non_negation_current",
                 "per_family": 2,
                 "top_k_features": 2,
                 "device": "cpu",
@@ -132,6 +133,49 @@ def _write_synthetic_claim_run(run_dir: Path) -> None:
         ),
         encoding="utf-8",
     )
+    (run_dir / "control_suite.json").write_text(
+        json.dumps(
+            {
+                "control_suite": "matched_non_negation_current",
+                "expanded_suites": ["matched_non_negation_current"],
+                "n_control_cases": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "control_task_mapping.jsonl").write_text(
+        json.dumps(
+            {
+                "task_id": "task_1",
+                "family": "sentiment_negation",
+                "control_suite": "matched_non_negation_current",
+                "control_case_id": "task_1_matched",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "control_suite_validation.json").write_text(
+        json.dumps(
+            {
+                "requested_mode": "matched_non_negation_current",
+                "expanded_suites": ["matched_non_negation_current"],
+                "total_tasks": 1,
+                "valid_control_cases": 1,
+                "excluded_control_cases": 0,
+                "passes_minimum": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with (run_dir / "selected_feature_rationale.csv").open(
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as handle:
+        writer = csv.DictWriter(handle, fieldnames=["rank", "feature_id", "score"])
+        writer.writeheader()
+        writer.writerow({"rank": 1, "feature_id": "sae_1", "score": 1.0})
     (run_dir / "baseline_task_scores.jsonl").write_text(
         json.dumps({"task_id": "task_1"}) + "\n",
         encoding="utf-8",
@@ -156,6 +200,7 @@ def _write_synthetic_claim_run(run_dir: Path) -> None:
                 "operation",
                 "factor",
                 "patch_mode",
+                "control_suite",
                 "family",
                 "target_absolute_delta_mean",
                 "control_absolute_delta_mean",
@@ -169,6 +214,7 @@ def _write_synthetic_claim_run(run_dir: Path) -> None:
                 "operation": "ablate",
                 "factor": "",
                 "patch_mode": "delta",
+                "control_suite": "matched_non_negation_current",
                 "family": "__all__",
                 "target_absolute_delta_mean": "0.3",
                 "control_absolute_delta_mean": "0.1",
@@ -181,6 +227,7 @@ def _write_synthetic_claim_run(run_dir: Path) -> None:
                 "operation": "ablate",
                 "factor": "",
                 "patch_mode": "delta",
+                "control_suite": "matched_non_negation_current",
                 "family": "__all__",
                 "target_absolute_delta_mean": "0.2",
                 "control_absolute_delta_mean": "0.1",

@@ -43,6 +43,20 @@ def _score(row: dict[str, Any]) -> float:
     return float(row.get("score") or 0.0)
 
 
+def _float_field(row: dict[str, Any], field: str) -> float:
+    value = row.get(field)
+    if value in {None, ""}:
+        raise ValueError(f"ranking column {field!r} is required for this selection mode")
+    return float(value)
+
+
+def _require_columns(rows: list[dict[str, Any]], columns: list[str]) -> None:
+    available = set(rows[0]) if rows else set()
+    missing = [column for column in columns if column not in available]
+    if missing:
+        raise ValueError(f"ranking artifact lacks required columns: {missing}")
+
+
 def _family_score_columns(rows: list[dict[str, Any]]) -> dict[str, str]:
     if not rows:
         return {}
@@ -62,12 +76,59 @@ def _family_score_columns(rows: list[dict[str, Any]]) -> dict[str, str]:
     return mapping
 
 
+def _family_gap_columns(rows: list[dict[str, Any]]) -> dict[str, str]:
+    if not rows:
+        return {}
+    columns = set(rows[0])
+    mapping: dict[str, str] = {}
+    for family in TASK_FAMILY_ORDER:
+        candidates = [
+            f"target_minus_control_activation_{family}",
+            f"{family}_target_minus_control_activation",
+            f"gap_{family}",
+            f"{family}_gap",
+            f"score_{family}",
+        ]
+        for candidate in candidates:
+            if candidate in columns:
+                mapping[family] = candidate
+                break
+    return mapping
+
+
+def _sorted_by_metric(
+    rows: list[dict[str, Any]],
+    *,
+    metric: str,
+    descending: bool = True,
+) -> list[dict[str, Any]]:
+    sign = -1.0 if descending else 1.0
+    return sorted(
+        rows,
+        key=lambda row: (
+            sign * _float_field(row, metric),
+            str(row["feature_id"]),
+        ),
+    )
+
+
+def _control_activation_threshold(rows: list[dict[str, Any]], quantile: float) -> float:
+    if not 0.0 <= quantile <= 1.0:
+        raise ValueError("max_control_activation_quantile must be in [0, 1]")
+    values = sorted(abs(_float_field(row, "mean_control_prompt_activation")) for row in rows)
+    if not values:
+        raise ValueError("ranking artifact has no rows")
+    idx = min(len(values) - 1, int(round((len(values) - 1) * quantile)))
+    return values[idx]
+
+
 def select_features_by_mode(
     ranking_path: Path,
     *,
     top_k: int,
     feature_selection_mode: str = "top",
     min_family_consistency: int = 3,
+    max_control_activation_quantile: float = 0.5,
 ) -> list[str]:
     if top_k < 1:
         raise ValueError("top_k must be >= 1")
@@ -76,14 +137,18 @@ def select_features_by_mode(
         selected = rows[:top_k]
     elif feature_selection_mode == "top-positive":
         selected = [row for row in rows if _score(row) > 0][:top_k]
-    elif feature_selection_mode == "top-family-consistent":
+    elif feature_selection_mode in {"top-family-consistent", "top-family-consistent-gap"}:
         if min_family_consistency < 1:
             raise ValueError("min_family_consistency must be >= 1")
-        family_columns = _family_score_columns(rows)
+        family_columns = (
+            _family_gap_columns(rows)
+            if feature_selection_mode == "top-family-consistent-gap"
+            else _family_score_columns(rows)
+        )
         missing = [family for family in TASK_FAMILY_ORDER if family not in family_columns]
         if missing:
             raise ValueError(
-                "top-family-consistent requires per-family ranking score columns; "
+                f"{feature_selection_mode} requires per-family ranking score columns; "
                 f"missing {missing}"
             )
         selected = [
@@ -92,6 +157,64 @@ def select_features_by_mode(
             if sum(float(row[family_columns[family]]) > 0 for family in TASK_FAMILY_ORDER)
             >= min_family_consistency
         ][:top_k]
+    elif feature_selection_mode == "top-target-control-gap":
+        _require_columns(rows, ["target_minus_control_activation"])
+        selected = _sorted_by_metric(rows, metric="target_minus_control_activation")[:top_k]
+    elif feature_selection_mode == "top-target-control-ratio":
+        _require_columns(rows, ["target_control_ratio"])
+        selected = _sorted_by_metric(rows, metric="target_control_ratio")[:top_k]
+    elif feature_selection_mode == "top-low-control-activation":
+        _require_columns(rows, ["mean_target_prompt_activation", "mean_control_prompt_activation"])
+        threshold = _control_activation_threshold(rows, max_control_activation_quantile)
+        pool = [
+            row
+            for row in rows
+            if abs(_float_field(row, "mean_control_prompt_activation")) <= threshold
+            and _float_field(row, "mean_target_prompt_activation") > 0
+        ]
+        selected = sorted(
+            pool,
+            key=lambda row: (
+                -_float_field(row, "mean_target_prompt_activation"),
+                abs(_float_field(row, "mean_control_prompt_activation")),
+                str(row["feature_id"]),
+            ),
+        )[:top_k]
+    elif feature_selection_mode == "ensemble-specificity":
+        _require_columns(
+            rows,
+            [
+                "target_minus_control_activation",
+                "mean_target_prompt_activation",
+                "mean_control_prompt_activation",
+            ],
+        )
+        threshold = _control_activation_threshold(rows, max_control_activation_quantile)
+        family_columns = _family_gap_columns(rows)
+        candidates = []
+        for row in rows:
+            family_consistency = (
+                sum(float(row[family_columns[family]]) > 0 for family in TASK_FAMILY_ORDER)
+                if len(family_columns) == len(TASK_FAMILY_ORDER)
+                else 0
+            )
+            if (
+                _float_field(row, "target_minus_control_activation") > 0
+                and abs(_float_field(row, "mean_control_prompt_activation")) <= threshold
+            ):
+                candidates.append((row, family_consistency))
+        selected = [
+            row
+            for row, _ in sorted(
+                candidates,
+                key=lambda item: (
+                    -item[1],
+                    -_float_field(item[0], "target_minus_control_activation"),
+                    abs(_float_field(item[0], "mean_control_prompt_activation")),
+                    str(item[0]["feature_id"]),
+                ),
+            )[:top_k]
+        ]
     else:
         raise ValueError(f"unknown feature_selection_mode: {feature_selection_mode}")
     if len(selected) < top_k:
@@ -99,6 +222,36 @@ def select_features_by_mode(
             f"insufficient SAE features for requested top_k under {feature_selection_mode}"
         )
     return [str(row["feature_id"]) for row in selected]
+
+
+def selected_feature_rationale(
+    ranking_path: Path,
+    *,
+    feature_ids: list[str],
+    feature_selection_mode: str,
+) -> list[dict[str, Any]]:
+    rows = _read_ranking(ranking_path)
+    by_id = {str(row["feature_id"]): row for row in rows}
+    rationale = []
+    for rank, feature_id in enumerate(feature_ids, start=1):
+        row = by_id.get(feature_id, {})
+        rationale.append(
+            {
+                "rank": rank,
+                "feature_id": feature_id,
+                "feature_selection_mode": feature_selection_mode,
+                "score": row.get("score"),
+                "abs_score": row.get("abs_score"),
+                "mean_target_prompt_activation": row.get("mean_target_prompt_activation"),
+                "mean_control_prompt_activation": row.get("mean_control_prompt_activation"),
+                "target_minus_control_activation": row.get("target_minus_control_activation"),
+                "target_control_ratio": row.get("target_control_ratio"),
+                "family_consistency_count": row.get("family_consistency_count"),
+                "activation_nonzero_rate_target": row.get("activation_nonzero_rate_target"),
+                "activation_nonzero_rate_control": row.get("activation_nonzero_rate_control"),
+            }
+        )
+    return rationale
 
 
 def select_bottom_active_features(
@@ -169,6 +322,7 @@ def build_feature_sets(
     allow_relaxed_density_matching: bool = True,
     feature_selection_mode: str = "top",
     min_family_consistency: int = 3,
+    max_control_activation_quantile: float = 0.5,
 ) -> dict[str, Any]:
     if baseline_mode not in {
         "top",
@@ -179,7 +333,7 @@ def build_feature_sets(
         "top-vs-density-matched",
         "top-vs-density-matched-multiseed",
         "top-vs-random-and-density-matched",
-        "top-vs-random-density-and-bottom-active",
+            "top-vs-random-density-and-bottom-active",
     }:
         raise ValueError("unknown baseline_mode")
     seeds = random_seeds or [7, 11, 13]
@@ -188,12 +342,18 @@ def build_feature_sets(
         top_k=top_k,
         feature_selection_mode=feature_selection_mode,
         min_family_consistency=min_family_consistency,
+        max_control_activation_quantile=max_control_activation_quantile,
     )
     selection_method = {
         "top": "ranking_abs_score_top_k",
         "top-absolute": "ranking_abs_score_top_k",
         "top-positive": "ranking_positive_score_top_k",
         "top-family-consistent": "ranking_positive_family_consistent_top_k",
+        "top-target-control-gap": "ranking_target_control_gap_top_k",
+        "top-target-control-ratio": "ranking_target_control_ratio_top_k",
+        "top-family-consistent-gap": "ranking_family_consistent_gap_top_k",
+        "top-low-control-activation": "ranking_low_control_activation_top_k",
+        "ensemble-specificity": "ranking_ensemble_specificity_top_k",
     }[feature_selection_mode]
     rows: list[dict[str, Any]] = [
         {
@@ -201,10 +361,18 @@ def build_feature_sets(
             "selection_method": selection_method,
             "feature_selection_mode": feature_selection_mode,
             "min_family_consistency": min_family_consistency
-            if feature_selection_mode == "top-family-consistent"
+            if feature_selection_mode in {"top-family-consistent", "top-family-consistent-gap"}
+            else None,
+            "max_control_activation_quantile": max_control_activation_quantile
+            if feature_selection_mode in {"top-low-control-activation", "ensemble-specificity"}
             else None,
             "feature_ids": top_feature_ids,
             "seed": None,
+            "selected_feature_rationale": selected_feature_rationale(
+                ranking_path,
+                feature_ids=top_feature_ids,
+                feature_selection_mode=feature_selection_mode,
+            ),
         }
     ]
     random_modes = {
@@ -279,5 +447,6 @@ def build_feature_sets(
     return {
         "feature_selection_mode": feature_selection_mode,
         "min_family_consistency": min_family_consistency,
+        "max_control_activation_quantile": max_control_activation_quantile,
         "feature_sets": rows,
     }

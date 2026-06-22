@@ -46,6 +46,7 @@ class FeatureSetEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     feature_set_label: str
+    control_suite: str = "matched_non_negation_current"
     feature_ids: list[str]
     activation_abs_score_mean: float | None
     target_absolute_delta_mean: float
@@ -115,6 +116,10 @@ REQUIRED_EVIDENCE_ARTIFACTS = [
     "behavioral_intervention_results.jsonl",
     "behavioral_summary.csv",
     "skipped_behavioral_rows.json",
+    "control_suite.json",
+    "control_task_mapping.jsonl",
+    "control_suite_validation.json",
+    "selected_feature_rationale.csv",
 ]
 
 
@@ -149,6 +154,11 @@ def _artifact_paths(run_dir: Path) -> dict[str, str]:
         "source_calibration_summary.json",
         "source_calibrated_excluded_behavioral_tasks.jsonl",
         "source_candidate_baseline_scores.jsonl",
+        "control_suite.json",
+        "control_task_mapping.jsonl",
+        "excluded_control_task_mapping.jsonl",
+        "control_suite_validation.json",
+        "selected_feature_rationale.csv",
     ]
     return {name: str(run_dir / name) for name in names if (run_dir / name).exists()}
 
@@ -247,6 +257,8 @@ def _top_vs_control_ratio(rows: list[dict[str, str]], top_row: dict[str, str]) -
         and row.get("operation") == top_row.get("operation")
         and row.get("factor") == top_row.get("factor")
         and row.get("patch_mode") == top_row.get("patch_mode")
+        and row.get("control_suite", "matched_non_negation_current")
+        == top_row.get("control_suite", "matched_non_negation_current")
     ]
     if not controls:
         return None
@@ -273,6 +285,7 @@ def _build_feature_evidence(
     evidence: list[FeatureSetEvidence] = []
     for row in rows:
         label = str(row["feature_set_label"])
+        control_suite = str(row.get("control_suite") or "matched_non_negation_current")
         target_abs = _float(row, "target_absolute_delta_mean") or 0.0
         control_abs = _float(row, "control_absolute_delta_mean")
         collateral = _float(row, "collateral_ratio_mean")
@@ -347,6 +360,7 @@ def _build_feature_evidence(
         evidence.append(
             FeatureSetEvidence(
                 feature_set_label=label,
+                control_suite=control_suite,
                 feature_ids=_feature_ids(feature_sets, label),
                 activation_abs_score_mean=None,
                 target_absolute_delta_mean=target_abs,
@@ -400,12 +414,20 @@ def _claim_status(
         return "blocked"
     if not evidence:
         return "blocked"
-    top = next((item for item in evidence if item.feature_set_label == "top"), None)
+    top_items = [item for item in evidence if item.feature_set_label == "top"]
+    top = top_items[0] if top_items else None
     if top is None:
         return "insufficient_evidence"
     if bool(compatibility.get("diagnostic_only")) or bool(config.get("allow_metadata_mismatch")):
         return "insufficient_evidence"
-    candidate_checks = all(check.passed for check in top.threshold_checks)
+    if str(config.get("control_suite")) == "multi_control":
+        candidate_checks = all(
+            all(check.passed for check in item.threshold_checks)
+            and (item.specificity_gap_mean or 0.0) > 0.0
+            for item in top_items
+        )
+    else:
+        candidate_checks = all(check.passed for check in top.threshold_checks)
     if (
         not candidate_checks
         or top.n_behavioral_tasks < thresholds.min_valid_tasks_for_candidate
@@ -432,6 +454,14 @@ def _claim_status(
         }
     )
     top_rows = [row for row in summary_rows if row.get("feature_set_label") == "top"]
+    if str(config.get("control_suite")) == "multi_control":
+        suite_names = {
+            row.get("control_suite", "matched_non_negation_current") for row in top_rows
+        }
+        if len(suite_names) < 2:
+            return "insufficient_evidence"
+        if any((_float(row, "specificity_gap_mean") or 0.0) <= 0.0 for row in top_rows):
+            return "insufficient_evidence"
     max_top_norm_drift = max(
         [_float(row, "relative_norm_drift_mean") or 0.0 for row in top_rows],
         default=0.0,
@@ -586,6 +616,22 @@ def _top_level_limitations(
     )
     if high_drift:
         limitations.append("Top feature-set relative norm drift exceeds strong threshold.")
+    if str(config.get("control_suite")) == "multi_control":
+        top_rows = [
+            row
+            for row in summary_rows
+            if row.get("feature_set_label") == "top" and row.get("family") == "__all__"
+        ]
+        failing_suites = [
+            str(row.get("control_suite"))
+            for row in top_rows
+            if (_float(row, "specificity_gap_mean") or 0.0) <= 0.0
+        ]
+        if failing_suites:
+            limitations.append(
+                "Multi-control evidence failed at least one control suite: "
+                + ", ".join(sorted(set(failing_suites)))
+            )
     return limitations
 
 
@@ -607,6 +653,8 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     validation = artifact_json("behavioral_task_validation.json") or {}
     validation_summary = validation.get("summary", validation)
     feature_sets = artifact_json("feature_sets.json") or {}
+    control_suite = artifact_json("control_suite.json") or {}
+    control_suite_validation = artifact_json("control_suite_validation.json") or {}
     task_calibration = artifact_json("task_calibration_result.json")
     task_calibration_rule = artifact_json("task_calibration_rule.json")
     task_source = artifact_json("task_source.json")
@@ -617,6 +665,18 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     skipped = artifact_json("skipped_behavioral_rows.json") or {}
     baseline_validation = artifact_json("baseline_validation.json") or {}
     all_behavior_rows = [row for row in behavior_rows if row.get("family") == "__all__"]
+    control_suite_evidence = [
+        {
+            "control_suite": row.get("control_suite", "matched_non_negation_current"),
+            "feature_set_label": row.get("feature_set_label"),
+            "operation": row.get("operation"),
+            "target_absolute_delta_mean": row.get("target_absolute_delta_mean"),
+            "control_absolute_delta_mean": row.get("control_absolute_delta_mean"),
+            "specificity_gap_mean": row.get("specificity_gap_mean"),
+            "collateral_ratio_mean": row.get("collateral_ratio_mean"),
+        }
+        for row in all_behavior_rows
+    ][:25]
     baseline_pass_rate = (
         report.feature_sets[0].intended_direction_pass_rate
         if report.feature_sets
@@ -714,6 +774,7 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - baseline mode: `{config.get("baseline_mode", "not available")}`
 - random seeds: `{config.get("random_seeds", "not available")}`
 - feature selection mode: `{config.get("feature_selection_mode", "not available")}`
+- control suite: `{config.get("control_suite", "matched_non_negation_current")}`
 - task calibration mode: `{config.get("task_calibration_mode", "none")}`
 - task source: `{config.get("task_source", "generated")}`
 - task source id: `{config.get("task_source_id", "not available")}`
@@ -770,6 +831,14 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 
 {json_block(feature_set_rows or "not available")}
 
+## Control Suite
+
+{json_block(control_suite or "not available")}
+
+## Control Suite Validation
+
+{json_block(control_suite_validation or "not available")}
+
 ## Activation-Density-Matched Controls
 
 {json_block(density_matched_feature_sets or "not available")}
@@ -785,6 +854,10 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 ## Matched Non-Negation Control Evidence
 
 {json_block(control_evidence)}
+
+## Control-Suite Evidence
+
+{json_block(control_suite_evidence or "not available")}
 
 ## Feature-Set Comparison
 
@@ -898,6 +971,11 @@ def build_mechanism_evidence_report(
         if (run_dir / "behavioral_summary.csv").exists()
         else []
     )
+    all_summary_rows_for_family = (
+        _read_csv(run_dir / "behavioral_summary.csv")
+        if (run_dir / "behavioral_summary.csv").exists()
+        else []
+    )
     summary_rows, summary_quality = _valid_all_family_summary_rows(raw_summary_rows)
     raw_rows = _raw_behavioral_rows(run_dir)
     row_accounting = _load_row_accounting(run_dir, raw_rows)
@@ -1005,6 +1083,28 @@ def build_mechanism_evidence_report(
             **summary_quality,
             "baseline": baseline_accounting,
             "task_calibration": task_calibration,
+            "control_suite": (
+                read_json(run_dir / "control_suite_validation.json")
+                if (run_dir / "control_suite_validation.json").exists()
+                else None
+            ),
+            "multi_control_min_specificity_gap": min(
+                [
+                    _float(row, "specificity_gap_mean") or 0.0
+                    for row in summary_rows
+                    if row.get("feature_set_label") == "top"
+                ],
+                default=None,
+            ),
+            "family_min_specificity_gap": min(
+                [
+                    _float(row, "specificity_gap_mean") or 0.0
+                    for row in all_summary_rows_for_family
+                    if row.get("feature_set_label") == "top"
+                    and row.get("family") != "__all__"
+                ],
+                default=None,
+            ),
         },
         artifacts=_artifact_paths(run_dir),
         qc={

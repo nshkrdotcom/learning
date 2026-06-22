@@ -65,6 +65,8 @@ def _top_vs_control_ratio(summary_rows: list[dict[str, str]]) -> float | None:
         and row.get("operation") == top_row.get("operation")
         and row.get("factor") == top_row.get("factor")
         and row.get("patch_mode") == top_row.get("patch_mode")
+        and row.get("control_suite", "matched_non_negation_current")
+        == top_row.get("control_suite", "matched_non_negation_current")
     ]
     control_values = [
         value
@@ -133,6 +135,11 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
         if (run_dir / "feature_sets.json").exists()
         else {"feature_sets": []}
     )
+    control_suite = (
+        _read_json(run_dir / "control_suite.json")
+        if (run_dir / "control_suite.json").exists()
+        else {}
+    )
     task_source = (
         _read_json(run_dir / "task_source.json")
         if (run_dir / "task_source.json").exists()
@@ -153,6 +160,32 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
     summary_rows = _read_csv(run_dir / "behavioral_summary.csv")
     all_rows = [row for row in summary_rows if row.get("family") == "__all__"]
     top_summary = next((row for row in all_rows if row.get("feature_set_label") == "top"), {})
+    top_control_suite_rows = [
+        row for row in all_rows if row.get("feature_set_label") == "top"
+    ]
+    per_control_suite = [
+        {
+            "control_suite": row.get("control_suite", "matched_non_negation_current"),
+            "operation": row.get("operation"),
+            "target_absolute_delta_mean": _float_or_none(
+                row.get("target_absolute_delta_mean")
+            ),
+            "control_absolute_delta_mean": _float_or_none(
+                row.get("control_absolute_delta_mean")
+            ),
+            "specificity_gap_mean": _float_or_none(row.get("specificity_gap_mean")),
+            "collateral_ratio_mean": _float_or_none(row.get("collateral_ratio_mean")),
+        }
+        for row in top_control_suite_rows
+    ]
+    multi_control_min_gap = min(
+        [
+            value
+            for row in per_control_suite
+            if (value := row["specificity_gap_mean"]) is not None
+        ],
+        default=None,
+    )
     top_features = next(
         (
             list(row.get("feature_ids", []))
@@ -182,6 +215,7 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
             "sae_backend": config.get("sae_backend"),
             "evaluation_adapter": config.get("evaluation_adapter"),
             "baseline_mode": config.get("baseline_mode"),
+            "control_suite": config.get("control_suite"),
             "per_family": config.get("per_family"),
             "top_k_features": config.get("top_k_features"),
             "device": config.get("device"),
@@ -228,6 +262,10 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
             ),
             "density_relaxed": any(bool(metadata.get("relaxed")) for metadata in density_metadata),
         },
+        "control_suite": {
+            "mode": control_suite.get("control_suite", config.get("control_suite")),
+            "expanded_suites": control_suite.get("expanded_suites"),
+        },
         "rows": {
             "behavioral_rows": len(behavioral_rows),
             "skipped_rows": skipped.get("n_skipped_rows"),
@@ -244,6 +282,8 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
             "top_control_delta": _float_or_none(top_summary.get("control_absolute_delta_mean")),
             "specificity_gap": _float_or_none(top_summary.get("specificity_gap_mean")),
             "top_vs_control_ratio": _top_vs_control_ratio(summary_rows),
+            "multi_control_min_specificity_gap": multi_control_min_gap,
+            "per_control_suite": per_control_suite,
         },
     }
     return summary
@@ -269,6 +309,9 @@ def _print_human(summary: dict[str, Any]) -> None:
         print(f"  {key}: {value}")
     print("\nfeature_sets:")
     for key, value in summary["feature_sets"].items():
+        print(f"  {key}: {value}")
+    print("\ncontrol_suite:")
+    for key, value in summary["control_suite"].items():
         print(f"  {key}: {value}")
     print("\nrows:")
     for key, value in summary["rows"].items():

@@ -23,7 +23,6 @@ from self_ground.engine_boundary import SAE_LENS_BACKEND, TRANSFORMER_LENS_BACKE
 from self_ground.io import (
     read_minimal_pairs,
     write_config,
-    write_feature_rankings_csv,
     write_jsonl,
 )
 from self_ground.negation import generate_negation_pairs
@@ -181,6 +180,97 @@ def build_top_examples(
                 limit=examples_per_condition,
             )
         rows.append(row)
+    return rows
+
+
+def _safe_ratio(numerator: float, denominator: float) -> float:
+    return numerator / (abs(denominator) + 1e-9)
+
+
+def _ranking_rows_with_specificity_fields(
+    *,
+    rankings: list[RankedFeature],
+    features: PairFeatureActivations,
+) -> list[dict[str, Any]]:
+    conditions = np.asarray(features.conditions)
+    families = np.asarray(features.template_families)
+    target_mask = np.isin(conditions, ["x_pos", "x_para"])
+    control_mask = np.isin(conditions, ["x_neg", "x_decoy"])
+    unique_families = sorted(set(features.template_families))
+    rows: list[dict[str, Any]] = []
+    for ranking in rankings:
+        feature_idx = features.feature_index(ranking.feature_id)
+        column = np.asarray(features.values[:, feature_idx], dtype=float)
+        target_values = column[target_mask]
+        control_values = column[control_mask]
+        mean_target = float(target_values.mean()) if target_values.size else 0.0
+        mean_control = float(control_values.mean()) if control_values.size else 0.0
+        target_minus_control = mean_target - mean_control
+        family_gaps: dict[str, float] = {}
+        for family in unique_families:
+            family_mask = families == family
+            family_target = column[target_mask & family_mask]
+            family_control = column[control_mask & family_mask]
+            gap = (
+                float(family_target.mean() - family_control.mean())
+                if family_target.size and family_control.size
+                else 0.0
+            )
+            family_gaps[family] = gap
+        positive_family_count = sum(gap > 0 for gap in family_gaps.values())
+        negative_family_count = sum(gap < 0 for gap in family_gaps.values())
+        row: dict[str, Any] = {
+            "feature_id": ranking.feature_id,
+            "score": ranking.score,
+            "mean_pos": ranking.mean_pos,
+            "mean_neg": ranking.mean_neg,
+            "mean_para": ranking.mean_para,
+            "mean_decoy": ranking.mean_decoy,
+            "abs_score": ranking.abs_score,
+            "mean_target_prompt_activation": mean_target,
+            "mean_control_prompt_activation": mean_control,
+            "target_minus_control_activation": target_minus_control,
+            "target_control_ratio": _safe_ratio(mean_target, mean_control),
+            "family_consistency_count": positive_family_count,
+            "positive_family_count": positive_family_count,
+            "negative_family_count": negative_family_count,
+            "activation_nonzero_rate_target": float(
+                np.mean(np.abs(target_values) > 1e-12)
+            )
+            if target_values.size
+            else 0.0,
+            "activation_nonzero_rate_control": float(
+                np.mean(np.abs(control_values) > 1e-12)
+            )
+            if control_values.size
+            else 0.0,
+        }
+        for family, gap in family_gaps.items():
+            row[f"target_minus_control_activation_{family}"] = gap
+            row[f"score_{family}"] = 2.0 * gap
+        rows.append(row)
+    return rows
+
+
+def _write_feature_rankings_csv(
+    *,
+    rankings: list[RankedFeature],
+    features: PairFeatureActivations,
+    path: Path,
+) -> list[dict[str, Any]]:
+    rows = _ranking_rows_with_specificity_fields(rankings=rankings, features=features)
+    fieldnames: list[str] = []
+    for row in rows:
+        for key in row:
+            if key not in fieldnames:
+                fieldnames.append(key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    import csv
+
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
     return rows
 
 
@@ -415,8 +505,19 @@ def run_activation_ranking(
 
     write_config(config, out_dir / "config.json")
     write_jsonl(pairs, out_dir / "pairs.jsonl")
+    rich_ranking_rows = _write_feature_rankings_csv(
+        rankings=rankings,
+        features=pair_features,
+        path=out_dir / "feature_rankings.csv",
+    )
+    metadata["ranking_columns"] = list(rich_ranking_rows[0]) if rich_ranking_rows else []
+    metadata["ranking_specificity_fields"] = {
+        "mean_target_prompt_activation": "mean activation over x_pos and x_para rows",
+        "mean_control_prompt_activation": "mean activation over x_neg and x_decoy rows",
+        "target_minus_control_activation": "target prompt activation minus control activation",
+        "family_consistency_count": "count of families with positive target-control gap",
+    }
     write_config(metadata, out_dir / "activation_metadata.json")
-    write_feature_rankings_csv(rankings, out_dir / "feature_rankings.csv")
     write_jsonl(top_examples, out_dir / "top_examples.jsonl")
     _write_ranking_readme(
         out_dir=out_dir,

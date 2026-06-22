@@ -37,6 +37,7 @@ def _write_run(
                 "top_k_features": 5,
                 "device": "cuda",
                 "task_source": task_source,
+                "control_suite": "matched_non_negation_current",
             }
         ),
         encoding="utf-8",
@@ -147,6 +148,7 @@ def _write_run(
                 "operation",
                 "factor",
                 "patch_mode",
+                "control_suite",
                 "family",
                 "target_absolute_delta_mean",
                 "control_absolute_delta_mean",
@@ -160,6 +162,7 @@ def _write_run(
                 "operation": "ablate",
                 "factor": "",
                 "patch_mode": "delta",
+                "control_suite": "matched_non_negation_current",
                 "family": "__all__",
                 "target_absolute_delta_mean": 0.3,
                 "control_absolute_delta_mean": 0.1,
@@ -172,6 +175,7 @@ def _write_run(
                 "operation": "ablate",
                 "factor": "",
                 "patch_mode": "delta",
+                "control_suite": "matched_non_negation_current",
                 "family": "__all__",
                 "target_absolute_delta_mean": 0.1,
                 "control_absolute_delta_mean": 0.1,
@@ -193,6 +197,51 @@ def _write_run(
         ),
         encoding="utf-8",
     )
+    (path / "control_suite.json").write_text(
+        json.dumps(
+            {
+                "control_suite": "matched_non_negation_current",
+                "expanded_suites": ["matched_non_negation_current"],
+                "n_control_cases": 30,
+            }
+        ),
+        encoding="utf-8",
+    )
+    (path / "control_task_mapping.jsonl").write_text(
+        "\n".join(
+            json.dumps(
+                {
+                    "task_id": f"t{idx}",
+                    "family": "sentiment_negation",
+                    "control_suite": "matched_non_negation_current",
+                    "control_case_id": f"t{idx}_matched",
+                }
+            )
+            for idx in range(30)
+        ),
+        encoding="utf-8",
+    )
+    (path / "control_suite_validation.json").write_text(
+        json.dumps(
+            {
+                "requested_mode": "matched_non_negation_current",
+                "expanded_suites": ["matched_non_negation_current"],
+                "total_tasks": 30,
+                "valid_control_cases": 30,
+                "excluded_control_cases": 0,
+                "passes_minimum": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with (path / "selected_feature_rationale.csv").open(
+        "w",
+        newline="",
+        encoding="utf-8",
+    ) as handle:
+        writer = csv.DictWriter(handle, fieldnames=["rank", "feature_id", "score"])
+        writer.writeheader()
+        writer.writerow({"rank": 1, "feature_id": "sae_1", "score": 1.0})
     (path / "skipped_behavioral_rows.json").write_text(
         json.dumps({"n_skipped_rows": 0, "reason_counts": {}}),
         encoding="utf-8",

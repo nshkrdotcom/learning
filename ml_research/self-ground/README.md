@@ -362,6 +362,10 @@ Phase 3 token-contrast evaluation:
 - `behavioral_intervention_results.jsonl`
 - `behavioral_summary.csv`
 - `skipped_behavioral_rows.json`
+- `control_suite.json`
+- `control_task_mapping.jsonl`
+- `control_suite_validation.json`
+- `selected_feature_rationale.csv`
 - `blocker.json` for blocked runs
 - `mechanism_report.json`
 - `mechanism_report.md`
@@ -401,6 +405,41 @@ compatibility, reconstruction metrics, task validation, baseline calibration,
 feature sets, target/control evidence, feature-set comparisons, telemetry,
 threshold checks, limitations, unsupported claims, row accounting, and rerun
 commands.
+
+## E004 Specificity Diagnosis
+
+E003 repaired the task-suite calibration problem but remained
+`insufficient_evidence` because matched controls moved more than target prompts.
+E004 diagnoses whether specificity can be rescued by stricter controls,
+pre-intervention specificity-ranked feature sets, nearby residual-stream SAE
+layers, and ablation/amplification operations.
+
+Run the bounded CUDA matrix:
+
+```bash
+uv run python scripts/run_e004_specificity_rescue_matrix.py \
+  --device cuda \
+  --task-file runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibrated_behavioral_tasks.jsonl \
+  --task-bank-calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 \
+  --layers blocks.1.hook_resid_post,blocks.2.hook_resid_post,blocks.3.hook_resid_post \
+  --feature-selection-modes top-absolute,top-target-control-gap,top-family-consistent-gap,top-low-control-activation,ensemble-specificity \
+  --operations ablate,amplify \
+  --control-suite multi_control \
+  --ranking-top-k 100 \
+  --eval-top-k 5 \
+  --min-family-consistency 2 \
+  --random-seeds 7,11,13 \
+  --out-root runs/e004_specificity_rescue_matrix
+```
+
+Compare cells with:
+
+```bash
+uv run python scripts/compare_e004_matrix.py \
+  --matrix-root runs/e004_specificity_rescue_matrix \
+  --e003 runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density \
+  --out runs/e004_specificity_rescue_matrix/comparison
+```
 
 Framework-shaped schemas, generic backend/plugin abstractions, and generic
 trackers are not active in this repo.

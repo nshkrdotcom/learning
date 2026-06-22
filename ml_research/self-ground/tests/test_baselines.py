@@ -53,6 +53,65 @@ def _write_ranking(path, prefix: str = "sae_") -> None:
             )
 
 
+def _write_rich_ranking(path) -> None:
+    rows = [
+        ("sae_0", 10.0, 0.8, 0.1, 0.7, 8.0, 3, 0.9, 0.3),
+        ("sae_1", -8.0, 0.2, 0.9, -0.7, 0.2, 0, 0.8, 0.9),
+        ("sae_2", 3.0, 0.7, 0.2, 0.5, 3.5, 2, 0.7, 0.4),
+        ("sae_3", 2.0, 0.4, 0.05, 0.35, 8.0, 1, 0.6, 0.1),
+        ("sae_4", 1.0, 0.3, 0.02, 0.28, 15.0, 3, 0.5, 0.05),
+    ]
+    fieldnames = [
+        "feature_id",
+        "score",
+        "abs_score",
+        "mean_pos",
+        "mean_neg",
+        "mean_para",
+        "mean_decoy",
+        "mean_target_prompt_activation",
+        "mean_control_prompt_activation",
+        "target_minus_control_activation",
+        "target_control_ratio",
+        "family_consistency_count",
+        "positive_family_count",
+        "negative_family_count",
+        "activation_nonzero_rate_target",
+        "activation_nonzero_rate_control",
+        "target_minus_control_activation_sentiment_negation",
+        "target_minus_control_activation_property_negation",
+        "target_minus_control_activation_state_negation",
+    ]
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        for feature_id, score, target, control, gap, ratio, consistency, nz_t, nz_c in rows:
+            family_gaps = [gap if idx < consistency else -abs(gap) for idx in range(3)]
+            writer.writerow(
+                {
+                    "feature_id": feature_id,
+                    "score": score,
+                    "abs_score": abs(score),
+                    "mean_pos": target,
+                    "mean_neg": control,
+                    "mean_para": target,
+                    "mean_decoy": control,
+                    "mean_target_prompt_activation": target,
+                    "mean_control_prompt_activation": control,
+                    "target_minus_control_activation": gap,
+                    "target_control_ratio": ratio,
+                    "family_consistency_count": consistency,
+                    "positive_family_count": consistency,
+                    "negative_family_count": 3 - consistency,
+                    "activation_nonzero_rate_target": nz_t,
+                    "activation_nonzero_rate_control": nz_c,
+                    "target_minus_control_activation_sentiment_negation": family_gaps[0],
+                    "target_minus_control_activation_property_negation": family_gaps[1],
+                    "target_minus_control_activation_state_negation": family_gaps[2],
+                }
+            )
+
+
 def test_top_bottom_and_random_selection_are_deterministic(tmp_path) -> None:
     ranking = tmp_path / "feature_rankings.csv"
     _write_ranking(ranking)
@@ -172,3 +231,49 @@ def test_feature_selection_mode_is_recorded(tmp_path) -> None:
     assert artifact["feature_selection_mode"] == "top-positive"
     assert top["selection_method"] == "ranking_positive_score_top_k"
     assert top["feature_ids"] == ["sae_0", "sae_3"]
+
+
+def test_specificity_feature_selection_modes_are_deterministic(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_rich_ranking(ranking)
+
+    assert select_features_by_mode(
+        ranking,
+        top_k=2,
+        feature_selection_mode="top-target-control-gap",
+    ) == ["sae_0", "sae_2"]
+    assert select_features_by_mode(
+        ranking,
+        top_k=2,
+        feature_selection_mode="top-target-control-ratio",
+    ) == ["sae_4", "sae_0"]
+    assert select_features_by_mode(
+        ranking,
+        top_k=2,
+        feature_selection_mode="top-family-consistent-gap",
+        min_family_consistency=2,
+    ) == ["sae_0", "sae_2"]
+    assert select_features_by_mode(
+        ranking,
+        top_k=2,
+        feature_selection_mode="top-low-control-activation",
+        max_control_activation_quantile=0.5,
+    ) == ["sae_0", "sae_3"]
+    assert select_features_by_mode(
+        ranking,
+        top_k=2,
+        feature_selection_mode="ensemble-specificity",
+        max_control_activation_quantile=0.5,
+    ) == ["sae_0", "sae_4"]
+
+
+def test_specificity_mode_blocks_without_required_columns(tmp_path) -> None:
+    ranking = tmp_path / "feature_rankings.csv"
+    _write_ranking(ranking)
+
+    with pytest.raises(ValueError, match="required columns"):
+        select_features_by_mode(
+            ranking,
+            top_k=2,
+            feature_selection_mode="top-target-control-gap",
+        )

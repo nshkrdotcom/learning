@@ -9,10 +9,17 @@ from typing import Any, Literal
 
 from self_ground.baselines import build_feature_sets
 from self_ground.behavioral_tasks import (
+    TASK_FAMILY_ORDER,
     BehavioralTask,
     generate_behavioral_tasks,
     read_behavioral_tasks_jsonl,
     write_behavioral_tasks_jsonl,
+)
+from self_ground.control_suites import (
+    ControlCase,
+    ControlSuiteMode,
+    build_control_cases,
+    write_control_suite_artifacts,
 )
 from self_ground.engine_boundary import (
     NEGATION_RAVEL_ADAPTER,
@@ -25,7 +32,7 @@ from self_ground.intervention_telemetry import (
     telemetry_warnings,
 )
 from self_ground.io import write_config, write_jsonl
-from self_ground.logit_scoring import score_behavioral_task_logits
+from self_ground.logit_scoring import score_behavioral_task_logits, token_group_logit_score
 from self_ground.mechanism_report import build_mechanism_evidence_report
 from self_ground.sae_compat import SAECompatibilityResult, verify_sae_compatibility
 from self_ground.sae_interventions import run_sae_decoded_intervention_logits_with_telemetry
@@ -84,6 +91,7 @@ BEHAVIORAL_SUMMARY_COLUMNS = [
     "operation",
     "factor",
     "patch_mode",
+    "control_suite",
     "family",
     "n_tasks",
     "target_signed_delta_mean",
@@ -447,6 +455,36 @@ def _finite_row(row: dict[str, Any]) -> bool:
     return finite_value(row)
 
 
+def _single_logit_float(value, label: str) -> float:
+    flat = value.detach().cpu().flatten()
+    if flat.numel() != 1:
+        raise ValueError(f"{label} must contain exactly one value; got {flat.numel()}")
+    return float(flat[0].item())
+
+
+def _control_case_score(
+    *,
+    case: ControlCase,
+    logits,
+    reduction: Literal["mean", "max"],
+) -> dict[str, Any]:
+    target_score = token_group_logit_score(
+        logits,
+        case.control_target_token_ids,
+        reduction=reduction,
+    )
+    foil_score = token_group_logit_score(
+        logits,
+        case.control_foil_token_ids,
+        reduction=reduction,
+    )
+    return {
+        "target_score": _single_logit_float(target_score, "control_target_score"),
+        "foil_score": _single_logit_float(foil_score, "control_foil_score"),
+        "contrast": _single_logit_float(target_score - foil_score, "control_contrast"),
+    }
+
+
 def _collateral_ratio(control_abs: float, target_abs: float) -> float | None:
     if target_abs == 0:
         return None
@@ -473,8 +511,13 @@ def _result_rows(
     reduction: Literal["mean", "max"],
     max_relative_norm_drift_warning: float,
     max_decoded_delta_norm_ratio_warning: float,
+    control_cases: list[ControlCase],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     validation_by_id = {result.task_id: result for result in validations if result.valid}
+    control_cases_by_task: dict[str, list[ControlCase]] = defaultdict(list)
+    for case in control_cases:
+        control_cases_by_task[case.task_id].append(case)
+    baseline_control_cache: dict[str, dict[str, Any]] = {}
     rows: list[dict[str, Any]] = []
     skipped = _empty_skipped_accounting()
     for feature_set in feature_sets["feature_sets"]:
@@ -483,6 +526,17 @@ def _result_rows(
             effective_factor = 1.0 if factor is None else factor
             for task in tasks:
                 validation = validation_by_id[task.id]
+                task_control_cases = control_cases_by_task.get(task.id, [])
+                if not task_control_cases:
+                    _record_skipped(
+                        skipped,
+                        reason="missing_control_case",
+                        task_id=task.id,
+                        feature_set_label=str(feature_set["label"]),
+                        operation=operation,
+                        factor=factor,
+                    )
+                    continue
                 (
                     prompt_logits,
                     prompt_telemetry,
@@ -497,137 +551,153 @@ def _result_rows(
                     token_position=token_position,
                     patch_mode=patch_mode,
                 )
-                (
-                    control_logits,
-                    control_telemetry,
-                ) = run_sae_decoded_intervention_logits_with_telemetry(
-                    model_adapter,
-                    sae_adapter,
-                    [task.control_prompt],
-                    hook_point,
-                    feature_ids,
-                    operation=operation,  # type: ignore[arg-type]
-                    factor=effective_factor,
-                    token_position=token_position,
-                    patch_mode=patch_mode,
-                )
+                baseline = baseline_rows[task.id]
                 prompt_score = score_behavioral_task_logits(
                     task=task,
                     validation=validation,
                     prompt_logits=prompt_logits,
-                    control_logits=control_logits,
+                    control_logits=model_adapter.logits_for_texts([task.control_prompt]),
                     reduction=reduction,
                 )
-                baseline = baseline_rows[task.id]
                 target_delta = (
                     prompt_score.prompt_result.contrast - baseline["baseline_prompt_contrast"]
                 )
-                control_delta = (
-                    prompt_score.control_result.contrast - baseline["baseline_control_contrast"]
-                )
                 target_abs = abs(target_delta)
-                control_abs = abs(control_delta)
                 target_telemetry = prompt_telemetry.model_dump()
-                control_telemetry_data = control_telemetry.model_dump()
-                telemetry_data = mean_telemetry(target_telemetry, control_telemetry_data)
                 target_warnings = telemetry_warnings(
                     target_telemetry,
                     max_relative_norm_drift_warning=max_relative_norm_drift_warning,
                     max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
                 )
-                control_warnings = telemetry_warnings(
-                    control_telemetry_data,
-                    max_relative_norm_drift_warning=max_relative_norm_drift_warning,
-                    max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
-                )
-                warnings = {
-                    "norm_drift_warning": (
-                        target_warnings["norm_drift_warning"]
-                        or control_warnings["norm_drift_warning"]
-                    ),
-                    "decoded_delta_norm_ratio_warning": (
-                        target_warnings["decoded_delta_norm_ratio_warning"]
-                        or control_warnings["decoded_delta_norm_ratio_warning"]
-                    ),
-                }
-                row = {
-                    "model_name": model_name,
-                    "hook_point": hook_point,
-                    "sae_release": sae_release,
-                    "sae_id": sae_id,
-                    "ranking_dir": str(ranking_dir),
-                    "task_validation_status": "valid",
-                    "task_id": task.id,
-                    "family": task.family,
-                    "feature_set_label": feature_set["label"],
-                    "feature_selection_method": feature_set["selection_method"],
-                    "feature_ids": feature_ids,
-                    "operation": operation,
-                    "factor": factor,
-                    "patch_mode": patch_mode,
-                    "prompt": task.prompt,
-                    "target_tokens": task.target_tokens,
-                    "foil_tokens": task.foil_tokens,
-                    "target_token_ids": validation.target_token_ids,
-                    "foil_token_ids": validation.foil_token_ids,
-                    "baseline_target_score": baseline["baseline_prompt_target_score"],
-                    "baseline_foil_score": baseline["baseline_prompt_foil_score"],
-                    "baseline_contrast": baseline["baseline_prompt_contrast"],
-                    "patched_target_score": prompt_score.prompt_result.target_score,
-                    "patched_foil_score": prompt_score.prompt_result.foil_score,
-                    "patched_contrast": prompt_score.prompt_result.contrast,
-                    "target_signed_delta": target_delta,
-                    "target_absolute_delta": target_abs,
-                    "control_prompt": task.control_prompt,
-                    "control_type": task.control_type,
-                    "control_target_tokens": task.control_target_tokens,
-                    "control_foil_tokens": task.control_foil_tokens,
-                    "control_target_token_ids": validation.control_target_token_ids,
-                    "control_foil_token_ids": validation.control_foil_token_ids,
-                    "control_baseline_target_score": baseline[
-                        "baseline_control_target_score"
-                    ],
-                    "control_baseline_foil_score": baseline["baseline_control_foil_score"],
-                    "control_baseline_contrast": baseline["baseline_control_contrast"],
-                    "control_patched_target_score": prompt_score.control_result.target_score,
-                    "control_patched_foil_score": prompt_score.control_result.foil_score,
-                    "control_patched_contrast": prompt_score.control_result.contrast,
-                    "control_signed_delta": control_delta,
-                    "control_absolute_delta": control_abs,
-                    "specificity_gap": target_abs - control_abs,
-                    "collateral_ratio": _collateral_ratio(control_abs, target_abs),
-                    "target_intervention_telemetry": target_telemetry,
-                    "control_intervention_telemetry": control_telemetry_data,
-                    "telemetry_provenance": "separate_target_and_control_interventions",
-                    **telemetry_data,
-                    **warnings,
-                    "metadata": {},
-                }
-                if (
-                    telemetry_has_nonfinite(target_telemetry)
-                    or telemetry_has_nonfinite(control_telemetry_data)
-                    or telemetry_has_nonfinite(telemetry_data)
-                ):
-                    _record_skipped(
-                        skipped,
-                        reason="nonfinite_telemetry",
-                        task_id=task.id,
-                        feature_set_label=str(feature_set["label"]),
-                        operation=operation,
-                        factor=factor,
+                for control_case in task_control_cases:
+                    if control_case.control_case_id not in baseline_control_cache:
+                        baseline_logits = model_adapter.logits_for_texts(
+                            [control_case.control_prompt]
+                        )
+                        baseline_control_cache[control_case.control_case_id] = (
+                            _control_case_score(
+                                case=control_case,
+                                logits=baseline_logits,
+                                reduction=reduction,
+                            )
+                        )
+                    control_baseline = baseline_control_cache[control_case.control_case_id]
+                    (
+                        control_logits,
+                        control_telemetry,
+                    ) = run_sae_decoded_intervention_logits_with_telemetry(
+                        model_adapter,
+                        sae_adapter,
+                        [control_case.control_prompt],
+                        hook_point,
+                        feature_ids,
+                        operation=operation,  # type: ignore[arg-type]
+                        factor=effective_factor,
+                        token_position=token_position,
+                        patch_mode=patch_mode,
                     )
-                    continue
-                if not _finite_row(row):
-                    _record_skipped(
-                        skipped,
-                        reason="nonfinite_row_value",
-                        task_id=task.id,
-                        feature_set_label=str(feature_set["label"]),
-                        operation=operation,
-                        factor=factor,
+                    control_score = _control_case_score(
+                        case=control_case,
+                        logits=control_logits,
+                        reduction=reduction,
                     )
-                    continue
-                rows.append(row)
+                    control_delta = control_score["contrast"] - control_baseline["contrast"]
+                    control_abs = abs(control_delta)
+                    control_telemetry_data = control_telemetry.model_dump()
+                    telemetry_data = mean_telemetry(target_telemetry, control_telemetry_data)
+                    control_warnings = telemetry_warnings(
+                        control_telemetry_data,
+                        max_relative_norm_drift_warning=max_relative_norm_drift_warning,
+                        max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
+                    )
+                    warnings = {
+                        "norm_drift_warning": (
+                            target_warnings["norm_drift_warning"]
+                            or control_warnings["norm_drift_warning"]
+                        ),
+                        "decoded_delta_norm_ratio_warning": (
+                            target_warnings["decoded_delta_norm_ratio_warning"]
+                            or control_warnings["decoded_delta_norm_ratio_warning"]
+                        ),
+                    }
+                    row = {
+                        "model_name": model_name,
+                        "hook_point": hook_point,
+                        "sae_release": sae_release,
+                        "sae_id": sae_id,
+                        "ranking_dir": str(ranking_dir),
+                        "task_validation_status": "valid",
+                        "task_id": task.id,
+                        "family": task.family,
+                        "feature_set_label": feature_set["label"],
+                        "feature_selection_method": feature_set["selection_method"],
+                        "feature_ids": feature_ids,
+                        "operation": operation,
+                        "factor": factor,
+                        "patch_mode": patch_mode,
+                        "control_suite": control_case.control_suite,
+                        "control_case_id": control_case.control_case_id,
+                        "prompt": task.prompt,
+                        "target_tokens": task.target_tokens,
+                        "foil_tokens": task.foil_tokens,
+                        "target_token_ids": validation.target_token_ids,
+                        "foil_token_ids": validation.foil_token_ids,
+                        "baseline_target_score": baseline["baseline_prompt_target_score"],
+                        "baseline_foil_score": baseline["baseline_prompt_foil_score"],
+                        "baseline_contrast": baseline["baseline_prompt_contrast"],
+                        "patched_target_score": prompt_score.prompt_result.target_score,
+                        "patched_foil_score": prompt_score.prompt_result.foil_score,
+                        "patched_contrast": prompt_score.prompt_result.contrast,
+                        "target_signed_delta": target_delta,
+                        "target_absolute_delta": target_abs,
+                        "control_prompt": control_case.control_prompt,
+                        "control_type": control_case.control_type,
+                        "control_target_tokens": control_case.control_target_tokens,
+                        "control_foil_tokens": control_case.control_foil_tokens,
+                        "control_target_token_ids": control_case.control_target_token_ids,
+                        "control_foil_token_ids": control_case.control_foil_token_ids,
+                        "control_baseline_target_score": control_baseline["target_score"],
+                        "control_baseline_foil_score": control_baseline["foil_score"],
+                        "control_baseline_contrast": control_baseline["contrast"],
+                        "control_patched_target_score": control_score["target_score"],
+                        "control_patched_foil_score": control_score["foil_score"],
+                        "control_patched_contrast": control_score["contrast"],
+                        "control_signed_delta": control_delta,
+                        "control_absolute_delta": control_abs,
+                        "specificity_gap": target_abs - control_abs,
+                        "collateral_ratio": _collateral_ratio(control_abs, target_abs),
+                        "target_intervention_telemetry": target_telemetry,
+                        "control_intervention_telemetry": control_telemetry_data,
+                        "telemetry_provenance": "separate_target_and_control_interventions",
+                        **telemetry_data,
+                        **warnings,
+                        "metadata": {"control_source_task_id": control_case.source_task_id},
+                    }
+                    if (
+                        telemetry_has_nonfinite(target_telemetry)
+                        or telemetry_has_nonfinite(control_telemetry_data)
+                        or telemetry_has_nonfinite(telemetry_data)
+                    ):
+                        _record_skipped(
+                            skipped,
+                            reason="nonfinite_telemetry",
+                            task_id=task.id,
+                            feature_set_label=str(feature_set["label"]),
+                            operation=operation,
+                            factor=factor,
+                        )
+                        continue
+                    if not _finite_row(row):
+                        _record_skipped(
+                            skipped,
+                            reason="nonfinite_row_value",
+                            task_id=task.id,
+                            feature_set_label=str(feature_set["label"]),
+                            operation=operation,
+                            factor=factor,
+                        )
+                        continue
+                    rows.append(row)
     return rows, skipped
 
 
@@ -641,7 +711,8 @@ def _summary_row(key: tuple, rows: list[dict[str, Any]]) -> dict[str, Any]:
         "operation": key[2],
         "factor": "" if key[3] is None else key[3],
         "patch_mode": key[4],
-        "family": key[5],
+        "control_suite": key[5],
+        "family": key[6],
         "n_tasks": len(rows),
         "target_signed_delta_mean": _mean([row["target_signed_delta"] for row in rows]),
         "target_signed_delta_abs_mean": _mean([abs(row["target_signed_delta"]) for row in rows]),
@@ -683,6 +754,7 @@ def _write_behavioral_summary(rows: list[dict[str, Any]], path: Path) -> None:
             row["operation"],
             row["factor"],
             row["patch_mode"],
+            row.get("control_suite", "matched_non_negation_current"),
         )
         grouped[(*base_key, row["family"])].append(row)
         grouped[(*base_key, "__all__")].append(row)
@@ -747,8 +819,9 @@ def _write_readme(
 - patch mode: `{config['patch_mode']}`
 - task source: `{config.get('task_source', 'generated')}`
 - task file: `{config.get('task_file')}`
-- task source id: `{config.get('task_source_id')}`
-- compatibility: `{compatibility_text}`
+    - task source id: `{config.get('task_source_id')}`
+    - control suite: `{config.get('control_suite', 'matched_non_negation_current')}`
+    - compatibility: `{compatibility_text}`
 - valid tasks: `{validation_summary.valid_tasks}`
 - excluded tasks: `{validation_summary.excluded_tasks}`
 - claim status: `{claim_status}`
@@ -831,8 +904,15 @@ def run_real_behavioral_sae_intervention(
         "top-positive",
         "top-absolute",
         "top-family-consistent",
+        "top-target-control-gap",
+        "top-target-control-ratio",
+        "top-family-consistent-gap",
+        "top-low-control-activation",
+        "ensemble-specificity",
     ] = "top",
     min_family_consistency: int = 3,
+    max_control_activation_quantile: float = 0.5,
+    control_suite: ControlSuiteMode = "matched_non_negation_current",
     model_adapter=None,
     sae_adapter=None,
 ) -> BehavioralInterventionRun:
@@ -892,6 +972,8 @@ def run_real_behavioral_sae_intervention(
         "allow_family_drop": allow_family_drop,
         "feature_selection_mode": feature_selection_mode,
         "min_family_consistency": min_family_consistency,
+        "max_control_activation_quantile": max_control_activation_quantile,
+        "control_suite": control_suite,
         "engine_backend": TRANSFORMER_LENS_BACKEND,
         "sae_backend": SAE_LENS_BACKEND,
         "evaluation_adapter": NEGATION_RAVEL_ADAPTER,
@@ -1104,6 +1186,7 @@ def run_real_behavioral_sae_intervention(
             allow_relaxed_density_matching=allow_relaxed_density_matching,
             feature_selection_mode=feature_selection_mode,
             min_family_consistency=min_family_consistency,
+            max_control_activation_quantile=max_control_activation_quantile,
         )
     except Exception as exc:
         return blocked(
@@ -1114,6 +1197,20 @@ def run_real_behavioral_sae_intervention(
             task_validation_passed=True,
         )
     write_config(feature_sets, out_path / "feature_sets.json")
+    rationale_rows = []
+    for feature_set in feature_sets.get("feature_sets", []):
+        if feature_set.get("label") == "top":
+            for row in feature_set.get("selected_feature_rationale", []):
+                rationale_rows.append(row)
+    if rationale_rows:
+        with (out_path / "selected_feature_rationale.csv").open(
+            "w",
+            newline="",
+            encoding="utf-8",
+        ) as handle:
+            writer = csv.DictWriter(handle, fieldnames=list(rationale_rows[0]))
+            writer.writeheader()
+            writer.writerows(rationale_rows)
     try:
         baseline_rows = _baseline_scores(
             model_adapter=model_adapter,
@@ -1179,6 +1276,43 @@ def run_real_behavioral_sae_intervention(
             task_id: row for task_id, row in baseline_rows.items() if task_id in kept_ids
         }
     try:
+        control_cases, control_validation, excluded_control_cases = build_control_cases(
+            tasks=valid_tasks,
+            model_adapter=model_adapter,
+            mode=control_suite,
+            min_control_cases_per_family=len(valid_tasks) // max(len(TASK_FAMILY_ORDER), 1)
+            if control_suite == "multi_control"
+            else 1,
+            required_families=sorted({task.family for task in valid_tasks})
+            if allow_family_drop
+            else list(TASK_FAMILY_ORDER),
+        )
+    except Exception as exc:
+        return blocked(
+            blocker_type="control_suite_failed",
+            reason="control-suite construction failed before intervention execution",
+            exception=exc,
+            compatibility=compatibility,
+            task_validation_passed=True,
+            n_feature_sets=len(feature_sets["feature_sets"]),
+        )
+    write_control_suite_artifacts(
+        out_dir=out_path,
+        mode=control_suite,
+        cases=control_cases,
+        validation=control_validation,
+        excluded=excluded_control_cases,
+    )
+    if not control_validation.passes_minimum:
+        return blocked(
+            blocker_type="control_suite_failed",
+            reason="control suite validation failed required coverage",
+            compatibility=compatibility,
+            details=control_validation.model_dump(mode="json"),
+            task_validation_passed=True,
+            n_feature_sets=len(feature_sets["feature_sets"]),
+        )
+    try:
         rows, skipped_rows = _result_rows(
             model_adapter=model_adapter,
             sae_adapter=sae_adapter,
@@ -1198,6 +1332,7 @@ def run_real_behavioral_sae_intervention(
             reduction=reduction,
             max_relative_norm_drift_warning=max_relative_norm_drift_warning,
             max_decoded_delta_norm_ratio_warning=max_decoded_delta_norm_ratio_warning,
+            control_cases=control_cases,
         )
     except Exception as exc:
         return blocked(

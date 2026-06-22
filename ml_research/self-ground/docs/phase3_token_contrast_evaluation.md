@@ -469,6 +469,61 @@ SELF_GROUND_SAE_ID=blocks.2.hook_resid_post \
 uv run pytest --run-integration
 ```
 
+## E004 Specificity Rescue Matrix
+
+E003 fixed the calibrated task-suite blocker but remained
+`insufficient_evidence`: decoded SAE patches moved logits, yet matched
+non-negation controls moved more than target prompts. E004 is a bounded
+specificity diagnosis, not a broad sweep.
+
+New E004 support includes:
+
+- artifact-only E003 specificity diagnosis in
+  `scripts/diagnose_e003_specificity_failure.py`;
+- stricter control suites:
+  `matched_non_negation_current`, `lexical_identity_control`,
+  `semantic_unrelated_control`, `shuffled_target_control`,
+  `hard_negative_control`, and `multi_control`;
+- richer pre-intervention ranking fields for target/control activation gaps,
+  family consistency, target/control ratios, and nonzero rates;
+- feature-selection modes:
+  `top-target-control-gap`, `top-target-control-ratio`,
+  `top-family-consistent-gap`, `top-low-control-activation`, and
+  `ensemble-specificity`;
+- matrix comparison and artifact-only forensic reports.
+
+`multi_control` is stricter than the previous matched-control design. Candidate
+evidence is disallowed unless the top feature set passes every configured
+control suite and every required family remains positive under the report
+thresholds.
+
+Run the bounded E004 matrix on CUDA:
+
+```bash
+uv run python scripts/run_e004_specificity_rescue_matrix.py \
+  --device cuda \
+  --task-file runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibrated_behavioral_tasks.jsonl \
+  --task-bank-calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 \
+  --layers blocks.1.hook_resid_post,blocks.2.hook_resid_post,blocks.3.hook_resid_post \
+  --feature-selection-modes top-absolute,top-target-control-gap,top-family-consistent-gap,top-low-control-activation,ensemble-specificity \
+  --operations ablate,amplify \
+  --control-suite multi_control \
+  --ranking-top-k 100 \
+  --eval-top-k 5 \
+  --min-family-consistency 2 \
+  --random-seeds 7,11,13 \
+  --out-root runs/e004_specificity_rescue_matrix
+```
+
+Then compare and adjudicate:
+
+```bash
+uv run python scripts/compare_e004_matrix.py \
+  --matrix-root runs/e004_specificity_rescue_matrix \
+  --e003 runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density \
+  --out runs/e004_specificity_rescue_matrix/comparison
+```
+
 ## Limitations
 
 - Next-token contrasts are narrow tests, not broad behavioral understanding.

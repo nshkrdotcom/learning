@@ -321,10 +321,17 @@ def run_phase3_behavioral_evaluation_command(
     feature_selection_mode: Annotated[
         str,
         typer.Option(
-            help="Top feature mode: top, top-positive, top-absolute, top-family-consistent."
+            help=(
+                "Top feature mode: top, top-positive, top-absolute, "
+                "top-family-consistent, top-target-control-gap, "
+                "top-target-control-ratio, top-family-consistent-gap, "
+                "top-low-control-activation, or ensemble-specificity."
+            )
         ),
     ] = "top",
     min_family_consistency: Annotated[int, typer.Option(min=1)] = 3,
+    max_control_activation_quantile: Annotated[float, typer.Option()] = 0.5,
+    control_suite: Annotated[str, typer.Option()] = "matched_non_negation_current",
 ) -> None:
     if task_source not in {"generated", "file"}:
         raise typer.BadParameter("--task-source must be generated or file")
@@ -367,6 +374,8 @@ def run_phase3_behavioral_evaluation_command(
         allow_family_drop=allow_family_drop,
         feature_selection_mode=feature_selection_mode,  # type: ignore[arg-type]
         min_family_consistency=min_family_consistency,
+        max_control_activation_quantile=max_control_activation_quantile,
+        control_suite=control_suite,  # type: ignore[arg-type]
     )
     console.print_json(data=result.__dict__ | {"out_dir": str(result.out_dir)})
     if not result.compatible or not result.task_validation_passed or result.n_rows == 0:

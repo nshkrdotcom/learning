@@ -203,6 +203,10 @@ def test_phase3_behavioral_intervention_artifacts(tmp_path) -> None:
         "behavioral_intervention_results.jsonl",
         "behavioral_summary.csv",
         "skipped_behavioral_rows.json",
+        "control_suite.json",
+        "control_task_mapping.jsonl",
+        "control_suite_validation.json",
+        "selected_feature_rationale.csv",
         "mechanism_report.json",
         "mechanism_report.md",
         "README.md",
@@ -224,6 +228,7 @@ def test_phase3_behavioral_intervention_artifacts(tmp_path) -> None:
     assert {"baseline_contrast", "patched_contrast", "control_signed_delta"} <= set(rows[0])
     assert rows[0]["feature_ids"][0].startswith("sae_")
     assert rows[0]["control_type"] == "matched_non_negation"
+    assert rows[0]["control_suite"] == "matched_non_negation_current"
     assert rows[0]["target_absolute_delta"] >= 0
     assert "relative_norm_drift_mean" in rows[0]
     assert rows[0]["telemetry_provenance"] == "separate_target_and_control_interventions"

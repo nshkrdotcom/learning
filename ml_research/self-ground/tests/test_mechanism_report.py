@@ -25,6 +25,7 @@ def _write_report_inputs(
     malformed_summary_value: str | None = None,
     omit_artifacts: list[str] | None = None,
     blocker_reason: str | None = None,
+    control_suite: str = "matched_non_negation_current",
 ) -> None:
     families = families or ["sentiment_negation", "property_negation"]
     random_labels = random_labels or ["random_seed_7"]
@@ -40,6 +41,7 @@ def _write_report_inputs(
             "baseline_mode": "top-vs-random-multiseed",
             "random_seeds": [7, 11, 13],
             "operations": operations,
+            "control_suite": control_suite,
             "engine_backend": "transformer_lens",
             "sae_backend": "sae_lens",
             "evaluation_adapter": "negation_ravel_adapter",
@@ -152,6 +154,73 @@ def _write_report_inputs(
         },
         run_dir / "feature_sets.json",
     )
+    write_config(
+        {
+            "control_suite": control_suite,
+            "expanded_suites": [control_suite],
+            "n_control_cases": n_tasks,
+            "claim_gate_role": "single control suite",
+        },
+        run_dir / "control_suite.json",
+    )
+    write_jsonl(
+        [
+            {
+                "task_id": f"{family}_{idx}",
+                "family": family,
+                "control_suite": control_suite,
+                "control_case_id": f"{family}_{idx}_{control_suite}",
+                "control_prompt": "The movie was good. The movie was",
+                "control_type": "matched_non_negation",
+                "control_target_tokens": [" good"],
+                "control_foil_tokens": [" bad"],
+                "control_target_token_ids": [2],
+                "control_foil_token_ids": [1],
+                "source_task_id": f"{family}_{idx}",
+                "metadata": {},
+            }
+            for idx, family in enumerate(families)
+        ],
+        run_dir / "control_task_mapping.jsonl",
+    )
+    write_config(
+        {
+            "requested_mode": control_suite,
+            "expanded_suites": [control_suite],
+            "total_tasks": n_tasks,
+            "total_control_cases": n_tasks,
+            "valid_control_cases": n_tasks,
+            "excluded_control_cases": 0,
+            "min_control_cases_per_family": 1,
+            "valid_cases_by_family": {family: n_tasks // len(families) for family in families},
+            "valid_cases_by_suite": {control_suite: n_tasks},
+            "excluded_by_reason": {},
+            "missing_required_families": [],
+            "passes_minimum": True,
+        },
+        run_dir / "control_suite_validation.json",
+    )
+    with (run_dir / "selected_feature_rationale.csv").open("w", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=[
+                "rank",
+                "feature_id",
+                "feature_selection_mode",
+                "score",
+                "abs_score",
+            ],
+        )
+        writer.writeheader()
+        writer.writerow(
+            {
+                "rank": 1,
+                "feature_id": "sae_0",
+                "feature_selection_mode": "top",
+                "score": 1.0,
+                "abs_score": 1.0,
+            }
+        )
     write_jsonl(
         [
             {
@@ -210,6 +279,7 @@ def _write_report_inputs(
         "operation",
         "factor",
         "patch_mode",
+        "control_suite",
         "family",
         "n_tasks",
         "target_signed_delta_mean",
@@ -240,6 +310,7 @@ def _write_report_inputs(
                 "operation": operation,
                 "factor": "" if operation == "ablate" else "2.0",
                 "patch_mode": "delta",
+                "control_suite": control_suite,
                 "family": "__all__",
                 "n_tasks": n_tasks,
                 "target_signed_delta_mean": top_delta,
@@ -274,6 +345,7 @@ def _write_report_inputs(
                     "operation": operation,
                     "factor": "" if operation == "ablate" else "2.0",
                     "patch_mode": "delta",
+                    "control_suite": control_suite,
                     "family": "__all__",
                     "n_tasks": n_tasks,
                     "target_signed_delta_mean": random_delta,
@@ -304,6 +376,7 @@ def _write_report_inputs(
                     "operation": operation,
                     "factor": "" if operation == "ablate" else "2.0",
                     "patch_mode": "delta",
+                    "control_suite": control_suite,
                     "family": "__all__",
                     "n_tasks": n_tasks,
                     "target_signed_delta_mean": random_delta,
@@ -544,6 +617,43 @@ def test_full_fixture_can_still_reach_candidate(tmp_path) -> None:
     report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
 
     assert report.claim_status == "candidate_evidence"
+
+
+def test_multi_control_requires_all_control_suites_to_pass(tmp_path) -> None:
+    _write_report_inputs(tmp_path, n_tasks=8, control_suite="multi_control")
+    summary_path = tmp_path / "behavioral_summary.csv"
+    with summary_path.open(newline="") as handle:
+        rows = list(csv.DictReader(handle))
+        fieldnames = handle.seek(0) or list(rows[0])
+    failing = dict(rows[0])
+    failing["control_suite"] = "lexical_identity_control"
+    failing["control_absolute_delta_mean"] = 0.5
+    failing["specificity_gap_mean"] = -0.3
+    failing["collateral_ratio_mean"] = 2.5
+    rows.append(failing)
+    with summary_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    write_config(
+        {
+            "control_suite": "multi_control",
+            "expanded_suites": [
+                "matched_non_negation_current",
+                "lexical_identity_control",
+            ],
+            "n_control_cases": 16,
+            "claim_gate_role": (
+                "multi_control must pass all configured controls for candidate evidence"
+            ),
+        },
+        tmp_path / "control_suite.json",
+    )
+
+    report = build_mechanism_evidence_report(behavioral_run_dir=tmp_path)
+
+    assert report.claim_status == "insufficient_evidence"
+    assert any("Multi-control" in item for item in report.limitations)
 
 
 def test_skipped_rows_prevent_strong_evidence(tmp_path) -> None:

@@ -43,7 +43,8 @@ def test_activation_ranking_artifacts_with_test_local_activations(
 
     with (out_dir / "feature_rankings.csv").open(newline="") as handle:
         reader = csv.DictReader(handle)
-        assert reader.fieldnames == [
+        assert reader.fieldnames is not None
+        for column in [
             "feature_id",
             "score",
             "mean_pos",
@@ -51,7 +52,15 @@ def test_activation_ranking_artifacts_with_test_local_activations(
             "mean_para",
             "mean_decoy",
             "abs_score",
-        ]
+            "mean_target_prompt_activation",
+            "mean_control_prompt_activation",
+            "target_minus_control_activation",
+            "target_control_ratio",
+            "family_consistency_count",
+            "activation_nonzero_rate_target",
+            "activation_nonzero_rate_control",
+        ]:
+            assert column in reader.fieldnames
         rows = list(reader)
     assert rows
     assert rows[0]["feature_id"].startswith("resid_")
@@ -111,6 +120,7 @@ def test_activation_ranking_can_use_calibrated_task_file(
     metadata = json.loads((out_dir / "activation_metadata.json").read_text())
     assert metadata["task_source"] == "file"
     assert metadata["task_source_id"] == "unit_calibrated_tasks"
+    assert "target_minus_control_activation" in metadata["ranking_columns"]
     assert metadata["calibrated_task_count_by_family"] == {
         "property_negation": 1,
         "sentiment_negation": 1,
