@@ -74,9 +74,16 @@ def run_activation_ranking_command(
     device: Annotated[str, typer.Option()] = "cpu",
     sae_release: Annotated[str | None, typer.Option()] = None,
     sae_id: Annotated[str | None, typer.Option()] = None,
+    task_source: Annotated[str, typer.Option()] = "generated",
+    task_file: Annotated[Path | None, typer.Option()] = None,
+    task_source_id: Annotated[str | None, typer.Option()] = None,
 ) -> None:
     if feature_source == "sae" and (not sae_release or not sae_id):
         raise typer.BadParameter("feature_source=sae requires --sae-release and --sae-id")
+    if task_source not in {"generated", "file"}:
+        raise typer.BadParameter("--task-source must be generated or file")
+    if task_source == "file" and task_file is None:
+        raise typer.BadParameter("--task-source=file requires --task-file")
     result = run_activation_ranking(
         out_dir=out,
         pairs_path=pairs,
@@ -90,6 +97,9 @@ def run_activation_ranking_command(
         device=device,
         sae_release=sae_release,
         sae_id=sae_id,
+        task_source=task_source,
+        task_file=task_file,
+        task_source_id=task_source_id,
     )
     console.print(
         f"wrote {result.feature_source} ranking with {result.n_pairs} pairs "
@@ -258,6 +268,10 @@ def run_phase3_behavioral_evaluation_command(
     sae_id: Annotated[str, typer.Option()],
     out: Annotated[Path, typer.Option()] = Path("runs/test_phase3_behavioral_evaluation"),
     tasks: Annotated[Path | None, typer.Option()] = None,
+    task_source: Annotated[str, typer.Option()] = "generated",
+    task_file: Annotated[Path | None, typer.Option()] = None,
+    task_bank_calibration_dir: Annotated[Path | None, typer.Option()] = None,
+    task_source_id: Annotated[str | None, typer.Option()] = None,
     per_family: Annotated[int, typer.Option(min=1)] = 10,
     seed: Annotated[int, typer.Option()] = 7,
     model: Annotated[str, typer.Option()] = "EleutherAI/pythia-70m-deduped",
@@ -312,10 +326,18 @@ def run_phase3_behavioral_evaluation_command(
     ] = "top",
     min_family_consistency: Annotated[int, typer.Option(min=1)] = 3,
 ) -> None:
+    if task_source not in {"generated", "file"}:
+        raise typer.BadParameter("--task-source must be generated or file")
+    if task_source == "file" and task_file is None:
+        raise typer.BadParameter("--task-source=file requires --task-file")
     result = run_real_behavioral_sae_intervention(
         out_dir=out,
         ranking_dir=ranking_dir,
         tasks_path=tasks,
+        task_source=task_source,  # type: ignore[arg-type]
+        task_file=task_file,
+        task_bank_calibration_dir=task_bank_calibration_dir,
+        task_source_id=task_source_id,
         per_family=per_family,
         seed=seed,
         model_name=model,

@@ -218,3 +218,26 @@ Next action:
 Revise or expand the task suite using baseline-only calibration criteria before
 running another serious decoded SAE intervention evaluation. Do not weaken
 claim thresholds or drop required families to obtain a positive result.
+
+## E003 Follow-Up
+
+E003 implemented that next action with a calibrated task bank:
+
+- experiment doc: `experiments/E003_calibrated_negation_sae_run.md`
+- calibration artifact:
+  `runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibration_summary.json`
+- evaluation artifact:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density/mechanism_report.json`
+- comparison artifact:
+  `runs/diagnostics/e003_vs_e002_comparison/comparison.json`
+
+E003 repaired the task-suite calibration failure:
+
+- candidate tasks: 240 total, 80 per family;
+- calibrated kept tasks:
+  `property_negation=10`, `sentiment_negation=36`, `state_negation=23`;
+- evaluation baseline pass rate: `1.0`.
+
+E003 still remained `insufficient_evidence` because the matched-control delta
+(`0.7188387469968934`) exceeded the target delta (`0.6277369900026183`), with
+a specificity gap of `-0.09110175699427508`.

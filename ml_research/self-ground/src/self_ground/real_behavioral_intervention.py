@@ -35,6 +35,7 @@ from self_ground.task_calibration import (
     task_calibration_rule_from_mode,
     write_task_calibration_artifacts,
 )
+from self_ground.task_source import load_task_file_with_minimum, write_task_source_artifacts
 from self_ground.task_validation import (
     BehavioralTaskValidationSummary,
     TokenValidationResult,
@@ -744,6 +745,9 @@ def _write_readme(
 - random seeds: `{config['random_seeds']}`
 - operations: `{config['operations']}`
 - patch mode: `{config['patch_mode']}`
+- task source: `{config.get('task_source', 'generated')}`
+- task file: `{config.get('task_file')}`
+- task source id: `{config.get('task_source_id')}`
 - compatibility: `{compatibility_text}`
 - valid tasks: `{validation_summary.valid_tasks}`
 - excluded tasks: `{validation_summary.excluded_tasks}`
@@ -768,6 +772,11 @@ monosemantic feature discovery.
         text += "\nNo behavioral intervention rows were written because task validation failed.\n"
     if blocker and "calibration" in blocker:
         text += "\nNo behavioral intervention rows were written because task calibration failed.\n"
+    if config.get("task_source") == "file":
+        text += (
+            "\nThis run loaded a calibrated task file. Any positive evidence is "
+            "conditional on the referenced baseline-only task-bank calibration artifacts.\n"
+        )
     (out_dir / "README.md").write_text(text, encoding="utf-8")
 
 
@@ -813,6 +822,10 @@ def run_real_behavioral_sae_intervention(
     min_baseline_margin: float | None = None,
     min_calibrated_tasks_per_family: int = 3,
     allow_family_drop: bool = False,
+    task_source: Literal["generated", "file"] = "generated",
+    task_file: str | Path | None = None,
+    task_bank_calibration_dir: str | Path | None = None,
+    task_source_id: str | None = None,
     feature_selection_mode: Literal[
         "top",
         "top-positive",
@@ -844,6 +857,12 @@ def run_real_behavioral_sae_intervention(
         "sae_id": sae_id,
         "ranking_dir": str(ranking_path),
         "tasks_path": str(tasks_path) if tasks_path else None,
+        "task_source": task_source,
+        "task_file": str(task_file) if task_file else None,
+        "task_bank_calibration_dir": (
+            str(task_bank_calibration_dir) if task_bank_calibration_dir else None
+        ),
+        "task_source_id": task_source_id,
         "per_family": per_family,
         "seed": seed,
         "top_k_features": top_k_features,
@@ -856,6 +875,11 @@ def run_real_behavioral_sae_intervention(
         "device": device,
         "reduction": reduction,
         "min_valid_tasks_per_family": min_valid_tasks_per_family,
+        "effective_min_valid_tasks_per_family": (
+            max(min_valid_tasks_per_family, per_family)
+            if task_source == "file"
+            else min_valid_tasks_per_family
+        ),
         "allow_metadata_mismatch": allow_metadata_mismatch,
         "max_relative_norm_drift_warning": max_relative_norm_drift_warning,
         "max_decoded_delta_norm_ratio_warning": max_decoded_delta_norm_ratio_warning,
@@ -874,10 +898,71 @@ def run_real_behavioral_sae_intervention(
         "evaluation_shape": "ravel_style_cause_isolation_token_contrast",
     }
     write_config(config, out_path / "config.json")
-    tasks = _load_tasks(tasks_path, per_family, seed)
-    write_behavioral_tasks_jsonl(tasks, out_path / "behavioral_tasks.jsonl")
+    tasks: list[BehavioralTask] = []
     validation_summary: BehavioralTaskValidationSummary | None = None
     valid_tasks: list[BehavioralTask] = []
+
+    def load_blocked(reason: str, exception: Exception | None = None) -> BehavioralInterventionRun:
+        blocker = _write_blocker_record(
+            out_dir=out_path,
+            blocker_type="task_source_failed",
+            reason=reason,
+            exception=exception,
+            config=config,
+        )
+        claim_status = _write_blocked_report(out_dir=out_path, write_report=write_report)
+        _write_blocker_readme(
+            out_dir=out_path,
+            config=config,
+            blocker=blocker,
+            compatibility=None,
+            validation_summary=None,
+        )
+        return BehavioralInterventionRun(
+            out_dir=out_path,
+            n_tasks_total=0,
+            n_tasks_valid=0,
+            n_tasks_excluded=0,
+            n_features_per_set=top_k_features,
+            n_feature_sets=0,
+            operations=parsed_operations,
+            patch_mode=patch_mode,
+            compatible=False,
+            task_validation_passed=False,
+            n_rows=0,
+            report_written=write_report and claim_status is not None,
+        )
+
+    if task_source not in {"generated", "file"}:
+        return load_blocked(f"unknown task_source: {task_source}")
+    source_file = Path(task_file) if task_file is not None else None
+    if task_source == "file":
+        if source_file is None and tasks_path is not None:
+            source_file = Path(tasks_path)
+        if source_file is None:
+            return load_blocked("task_source=file requires --task-file")
+        try:
+            tasks, _ = load_task_file_with_minimum(
+                task_file=source_file,
+                min_per_family=per_family,
+            )
+        except Exception as exc:
+            return load_blocked("task file failed required-family minimum checks", exc)
+    else:
+        try:
+            tasks = _load_tasks(tasks_path, per_family, seed)
+        except Exception as exc:
+            return load_blocked("generated task loading failed", exc)
+    write_behavioral_tasks_jsonl(tasks, out_path / "behavioral_tasks.jsonl")
+    write_task_source_artifacts(
+        out_dir=out_path,
+        task_source=task_source,
+        task_file=source_file,
+        task_source_id=task_source_id,
+        task_bank_calibration_dir=task_bank_calibration_dir,
+        tasks=tasks,
+        min_per_family=per_family,
+    )
 
     def blocked(
         *,
@@ -935,10 +1020,11 @@ def run_real_behavioral_sae_intervention(
             )
 
     try:
+        effective_min_valid_tasks_per_family = int(config["effective_min_valid_tasks_per_family"])
         valid_tasks, validation_results, validation_summary = validate_behavioral_tasks(
             model_adapter=model_adapter,
             tasks=tasks,
-            min_valid_tasks_per_family=min_valid_tasks_per_family,
+            min_valid_tasks_per_family=effective_min_valid_tasks_per_family,
         )
     except Exception as exc:
         return blocked(

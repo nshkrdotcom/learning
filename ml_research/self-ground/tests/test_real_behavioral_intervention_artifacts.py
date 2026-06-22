@@ -8,6 +8,7 @@ import numpy as np
 import torch
 
 from self_ground.activations import FeatureActivations
+from self_ground.behavioral_tasks import BehavioralTask, write_behavioral_tasks_jsonl
 from self_ground.real_behavioral_intervention import run_real_behavioral_sae_intervention
 from self_ground.sae_compat import SAECompatibilityResult
 
@@ -537,3 +538,101 @@ def test_phase3_calibration_failure_blocks_before_intervention_rows(tmp_path) ->
     assert blocker["blocker_type"] == "task_calibration_failed"
     report = json.loads((out_dir / "mechanism_report.json").read_text())
     assert report["claim_status"] == "blocked"
+
+
+def test_phase3_loads_file_task_source_and_records_metadata(tmp_path) -> None:
+    ranking_dir = tmp_path / "ranking"
+    out_dir = tmp_path / "phase3_file_tasks"
+    task_file = tmp_path / "calibrated_tasks.jsonl"
+    calibration_dir = tmp_path / "calibration"
+    calibration_dir.mkdir()
+    _write_sae_ranking(ranking_dir)
+    write_behavioral_tasks_jsonl(
+        [
+            BehavioralTask(
+                id="sentiment_0",
+                family="sentiment_negation",
+                concept="movie",
+                prompt="The movie was not good. The movie was",
+                target_tokens=[" bad"],
+                foil_tokens=[" good"],
+                control_prompt="The movie was good. The movie was",
+                control_type="matched_non_negation",
+                control_target_tokens=[" good"],
+                control_foil_tokens=[" bad"],
+                expected_baseline_direction="positive",
+                metadata={"template_family": "test"},
+            ),
+            BehavioralTask(
+                id="property_0",
+                family="property_negation",
+                concept="animal",
+                prompt="The animal was not safe. The animal was",
+                target_tokens=[" dangerous"],
+                foil_tokens=[" safe"],
+                control_prompt="The animal was safe. The animal was",
+                control_type="matched_non_negation",
+                control_target_tokens=[" safe"],
+                control_foil_tokens=[" dangerous"],
+                expected_baseline_direction="positive",
+                metadata={"template_family": "test"},
+            ),
+            BehavioralTask(
+                id="state_0",
+                family="state_negation",
+                concept="machine",
+                prompt="The machine was not on. The machine was",
+                target_tokens=[" off"],
+                foil_tokens=[" on"],
+                control_prompt="The machine was on. The machine was",
+                control_type="matched_non_negation",
+                control_target_tokens=[" on"],
+                control_foil_tokens=[" off"],
+                expected_baseline_direction="positive",
+                metadata={"template_family": "test"},
+            ),
+        ],
+        task_file,
+    )
+    (calibration_dir / "calibration_summary.json").write_text(
+        json.dumps(
+            {
+                "passes_minimum": True,
+                "kept_by_family": {
+                    "sentiment_negation": 1,
+                    "property_negation": 1,
+                    "state_negation": 1,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_real_behavioral_sae_intervention(
+        out_dir=out_dir,
+        ranking_dir=ranking_dir,
+        per_family=1,
+        model_name="test-local",
+        hook_point="blocks.2.hook_resid_post",
+        sae_release="test-release",
+        sae_id="blocks.2.hook_resid_post",
+        top_k_features=2,
+        baseline_mode="top",
+        operations=["ablate"],
+        patch_mode="delta",
+        task_source="file",
+        task_file=task_file,
+        task_bank_calibration_dir=calibration_dir,
+        task_source_id="unit_calibrated_bank",
+        model_adapter=TinyBehavioralModelAdapter(),
+        sae_adapter=TinyBehavioralSAE(),
+    )
+
+    assert result.n_tasks_total == 3
+    task_source = json.loads((out_dir / "task_source.json").read_text())
+    assert task_source["task_source"] == "file"
+    assert task_source["task_source_id"] == "unit_calibrated_bank"
+    assert (out_dir / "source_calibration_summary.json").exists()
+    report = json.loads((out_dir / "mechanism_report.json").read_text())
+    assert report["task_source"]["task_source"] == "file"
+    assert "external calibrated task file" in " ".join(report["limitations"])

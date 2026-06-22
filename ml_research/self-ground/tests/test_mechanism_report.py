@@ -606,6 +606,57 @@ def test_markdown_contains_required_evidence_sections_and_reconstruction(tmp_pat
     assert "0.1" in text
 
 
+def test_report_records_calibrated_task_source_and_qualified_candidate_wording(tmp_path) -> None:
+    _write_report_inputs(
+        tmp_path,
+        n_tasks=9,
+        families=["sentiment_negation", "property_negation", "state_negation"],
+        random_labels=["random_seed_7", "random_seed_11", "random_seed_13"],
+        density_labels=[
+            "density_matched_seed_7",
+            "density_matched_seed_11",
+            "density_matched_seed_13",
+        ],
+    )
+    write_config(
+        {
+            "task_source": "file",
+            "task_file": "runs/calibration/calibrated_behavioral_tasks.jsonl",
+            "task_source_id": "unit_calibrated_bank",
+            "task_bank_calibration_dir": "runs/calibration",
+            "calibrated_task_count_by_family": {
+                "sentiment_negation": 3,
+                "property_negation": 3,
+                "state_negation": 3,
+            },
+        },
+        tmp_path / "task_source.json",
+    )
+    write_config(
+        {
+            "passes_minimum": True,
+            "kept_by_family": {
+                "sentiment_negation": 3,
+                "property_negation": 3,
+                "state_negation": 3,
+            },
+        },
+        tmp_path / "source_calibration_summary.json",
+    )
+
+    report = build_mechanism_evidence_report(
+        behavioral_run_dir=tmp_path,
+        out_md=tmp_path / "mechanism_report.md",
+    )
+
+    assert report.task_source["task_source"] == "file"
+    assert "baseline-calibrated negation task bank" in report.recommended_claim
+    assert "external calibrated task file" in " ".join(report.limitations)
+    text = (tmp_path / "mechanism_report.md").read_text()
+    assert "## Task Source" in text
+    assert "unit_calibrated_bank" in text
+
+
 def test_all_skipped_report_has_blocker_reason(tmp_path) -> None:
     _write_report_inputs(tmp_path, skipped_rows=3)
     (tmp_path / "behavioral_intervention_results.jsonl").write_text("")

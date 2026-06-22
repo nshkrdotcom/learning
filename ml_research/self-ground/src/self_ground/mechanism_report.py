@@ -74,6 +74,7 @@ class MechanismEvidenceReport(BaseModel):
     engine_backend: str
     metadata_mismatch_override_used: bool
     diagnostic_only: bool
+    task_source: dict[str, Any] | None = None
     task_calibration_enabled: bool = False
     task_calibration: dict[str, Any] | None = None
     feature_selection_mode: str = "top"
@@ -144,6 +145,10 @@ def _artifact_paths(run_dir: Path) -> dict[str, str]:
         "task_calibration_result.json",
         "calibrated_behavioral_tasks.jsonl",
         "calibrated_excluded_behavioral_tasks.jsonl",
+        "task_source.json",
+        "source_calibration_summary.json",
+        "source_calibrated_excluded_behavioral_tasks.jsonl",
+        "source_candidate_baseline_scores.jsonl",
     ]
     return {name: str(run_dir / name) for name in names if (run_dir / name).exists()}
 
@@ -509,6 +514,7 @@ def _top_level_limitations(
     summary_rows: list[dict[str, str]],
     thresholds: EvidenceThresholds,
     feature_sets: dict[str, Any],
+    task_source: dict[str, Any] | None,
 ) -> list[str]:
     density_matched_control_count = len(
         {
@@ -546,6 +552,11 @@ def _top_level_limitations(
         limitations.append(
             "Task calibration was applied using baseline-only filters. Evidence is "
             "conditional on this preregistered calibrated task subset."
+        )
+    if task_source and task_source.get("task_source") == "file":
+        limitations.append(
+            "Tasks were loaded from an external calibrated task file. Evidence is "
+            "conditional on the task-bank calibration artifacts referenced by task_source.json."
         )
     if baseline_pass_rate is not None and baseline_pass_rate < (
         thresholds.min_intended_direction_pass_rate_for_candidate
@@ -598,6 +609,8 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     feature_sets = artifact_json("feature_sets.json") or {}
     task_calibration = artifact_json("task_calibration_result.json")
     task_calibration_rule = artifact_json("task_calibration_rule.json")
+    task_source = artifact_json("task_source.json")
+    source_calibration_summary = artifact_json("source_calibration_summary.json")
     feature_set_rows = feature_sets.get("feature_sets", [])
     baseline_rows = artifact_rows("baseline_task_summary.csv")
     behavior_rows = artifact_rows("behavioral_summary.csv")
@@ -667,6 +680,23 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
     def json_block(value: Any) -> str:
         return f"```json\n{value}\n```"
 
+    task_source_type = (task_source or {}).get(
+        "task_source",
+        config.get("task_source", "generated"),
+    )
+    task_source_id = (task_source or {}).get(
+        "task_source_id",
+        config.get("task_source_id", "not available"),
+    )
+    task_source_file = (task_source or {}).get(
+        "task_file",
+        config.get("task_file", "not available"),
+    )
+    task_source_calibration_dir = (task_source or {}).get(
+        "task_bank_calibration_dir",
+        config.get("task_bank_calibration_dir", "not available"),
+    )
+
     text = f"""# Phase 3 Token-Contrast Evidence Report
 
 ## Configuration
@@ -685,6 +715,8 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - random seeds: `{config.get("random_seeds", "not available")}`
 - feature selection mode: `{config.get("feature_selection_mode", "not available")}`
 - task calibration mode: `{config.get("task_calibration_mode", "none")}`
+- task source: `{config.get("task_source", "generated")}`
+- task source id: `{config.get("task_source_id", "not available")}`
 
 ## SAE Compatibility
 
@@ -710,6 +742,16 @@ def _write_markdown(report: MechanismEvidenceReport, path: Path) -> None:
 - passes minimum: `{validation_summary.get("passes_minimum", "not available")}`
 - valid by family: `{validation_summary.get("valid_by_family", "not available")}`
 - excluded by family: `{validation_summary.get("excluded_by_family", "not available")}`
+
+## Task Source
+
+- source type: `{task_source_type}`
+- source id: `{task_source_id}`
+- task file: `{task_source_file}`
+- calibration dir:
+  `{task_source_calibration_dir}`
+
+{json_block(source_calibration_summary or "not available")}
 
 ## Baseline Calibration
 
@@ -844,6 +886,9 @@ def build_mechanism_evidence_report(
         if (run_dir / "task_calibration_result.json").exists()
         else None
     )
+    task_source = (
+        read_json(run_dir / "task_source.json") if (run_dir / "task_source.json").exists() else None
+    )
     raw_summary_rows = (
         [
             row
@@ -915,14 +960,24 @@ def build_mechanism_evidence_report(
         summary_rows=summary_rows,
         thresholds=threshold_config,
         feature_sets=feature_sets,
+        task_source=task_source,
     )
-    recommended_claim = (
-        "The selected SAE feature set has candidate evidence for a negation-scope "
-        "token-contrast effect under decoded residual intervention in this "
-        "model/hook/SAE configuration."
-        if claim_status in {"candidate_evidence", "strong_candidate_evidence"}
-        else "The run does not support a candidate feature-claim under the configured thresholds."
-    )
+    if claim_status in {"candidate_evidence", "strong_candidate_evidence"}:
+        if task_source and task_source.get("task_source") == "file":
+            recommended_claim = (
+                "Candidate evidence under a preregistered baseline-calibrated negation "
+                "task bank for the requested model and selected SAE/hook configuration."
+            )
+        else:
+            recommended_claim = (
+                "The selected SAE feature set has candidate evidence for a negation-scope "
+                "token-contrast effect under decoded residual intervention in this "
+                "model/hook/SAE configuration."
+            )
+    else:
+        recommended_claim = (
+            "The run does not support a candidate feature-claim under the configured thresholds."
+        )
     report = MechanismEvidenceReport(
         schema_version="phase3.token_contrast.v1",
         model_name=str(config.get("model_name") or config.get("model") or ""),
@@ -935,6 +990,7 @@ def build_mechanism_evidence_report(
             config.get("allow_metadata_mismatch")
             or (compatibility or {}).get("diagnostic_only")
         ),
+        task_source=task_source,
         task_calibration_enabled=config.get("task_calibration_mode") not in {None, "none"},
         task_calibration=task_calibration,
         feature_selection_mode=str(config.get("feature_selection_mode") or "top"),

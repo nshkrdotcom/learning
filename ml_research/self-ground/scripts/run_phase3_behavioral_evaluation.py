@@ -22,6 +22,15 @@ def main() -> int:
     )
     parser.add_argument("--ranking-dir", required=True)
     parser.add_argument("--tasks")
+    parser.add_argument(
+        "--task-source",
+        choices=["generated", "file"],
+        default="generated",
+        help="Use generated tasks or a calibrated task JSONL file.",
+    )
+    parser.add_argument("--task-file")
+    parser.add_argument("--task-bank-calibration-dir")
+    parser.add_argument("--task-source-id")
     parser.add_argument("--out", default="runs/test_phase3_behavioral_evaluation")
     parser.add_argument("--per-family", type=int, default=10)
     parser.add_argument("--seed", type=int, default=7)
@@ -79,6 +88,14 @@ def main() -> int:
             out_dir=Path(args.out),
             ranking_dir=Path(args.ranking_dir),
             tasks_path=Path(args.tasks) if args.tasks else None,
+            task_source=args.task_source,
+            task_file=Path(args.task_file) if args.task_file else None,
+            task_bank_calibration_dir=(
+                Path(args.task_bank_calibration_dir)
+                if args.task_bank_calibration_dir
+                else None
+            ),
+            task_source_id=args.task_source_id,
             per_family=args.per_family,
             seed=args.seed,
             model_name=args.model,

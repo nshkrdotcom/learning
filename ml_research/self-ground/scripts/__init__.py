@@ -1,1 +1,1 @@
-"""Local script helpers for tests and command orchestration."""
+"""Importable script helpers for SELF-GROUND tests and orchestration."""

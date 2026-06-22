@@ -238,6 +238,38 @@ The first serious GPU run plan is specified in
 `experiments/E002_real_negation_sae_density_matched_run.md`. CPU runs with
 `per_family=2` and `top_k_features=2` are diagnostic only.
 
+The calibrated serious follow-up is specified in
+`experiments/E003_calibrated_negation_sae_run.md`:
+
+```bash
+uv run python scripts/run_e003_calibrated_negation_sae.py \
+  --device cuda \
+  --task-bank data/phase3_task_bank/pythia70m_negation_candidate_bank.json \
+  --per-family-candidates 80 \
+  --min-calibrated-per-family 10 \
+  --min-baseline-margin 0.1 \
+  --ranking-top-k 50 \
+  --eval-top-k 5 \
+  --operations ablate \
+  --random-seeds 7,11,13 \
+  --out-root runs
+```
+
+Latest E003 result:
+
+- task bank calibration passed with 69 kept tasks:
+  `property_negation=10`, `sentiment_negation=36`, `state_negation=23`;
+- baseline intended-direction pass rate in the evaluation was `1.0`;
+- run classification: `serious_gpu_evidence_run`;
+- claim status: `insufficient_evidence`;
+- top target delta: `0.6277369900026183`;
+- top matched-control delta: `0.7188387469968934`;
+- specificity gap: `-0.09110175699427508`.
+
+Interpretation: E003 repaired the broken baseline task suite, including
+`property_negation`, but did not produce negation-specific evidence because
+matched-control movement remained larger than target-prompt movement.
+
 Inspect a completed Phase 3 claim run without recomputing model results:
 
 ```bash

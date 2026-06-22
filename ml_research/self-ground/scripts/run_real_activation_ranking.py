@@ -31,6 +31,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cpu")
     parser.add_argument("--sae-release", default=None)
     parser.add_argument("--sae-id", default=None)
+    parser.add_argument(
+        "--task-source",
+        choices=["generated", "file"],
+        default="generated",
+        help="Use generated minimal pairs or a calibrated behavioral task file.",
+    )
+    parser.add_argument("--task-file", default=None)
+    parser.add_argument("--task-source-id", default=None)
     return parser.parse_args()
 
 
@@ -50,6 +58,9 @@ def main() -> int:
             device=args.device,
             sae_release=args.sae_release,
             sae_id=args.sae_id,
+            task_source=args.task_source,
+            task_file=Path(args.task_file) if args.task_file else None,
+            task_source_id=args.task_source_id,
         )
     except Exception as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

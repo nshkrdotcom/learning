@@ -99,9 +99,10 @@ Artifact inspection:
 
 - [x] `uv sync` passed
 - [x] `uv run ruff check .` passed
-- [x] `uv run pytest` passed: `148 passed, 12 skipped`
-- [x] `uv run pytest --run-integration` passed without SAE env: `155 passed, 5 skipped`
-- [x] SAE-configured integration passed: `160 passed`
+- [x] `uv run pytest` passed: `200 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed without SAE env:
+  `207 passed, 5 skipped`
+- [x] SAE-configured integration passed: `212 passed`
 - [x] root CLI help inspected
 - [x] Phase 3 CLI help inspected
 - [x] SAE compatibility CLI help inspected
@@ -146,6 +147,66 @@ Notes:
 The exact final commit hash and push result are recorded in the final response
 after commit/push, because the commit hash cannot be embedded in the same
 commit before it exists.
+
+## E003 Calibrated Task Bank Pass
+
+- [x] richer Phase 3 task bank implemented
+- [x] task bank generation is deterministic
+- [x] tokenization rejection artifacts are written
+- [x] baseline-only task bank calibration implemented
+- [x] calibration fails closed when a required family underfills
+- [x] Phase 3 evaluation accepts `--task-source file`
+- [x] SAE ranking accepts `--task-source file`
+- [x] task-source metadata is written to ranking and evaluation artifacts
+- [x] mechanism reports include task-source metadata
+- [x] calibrated candidate wording is qualified in reports
+- [x] E003 orchestration script implemented
+- [x] E002/E003 comparison script implemented
+- [x] E003 ran on CUDA
+- [x] E003 repaired `property_negation` baseline coverage
+- [x] E003 remained `insufficient_evidence`
+- [x] docs and ledgers updated with artifact-backed E003 result
+
+Commands run:
+
+```bash
+uv run python scripts/run_e003_calibrated_negation_sae.py --device cuda --task-bank data/phase3_task_bank/pythia70m_negation_candidate_bank.json --per-family-candidates 80 --min-calibrated-per-family 10 --min-baseline-margin 0.1 --ranking-top-k 50 --eval-top-k 5 --operations ablate --random-seeds 7,11,13 --out-root runs --force
+uv run python scripts/inspect_claim_run.py --run-dir runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density --json
+uv run python scripts/compare_e002_e003.py --e002 runs/e002_negation_ravel_eval_pythia70m_deduped_l2_pf10_top5_density --e003 runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density --out runs/diagnostics/e003_vs_e002_comparison
+```
+
+Observed E003 artifacts:
+
+- [x] task bank:
+  `data/phase3_task_bank/pythia70m_negation_candidate_bank.json`
+- [x] calibration:
+  `runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibration_summary.json`
+- [x] ranking:
+  `runs/e003_real_sae_ranking_pythia70m_l2_calibrated_pf10_top50/feature_rankings.csv`
+- [x] evaluation:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density/mechanism_report.json`
+- [x] inspection:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density/inspection_summary.json`
+- [x] comparison:
+  `runs/diagnostics/e003_vs_e002_comparison/comparison.json`
+
+Observed E003 result:
+
+- candidate tasks: 240 total, 80 per required family
+- token-valid candidates: 240
+- kept by calibration:
+  `property_negation=10`, `sentiment_negation=36`, `state_negation=23`
+- evaluation baseline pass rate: `1.0`
+- behavioral rows: 552
+- skipped rows: 0
+- claim status: `insufficient_evidence`
+- top target delta: `0.6277369900026183`
+- top matched-control delta: `0.7188387469968934`
+- specificity gap: `-0.09110175699427508`
+
+Interpretation: E003 fixed the baseline task-suite coverage problem but did not
+produce candidate evidence because matched-control movement exceeded target
+movement.
 
 ## E002 Calibration And Feature-Selection Pass
 

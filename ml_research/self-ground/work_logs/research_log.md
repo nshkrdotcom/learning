@@ -280,3 +280,61 @@ docs/decision_log/D008_saebench_ravel_eval_boundary.md
 
 No upstream SAEBench/RAVEL eval ran. Current results remain RAVEL-shaped custom
 token-contrast evaluation over real decoded SAE interventions.
+
+## 2026-06-21: E003 Calibrated Task Bank Run
+
+Built and ran the calibrated E003 task-bank pipeline:
+
+```bash
+uv run python scripts/run_e003_calibrated_negation_sae.py \
+  --device cuda \
+  --task-bank data/phase3_task_bank/pythia70m_negation_candidate_bank.json \
+  --per-family-candidates 80 \
+  --min-calibrated-per-family 10 \
+  --min-baseline-margin 0.1 \
+  --ranking-top-k 50 \
+  --eval-top-k 5 \
+  --operations ablate \
+  --random-seeds 7,11,13 \
+  --out-root runs \
+  --force
+```
+
+Task bank:
+
+- artifact: `data/phase3_task_bank/pythia70m_negation_candidate_bank.json`
+- accepted/token-valid candidates: 240 total, 80 per required family
+- rejected tokenization candidates: 0
+
+Calibration:
+
+- artifact:
+  `runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibration_summary.json`
+- passes minimum: true
+- kept tasks: `property_negation=10`, `sentiment_negation=36`,
+  `state_negation=23`
+- excluded by reason: `baseline_wrong_direction=161`,
+  `baseline_margin_below_threshold=10`
+
+Evaluation:
+
+- ranking:
+  `runs/e003_real_sae_ranking_pythia70m_l2_calibrated_pf10_top50`
+- evaluation:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density`
+- comparison:
+  `runs/diagnostics/e003_vs_e002_comparison/comparison.json`
+- behavioral rows: 552
+- skipped rows: 0
+- claim status: `insufficient_evidence`
+- top target delta: `0.6277369900026183`
+- top control delta: `0.7188387469968934`
+- specificity gap: `-0.09110175699427508`
+
+Interpretation:
+
+E003 repaired the baseline task-suite failure, including `property_negation`.
+The run still does not support candidate evidence because matched-control
+movement exceeds target-prompt movement. The current blocker is no longer
+family coverage; it is negation-specific feature/control separation under the
+current task/evaluator setup.

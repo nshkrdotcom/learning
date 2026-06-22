@@ -23,6 +23,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sae-release", required=True)
     parser.add_argument("--sae-id", required=True)
     parser.add_argument("--tasks", default=None)
+    parser.add_argument(
+        "--task-source",
+        choices=["generated", "file"],
+        default="generated",
+        help="Use generated tasks or a calibrated task JSONL file.",
+    )
+    parser.add_argument("--task-file", default=None)
+    parser.add_argument("--task-bank-calibration-dir", default=None)
+    parser.add_argument("--task-source-id", default=None)
     parser.add_argument("--per-family", type=int, default=2)
     parser.add_argument("--top-k-features", type=int, default=2)
     parser.add_argument("--baseline-mode", default="top-vs-random-multiseed")
@@ -101,6 +110,14 @@ def main() -> int:
             ranking_dir=Path(args.ranking_dir),
             out_dir=Path(args.out),
             tasks_path=Path(args.tasks) if args.tasks else None,
+            task_source=args.task_source,
+            task_file=Path(args.task_file) if args.task_file else None,
+            task_bank_calibration_dir=(
+                Path(args.task_bank_calibration_dir)
+                if args.task_bank_calibration_dir
+                else None
+            ),
+            task_source_id=args.task_source_id,
             per_family=args.per_family,
             model_name=args.model,
             hook_point=args.hook_point,

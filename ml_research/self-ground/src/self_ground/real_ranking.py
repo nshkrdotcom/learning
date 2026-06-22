@@ -28,6 +28,11 @@ from self_ground.io import (
 )
 from self_ground.negation import generate_negation_pairs
 from self_ground.sae_compat import SAECompatibilityResult, verify_sae_compatibility
+from self_ground.task_source import (
+    count_tasks_by_family,
+    load_task_file_with_minimum,
+    write_task_source_artifacts,
+)
 
 
 @dataclass(frozen=True)
@@ -54,6 +59,28 @@ def _load_or_generate_pairs(
     if pairs_path is not None:
         return read_minimal_pairs(pairs_path)
     return generate_negation_pairs(per_family=per_family, seed=seed)
+
+
+def _pairs_from_behavioral_tasks(task_file: str | Path, *, per_family: int) -> list[MinimalPair]:
+    tasks, _ = load_task_file_with_minimum(task_file=task_file, min_per_family=per_family)
+    pairs: list[MinimalPair] = []
+    for task in tasks:
+        pairs.append(
+            MinimalPair(
+                id=task.id,
+                domain="behavioral_task_bank",
+                concept=task.concept,
+                template_family=task.family,
+                x_pos=task.prompt,
+                x_neg=task.control_prompt,
+                x_para=task.prompt,
+                x_decoy=task.control_prompt,
+                held_constant=["task_id", "family", "concept", "target_foil_tokens"],
+                changed_variable="negation_scope_prompt_vs_matched_control_prompt",
+                control_purity=1.0,
+            )
+        )
+    return pairs
 
 
 def _normalise_sae_feature_ids(feature_activations: FeatureActivations) -> FeatureActivations:
@@ -167,6 +194,7 @@ def _write_ranking_readme(
     n_pairs: int,
     top_k_features: int,
     compatibility: SAECompatibilityResult | None = None,
+    task_source: dict[str, Any] | None = None,
 ) -> None:
     sae_metadata = ""
     if compatibility is not None:
@@ -189,6 +217,8 @@ SAE semantic compatibility:
 - pooling: `{pooling}`
 - pairs: `{n_pairs}`
 - top-k features: `{top_k_features}`
+- task source: `{(task_source or {}).get("task_source", "generated")}`
+- task source id: `{(task_source or {}).get("task_source_id", "not set")}`
 
 This run uses real TransformerLens activations. If `feature_source` is
 `residual_dimensions`, features are residual stream dimensions named `resid_N`.
@@ -220,6 +250,9 @@ def run_activation_ranking(
     device: str | None = "cpu",
     sae_release: str | None = None,
     sae_id: str | None = None,
+    task_source: str = "generated",
+    task_file: str | Path | None = None,
+    task_source_id: str | None = None,
     model_adapter=None,
     sae_adapter=None,
 ) -> ActivationRankingRun:
@@ -233,15 +266,27 @@ def run_activation_ranking(
         raise ValueError("pooling must be 'final_token' or 'mean'")
     if feature_source == "sae" and (not sae_release or not sae_id):
         raise ValueError("feature_source='sae' requires --sae-release and --sae-id")
+    if task_source not in {"generated", "file"}:
+        raise ValueError("task_source must be 'generated' or 'file'")
+    if task_source == "file" and task_file is None:
+        raise ValueError("task_source='file' requires task_file")
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    pairs = _load_or_generate_pairs(
-        pairs_path=pairs_path,
-        per_family=per_family,
-        seed=seed,
-    )
+    source_tasks = None
+    if task_source == "file":
+        source_tasks, _ = load_task_file_with_minimum(
+            task_file=Path(task_file or ""),
+            min_per_family=per_family,
+        )
+        pairs = _pairs_from_behavioral_tasks(Path(task_file or ""), per_family=per_family)
+    else:
+        pairs = _load_or_generate_pairs(
+            pairs_path=pairs_path,
+            per_family=per_family,
+            seed=seed,
+        )
     texts, _, _, _ = flatten_pair_conditions(pairs)
 
     if model_adapter is None:
@@ -316,7 +361,22 @@ def run_activation_ranking(
         "engine_backend": TRANSFORMER_LENS_BACKEND,
         "sae_backend": SAE_LENS_BACKEND if feature_source == "sae" else None,
         "claim_eligible": False,
+        "task_source": task_source,
+        "task_file": str(task_file) if task_file else None,
+        "task_source_id": task_source_id,
     }
+    task_source_payload = None
+    if source_tasks is not None:
+        task_source_payload = write_task_source_artifacts(
+            out_dir=out_dir,
+            task_source=task_source,
+            task_file=task_file,
+            task_source_id=task_source_id,
+            task_bank_calibration_dir=None,
+            tasks=source_tasks,
+            min_per_family=per_family,
+        )
+        metadata["calibrated_task_count_by_family"] = count_tasks_by_family(source_tasks)
     if sae_compatibility is not None:
         metadata.update(
             {
@@ -342,6 +402,9 @@ def run_activation_ranking(
     config = {
         **metadata,
         "pairs_path": str(pairs_path) if pairs_path is not None else None,
+        "task_source": task_source,
+        "task_file": str(task_file) if task_file else None,
+        "task_source_id": task_source_id,
         "per_family": per_family,
         "seed": seed,
         "top_k_features": top_k_features,
@@ -364,6 +427,7 @@ def run_activation_ranking(
         n_pairs=len(pairs),
         top_k_features=top_k_features,
         compatibility=sae_compatibility,
+        task_source=task_source_payload,
     )
 
     return ActivationRankingRun(

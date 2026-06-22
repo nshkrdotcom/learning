@@ -69,3 +69,56 @@ Unsupported:
 - candidate evidence for a negation-scope SAE feature set,
 - broad negation mechanism discovery,
 - upstream SAEBench/RAVEL benchmark evidence.
+
+## 2026-06-21 E003 Calibrated Task Bank Result
+
+- task bank:
+  `data/phase3_task_bank/pythia70m_negation_candidate_bank.json`
+- calibration:
+  `runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibration_summary.json`
+- evaluation:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density/mechanism_report.json`
+- inspection:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density/inspection_summary.json`
+- comparison:
+  `runs/diagnostics/e003_vs_e002_comparison/comparison.json`
+
+E003 status: `insufficient_evidence`.
+
+Task-suite result:
+
+- candidate tasks: 240 total, 80 per required family;
+- token-valid candidates: 240;
+- calibrated kept tasks:
+  `property_negation=10`, `sentiment_negation=36`, `state_negation=23`;
+- baseline intended-direction pass rate in the evaluated run: `1.0`.
+
+Evidence result:
+
+- behavioral rows: 552;
+- skipped rows: 0;
+- top target delta: `0.6277369900026183`;
+- top matched-control delta: `0.7188387469968934`;
+- specificity gap: `-0.09110175699427508`;
+- interpretation category:
+  `calibration_fixed_task_suite_but_feature_specificity_still_failed`.
+
+Strongest supported claim:
+
+The calibrated E003 task bank fixes the baseline task-suite coverage blocker
+for Pythia-70M-deduped, including `property_negation`. The selected SAE feature
+set moves logits under real decoded intervention, but the effect is not
+negation-specific under the current matched-control evaluation.
+
+Unsupported:
+
+- candidate evidence for a negation-scope SAE feature set;
+- broad negation mechanism discovery;
+- upstream SAEBench/RAVEL benchmark evidence;
+- model-general, layer-general, or task-general conclusions.
+
+Next action:
+
+Diagnose why the top calibrated SAE feature set moves matched non-negation
+controls more than target prompts. Do not change evidence thresholds or drop
+required families.

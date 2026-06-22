@@ -207,6 +207,62 @@ tasks passed intended baseline direction, with `property_negation` retaining
 `task_calibration_failed`; this is useful task-suite evidence, not a candidate
 feature claim.
 
+## Calibrated Task Bank E003
+
+E003 replaces the broken generated Phase 3 task suite with a richer
+baseline-calibrated candidate bank:
+
+```bash
+uv run python scripts/run_e003_calibrated_negation_sae.py \
+  --device cuda \
+  --task-bank data/phase3_task_bank/pythia70m_negation_candidate_bank.json \
+  --per-family-candidates 80 \
+  --min-calibrated-per-family 10 \
+  --min-baseline-margin 0.1 \
+  --ranking-top-k 50 \
+  --eval-top-k 5 \
+  --operations ablate \
+  --random-seeds 7,11,13 \
+  --out-root runs
+```
+
+The candidate bank writes every generated, rejected, calibrated, and excluded
+task to file. Calibration uses only baseline target/foil scores before any
+decoded SAE intervention rows are run.
+
+Latest E003 artifacts:
+
+- task bank:
+  `data/phase3_task_bank/pythia70m_negation_candidate_bank.json`
+- calibration:
+  `runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibration_summary.json`
+- ranking:
+  `runs/e003_real_sae_ranking_pythia70m_l2_calibrated_pf10_top50`
+- evaluation:
+  `runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density`
+- comparison:
+  `runs/diagnostics/e003_vs_e002_comparison/comparison.json`
+
+Observed E003 result:
+
+- candidate templates: 240 total, 80 per required family;
+- token-valid candidates: 240;
+- calibrated kept tasks:
+  `property_negation=10`, `sentiment_negation=36`, `state_negation=23`;
+- calibration pass rate in the evaluation: `1.0`;
+- behavioral rows: 552;
+- skipped rows: 0;
+- claim status: `insufficient_evidence`;
+- top target delta: `0.6277369900026183`;
+- top matched-control delta: `0.7188387469968934`;
+- specificity gap: `-0.09110175699427508`.
+
+Interpretation: E003 fixes the baseline-calibration failure, including the old
+`property_negation` 0/10 issue. It does not support candidate evidence because
+the top selected SAE feature set still moves matched controls more than target
+prompts. The remaining bottleneck is feature/task specificity under the current
+custom token-contrast evaluator, not missing baseline coverage.
+
 ## Feature Selection Modes
 
 The primary mode remains the ranking-file order:

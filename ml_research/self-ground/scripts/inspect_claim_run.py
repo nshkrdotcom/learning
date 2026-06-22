@@ -133,6 +133,11 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
         if (run_dir / "feature_sets.json").exists()
         else {"feature_sets": []}
     )
+    task_source = (
+        _read_json(run_dir / "task_source.json")
+        if (run_dir / "task_source.json").exists()
+        else {}
+    )
     feature_set_rows = list(feature_sets.get("feature_sets", []))
     behavioral_rows = _read_jsonl(run_dir / "behavioral_intervention_results.jsonl")
     skipped = (
@@ -197,6 +202,18 @@ def inspect_claim_run(run_dir: Path, *, allow_missing: bool = False) -> dict[str
             "excluded_tasks": validation_summary.get("excluded_tasks"),
             "valid_by_family": validation_summary.get("valid_by_family"),
         },
+        "task_source": {
+            "task_source": task_source.get("task_source", config.get("task_source")),
+            "task_source_id": task_source.get("task_source_id", config.get("task_source_id")),
+            "task_file": task_source.get("task_file", config.get("task_file")),
+            "task_bank_calibration_dir": task_source.get(
+                "task_bank_calibration_dir",
+                config.get("task_bank_calibration_dir"),
+            ),
+            "calibrated_task_count_by_family": task_source.get(
+                "calibrated_task_count_by_family"
+            ),
+        },
         "feature_sets": {
             "labels": [row.get("label") for row in feature_set_rows],
             "top_feature_ids": top_features,
@@ -246,6 +263,9 @@ def _print_human(summary: dict[str, Any]) -> None:
         print(f"  {key}: {value}")
     print("\ntask_validation:")
     for key, value in summary["task_validation"].items():
+        print(f"  {key}: {value}")
+    print("\ntask_source:")
+    for key, value in summary["task_source"].items():
         print(f"  {key}: {value}")
     print("\nfeature_sets:")
     for key, value in summary["feature_sets"].items():
