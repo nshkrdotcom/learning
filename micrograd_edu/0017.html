@@ -1,0 +1,705 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 8 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-8-of-8">Karpathy micrograd outline — Part 8 of 8</h1>
+<h2 id="scope-final-conceptual-consolidation-complete-system-map-and-distilled-everything-that-matters-checklist">Scope: final conceptual consolidation, complete system map, and distilled “everything that matters” checklist</h2>
+<p>Approx. video range: <strong>wrap-up / whole-video synthesis</strong></p>
+<hr />
+<h1 id="170-the-complete-conceptual-stack">170. The complete conceptual stack</h1>
+<p>By the end of the lecture, the full stack is:</p>
+<div class="codehilite"><pre><span></span><code>scalar numbers
+→ Value objects
+→ operations between Values
+→ computation graph
+→ local backward functions
+→ topological backward pass
+→ gradients
+→ neurons
+→ layers
+→ MLP
+→ predictions
+→ loss
+→ gradient descent
+→ trained neural network
+</code></pre></div>
+
+<p>The key transformation is:</p>
+<div class="codehilite"><pre><span></span><code>ordinary arithmetic
+</code></pre></div>
+
+<p>becomes:</p>
+<div class="codehilite"><pre><span></span><code>tracked arithmetic
+</code></pre></div>
+
+<p>because every operation creates a <code>Value</code> that remembers:</p>
+<div class="codehilite"><pre><span></span><code>what number it contains
+what operation produced it
+which previous Values produced it
+how to propagate gradients backward
+</code></pre></div>
+
+<hr />
+<h1 id="171-the-central-abstraction-value">171. The central abstraction: <code>Value</code></h1>
+<p>Everything depends on <code>Value</code>.</p>
+<p>A <code>Value</code> is a scalar with extra training-related state:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Value</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_children</span><span class="o">=</span><span class="p">(),</span> <span class="n">_op</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">_children</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op</span> <span class="o">=</span> <span class="n">_op</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span>
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>data:
+    forward-pass number
+
+grad:
+    derivative of final output with respect to this Value
+
+_prev:
+    children / input Values that created this Value
+
+_op:
+    operation that created this Value
+
+_backward:
+    local function for propagating gradients to children
+</code></pre></div>
+
+<p>This object is enough to build a tiny autograd system.</p>
+<hr />
+<h1 id="172-forward-pass">172. Forward pass</h1>
+<p>The forward pass evaluates expressions.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">10.0</span><span class="p">)</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>a.data = 2
+b.data = -3
+a*b = -6
+d.data = 4
+</code></pre></div>
+
+<p>But during the forward pass, the graph is also built.</p>
+<p>For:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>micrograd records:</p>
+<div class="codehilite"><pre><span></span><code>a and b produced intermediate e by *
+e and c produced d by +
+</code></pre></div>
+
+<p>So the forward pass has two outputs:</p>
+<div class="codehilite"><pre><span></span><code>1. numeric result
+2. computation graph
+</code></pre></div>
+
+<hr />
+<h1 id="173-backward-pass">173. Backward pass</h1>
+<p>The backward pass computes gradients.</p>
+<p>Given a final scalar output, usually <code>loss</code>, calling:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>computes:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂every Value in the graph
+</code></pre></div>
+
+<p>The algorithm:</p>
+<div class="codehilite"><pre><span></span><code>1. topologically sort the graph
+2. set loss.grad = 1
+3. visit nodes in reverse topological order
+4. call each node’s _backward()
+5. accumulate gradients into children
+</code></pre></div>
+
+<p>This is reverse-mode automatic differentiation.</p>
+<hr />
+<h1 id="174-why-topological-order-is-necessary">174. Why topological order is necessary</h1>
+<p>For backprop to be correct, a node must receive all gradient contributions from later nodes before it propagates backward.</p>
+<p>If a node feeds into multiple later branches, those branches must all contribute first.</p>
+<p>So we need an order where:</p>
+<div class="codehilite"><pre><span></span><code>output is processed first
+then its dependencies
+then their dependencies
+...
+</code></pre></div>
+
+<p>Topological sort gives this.</p>
+<p>Forward topological order:</p>
+<div class="codehilite"><pre><span></span><code>inputs → output
+</code></pre></div>
+
+<p>Backward order:</p>
+<div class="codehilite"><pre><span></span><code>output → inputs
+</code></pre></div>
+
+<hr />
+<h1 id="175-local-backward-rules">175. Local backward rules</h1>
+<p>Each operation knows only its local derivative.</p>
+<p>Addition:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</code></pre></div>
+
+<p>Local derivatives:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂a = 1
+∂out/∂b = 1
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Multiplication:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+</code></pre></div>
+
+<p>Local derivatives:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂a = b
+∂out/∂b = a
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">b</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">a</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Power:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">a</span> <span class="o">**</span> <span class="n">n</span>
+</code></pre></div>
+
+<p>Local derivative:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂a = n * a^(n-1)
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">n</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">data</span><span class="o">**</span><span class="p">(</span><span class="n">n</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Exponential:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">exp</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Local derivative:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂a = exp(a) = out.data
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">out</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Tanh:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">tanh</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Local derivative:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂a = 1 - tanh(a)^2 = 1 - out.data^2
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">out</span><span class="o">.</span><span class="n">data</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>ReLU:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">relu</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Local derivative:</p>
+<div class="codehilite"><pre><span></span><code>1 if a &gt; 0
+0 if a &lt;= 0
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<hr />
+<h1 id="176-chain-rule-as-the-whole-engine">176. Chain rule as the whole engine</h1>
+<p>The engine’s mathematical foundation is only the chain rule.</p>
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code>z depends on y
+y depends on x
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code>dz/dx = dz/dy * dy/dx
+</code></pre></div>
+
+<p>In micrograd terms:</p>
+<div class="codehilite"><pre><span></span><code>input.grad += local_derivative * output.grad
+</code></pre></div>
+
+<p>Every <code>_backward()</code> method is just this pattern.</p>
+<p>Backpropagation is:</p>
+<div class="codehilite"><pre><span></span><code>chain rule applied recursively backward through the graph
+</code></pre></div>
+
+<hr />
+<h1 id="177-why-gradients-use">177. Why gradients use <code>+=</code></h1>
+<p>Gradients accumulate because a value can influence the final output through multiple paths.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">a</span>
+</code></pre></div>
+
+<p>Mathematically:</p>
+<div class="codehilite"><pre><span></span><code>b = 2a
+db/da = 2
+</code></pre></div>
+
+<p>The two branches each contribute <code>1</code>.</p>
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="mi">1</span>
+</code></pre></div>
+
+<p>gives:</p>
+<div class="codehilite"><pre><span></span><code>a.grad = 2
+</code></pre></div>
+
+<p>If we used assignment:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">1</span>
+</code></pre></div>
+
+<p>the second write would overwrite the first.</p>
+<p>Therefore local backward functions must accumulate.</p>
+<hr />
+<h1 id="178-why-gradients-must-be-reset-between-optimization-steps">178. Why gradients must be reset between optimization steps</h1>
+<p>Inside one backward pass:</p>
+<div class="codehilite"><pre><span></span><code>gradient accumulation is correct
+</code></pre></div>
+
+<p>Across training iterations:</p>
+<div class="codehilite"><pre><span></span><code>old gradients are stale and must be cleared
+</code></pre></div>
+
+<p>Correct training pattern:</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># forward</span>
+<span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+<span class="c1"># zero grad</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+<span class="c1"># backward</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+<span class="c1"># update</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Without zeroing:</p>
+<div class="codehilite"><pre><span></span><code>new gradients get added to old gradients
+</code></pre></div>
+
+<p>This causes incorrect updates.</p>
+<hr />
+<h1 id="179-the-neural-network-abstraction">179. The neural network abstraction</h1>
+<p>A neural network is a particular mathematical expression made of repeated neuron computations.</p>
+<p>A neuron computes:</p>
+<div class="codehilite"><pre><span></span><code>activation = w · x + b
+output = nonlinearity(activation)
+</code></pre></div>
+
+<p>Expanded:</p>
+<div class="codehilite"><pre><span></span><code>output = tanh(w1*x1 + w2*x2 + ... + wn*xn + b)
+</code></pre></div>
+
+<p>or with ReLU:</p>
+<div class="codehilite"><pre><span></span><code>output = relu(w1*x1 + w2*x2 + ... + wn*xn + b)
+</code></pre></div>
+
+<p>A layer is:</p>
+<div class="codehilite"><pre><span></span><code>many neurons evaluated on the same input
+</code></pre></div>
+
+<p>An MLP is:</p>
+<div class="codehilite"><pre><span></span><code>layers composed sequentially
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>input
+→ layer
+→ layer
+→ output
+</code></pre></div>
+
+<hr />
+<h1 id="180-the-tiny-mlp-architecture">180. The tiny MLP architecture</h1>
+<p>The lecture’s main MLP example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>Means:</p>
+<div class="codehilite"><pre><span></span><code>3 input dimensions
+first hidden layer: 4 neurons
+second hidden layer: 4 neurons
+output layer: 1 neuron
+</code></pre></div>
+
+<p>Parameter count:</p>
+<div class="codehilite"><pre><span></span><code>Layer 1:
+    4 neurons × (3 weights + 1 bias) = 16
+
+Layer 2:
+    4 neurons × (4 weights + 1 bias) = 20
+
+Layer 3:
+    1 neuron × (4 weights + 1 bias) = 5
+
+Total:
+    16 + 20 + 5 = 41
+</code></pre></div>
+
+<p>So even this tiny model has 41 scalar knobs.</p>
+<hr />
+<h1 id="181-training-data">181. Training data</h1>
+<p>The toy supervised dataset:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">xs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">],</span>
+<span class="p">]</span>
+
+<span class="n">ys</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Goal:</p>
+<div class="codehilite"><pre><span></span><code>n(xs[0]) ≈  1
+n(xs[1]) ≈ -1
+n(xs[2]) ≈ -1
+n(xs[3]) ≈  1
+</code></pre></div>
+
+<p>The network starts with random parameters, so initial predictions are poor.</p>
+<p>Training adjusts parameters until predictions match targets.</p>
+<hr />
+<h1 id="182-loss-function">182. Loss function</h1>
+<p>The lecture uses squared error:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+</code></pre></div>
+
+<p>This produces one scalar <code>Value</code>.</p>
+<p>Low loss means:</p>
+<div class="codehilite"><pre><span></span><code>predictions close to targets
+</code></pre></div>
+
+<p>High loss means:</p>
+<div class="codehilite"><pre><span></span><code>predictions far from targets
+</code></pre></div>
+
+<p>The loss is differentiable, so micrograd can compute gradients of the loss with respect to every parameter.</p>
+<hr />
+<h1 id="183-gradient-descent-update">183. Gradient descent update</h1>
+<p>Once we call:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>each parameter has:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = ∂loss/∂p
+</code></pre></div>
+
+<p>The gradient points in the direction that increases loss.</p>
+<p>To decrease loss:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Equivalent:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>This is gradient descent.</p>
+<hr />
+<h1 id="184-complete-training-loop">184. Complete training loop</h1>
+<p>The final training loop:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_steps</span><span class="p">):</span>
+
+    <span class="c1"># forward pass</span>
+    <span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+    <span class="c1"># backward pass</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+    <span class="c1"># update</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+
+<p>This is the complete core of neural network training.</p>
+<p>Everything else in modern systems is mostly scaling, efficiency, or improved optimization.</p>
+<hr />
+<h1 id="185-pytorch-correspondence">185. PyTorch correspondence</h1>
+<p>Micrograd:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>PyTorch conceptually:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Micrograd <code>Value</code> corresponds loosely to scalar PyTorch tensors.</p>
+<p>Micrograd <code>Module.parameters()</code> corresponds to PyTorch module parameters.</p>
+<p>Micrograd <code>zero_grad()</code> corresponds to PyTorch’s gradient reset.</p>
+<p>PyTorch adds:</p>
+<div class="codehilite"><pre><span></span><code>tensor operations
+device placement
+optimized kernels
+large operation library
+autograd over tensors
+optimizers
+production engineering
+</code></pre></div>
+
+<p>but the conceptual training loop is the same.</p>
+<hr />
+<h1 id="186-what-automatic-differentiation-means-here">186. What “automatic differentiation” means here</h1>
+<p>Automatic differentiation is not symbolic differentiation.</p>
+<p>It does not produce a giant algebraic derivative expression.</p>
+<p>It is also not merely numerical finite differences.</p>
+<p>It computes exact derivatives up to floating-point arithmetic by applying local derivative rules through the actual computation graph.</p>
+<p>Comparison:</p>
+<div class="codehilite"><pre><span></span><code>symbolic differentiation:
+    manipulates formulas
+
+finite differences:
+    approximate slope by evaluating f(x+h)
+
+automatic differentiation:
+    records actual computation and applies chain rule exactly
+</code></pre></div>
+
+<p>Micrograd is reverse-mode automatic differentiation.</p>
+<p>Reverse-mode is efficient when:</p>
+<div class="codehilite"><pre><span></span><code>many inputs
+one scalar output
+</code></pre></div>
+
+<p>That is exactly the neural-network training case:</p>
+<div class="codehilite"><pre><span></span><code>many parameters
+one loss
+</code></pre></div>
+
+<hr />
+<h1 id="187-why-neural-network-training-uses-reverse-mode-autodiff">187. Why neural-network training uses reverse-mode autodiff</h1>
+<p>A neural network may have millions or billions of parameters.</p>
+<p>We need:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂every parameter
+</code></pre></div>
+
+<p>That is many derivatives of one scalar output.</p>
+<p>Reverse-mode autodiff computes all of them efficiently in one backward pass.</p>
+<p>That is why backpropagation is the core algorithm for deep learning.</p>
+<hr />
+<h1 id="188-what-micrograd-intentionally-omits">188. What micrograd intentionally omits</h1>
+<p>Micrograd does not include:</p>
+<div class="codehilite"><pre><span></span><code>tensors
+batches as first-class objects
+GPU acceleration
+convolutions
+attention
+dropout
+normalization layers
+advanced optimizers like Adam
+cross-entropy helpers
+data loaders
+mixed precision
+distributed training
+compiled kernels
+automatic memory optimization
+</code></pre></div>
+
+<p>These are essential for real systems, but not necessary to understand the core mechanism.</p>
+<p>Micrograd deliberately strips them away.</p>
+<hr />
+<h1 id="189-what-micrograd-successfully-demonstrates">189. What micrograd successfully demonstrates</h1>
+<p>Micrograd demonstrates:</p>
+<div class="codehilite"><pre><span></span><code>1. how computation graphs are built dynamically
+2. how scalar operations store backward functions
+3. how chain rule propagates gradients
+4. why gradients accumulate
+5. why gradients must be reset between steps
+6. how neurons are mathematical expressions
+7. how MLPs compose neurons and layers
+8. how a loss creates a trainable objective
+9. how gradient descent changes parameters
+10. how the same ideas underlie PyTorch
+</code></pre></div>
+
+<p>This is the conceptual foundation of neural-network training.</p>
+<hr />
+<h1 id="190-final-mental-model">190. Final mental model</h1>
+<p>A neural network is a big differentiable function:</p>
+<div class="codehilite"><pre><span></span><code>prediction = f(data, parameters)
+</code></pre></div>
+
+<p>A loss function turns prediction quality into one scalar:</p>
+<div class="codehilite"><pre><span></span><code>loss = L(prediction, target)
+</code></pre></div>
+
+<p>Backprop computes:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂parameters
+</code></pre></div>
+
+<p>Gradient descent updates:</p>
+<div class="codehilite"><pre><span></span><code>parameters ← parameters - learning_rate * gradient
+</code></pre></div>
+
+<p>Repeat many times:</p>
+<div class="codehilite"><pre><span></span><code>predictions improve
+loss decreases
+network behavior changes toward desired behavior
+</code></pre></div>
+
+<p>That is the core of training.</p>
+<hr />
+<h1 id="191-the-whole-video-compressed-into-one-sequence">191. The whole video compressed into one sequence</h1>
+<div class="codehilite"><pre><span></span><code>1. Derivatives measure local sensitivity.
+2. Gradients generalize derivatives to many inputs.
+3. Neural networks are mathematical expressions.
+4. Build Value to wrap scalars.
+5. Overload arithmetic to create new Values.
+6. Store graph connectivity in each Value.
+7. Store local backward functions for operations.
+8. Use chain rule to propagate gradients backward.
+9. Use topological order to traverse graphs correctly.
+10. Accumulate gradients because paths can merge.
+11. Reset gradients between training iterations.
+12. Add operations like tanh, exp, power, division, ReLU.
+13. Validate against PyTorch conceptually.
+14. Build Neuron from weighted sum + bias + nonlinearity.
+15. Build Layer as a list of neurons.
+16. Build MLP as a list of layers.
+17. Run forward passes to get predictions.
+18. Define a scalar loss.
+19. Backpropagate loss to all parameters.
+20. Move parameters opposite their gradients.
+21. Iterate until predictions improve.
+22. Recognize that modern deep learning is this same loop scaled up.
+</code></pre></div>
+
+<hr />
+<h1 id="192-final-code-skeleton-of-the-whole-project">192. Final code skeleton of the whole project</h1>
+<div class="codehilite"><pre><span></span><code><span class="c1"># forward</span>
+<span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+<span class="c1"># backward</span>
+<span class="n">model</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+<span class="c1"># update</span>
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Everything in the lecture exists to make these few lines possible.</p>
+<hr />
+<h1 id="193-final-takeaway">193. Final takeaway</h1>
+<p>Micrograd proves that the core of deep learning is not mysterious.</p>
+<p>At its center is:</p>
+<div class="codehilite"><pre><span></span><code>ordinary arithmetic
+plus the chain rule
+plus gradient descent
+</code></pre></div>
+
+<p>The rest is scale.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0016.html">← Previous: Karpathy micrograd outline — Part 7 of 8</a>
+        <a href="index.html">Index</a>
+
+    </nav>
+</body>
+</html>

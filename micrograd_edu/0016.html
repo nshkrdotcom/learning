@@ -1,0 +1,800 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 7 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-7-of-8">Karpathy micrograd outline — Part 7 of 8</h1>
+<h2 id="scope-walkthrough-of-the-final-micrograd-github-code-enginepy-nnpy-tests-demo-notebook">Scope: walkthrough of the final micrograd GitHub code: <code>engine.py</code>, <code>nn.py</code>, tests, demo notebook</h2>
+<p>Approx. video range: <strong>2:16:50–2:19:20+</strong></p>
+<hr />
+<h1 id="139-transition-from-notebook-to-actual-micrograd-repository">139. Transition from notebook to actual micrograd repository</h1>
+<p>Karpathy now shows that the full micrograd repository is basically the same system built during the lecture.</p>
+<p>The repository has a small structure:</p>
+<div class="codehilite"><pre><span></span><code>micrograd/
+    __init__.py
+    engine.py
+    nn.py
+test/
+demo.ipynb
+</code></pre></div>
+
+<p>The point is to prove:</p>
+<div class="codehilite"><pre><span></span><code>everything in the repository should now look recognizable
+</code></pre></div>
+
+<p>because the lecture built it from scratch.</p>
+<hr />
+<h1 id="140-__init__py">140. <code>__init__.py</code></h1>
+<p>The file:</p>
+<div class="codehilite"><pre><span></span><code>__init__.py
+</code></pre></div>
+
+<p>is essentially empty.</p>
+<p>Its purpose is just to make the folder usable as a Python package.</p>
+<p>It is not conceptually important for the autograd engine.</p>
+<hr />
+<h1 id="141-enginepy-the-scalar-autograd-engine">141. <code>engine.py</code>: the scalar autograd engine</h1>
+<p>The core file is:</p>
+<div class="codehilite"><pre><span></span><code>engine.py
+</code></pre></div>
+
+<p>This contains the <code>Value</code> class.</p>
+<p>This is the entire scalar autograd engine.</p>
+<p>Conceptually, <code>Value</code> contains:</p>
+<div class="codehilite"><pre><span></span><code>data
+grad
+_prev
+_op
+_backward
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>data      = scalar forward value
+grad      = derivative of final output with respect to this value
+_prev     = previous Value objects that produced this one
+_op       = operation string used for graph visualization/debugging
+_backward = local function that propagates gradients to children
+</code></pre></div>
+
+<p>This is the complete core abstraction.</p>
+<hr />
+<h1 id="142-value__init__">142. <code>Value.__init__</code></h1>
+<p>The constructor stores the scalar and graph metadata:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Value</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_children</span><span class="o">=</span><span class="p">(),</span> <span class="n">_op</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">_children</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_op</span> <span class="o">=</span> <span class="n">_op</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+</code></pre></div>
+
+<p>The important decisions:</p>
+<div class="codehilite"><pre><span></span><code>grad starts at 0
+_backward defaults to no-op
+_prev records children
+_op records the operation that created the node
+</code></pre></div>
+
+<p>Leaf nodes have:</p>
+<div class="codehilite"><pre><span></span><code>_children = ()
+_op = &#39;&#39;
+_backward = no-op
+</code></pre></div>
+
+<p>Operation outputs have:</p>
+<div class="codehilite"><pre><span></span><code>_children = inputs to the operation
+_op = operation name
+_backward = local chain-rule function
+</code></pre></div>
+
+<hr />
+<h1 id="143-value__repr__">143. <code>Value.__repr__</code></h1>
+<p>The readable representation is:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Value(data=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="si">}</span><span class="s2">)&quot;</span>
+</code></pre></div>
+
+<p>This is not mathematically important.</p>
+<p>It makes debugging and notebook output readable:</p>
+<div class="codehilite"><pre><span></span><code>Value(data=2.0)
+</code></pre></div>
+
+<p>instead of a Python object memory address.</p>
+<hr />
+<h1 id="144-addition-in-enginepy">144. Addition in <code>engine.py</code></h1>
+<p>Addition:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="n">other</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Value</span><span class="p">)</span> <span class="k">else</span> <span class="n">Value</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="s1">&#39;+&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backward</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+        <span class="n">other</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="n">out</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="n">_backward</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Forward:</p>
+<div class="codehilite"><pre><span></span><code>out.data = self.data + other.data
+</code></pre></div>
+
+<p>Graph:</p>
+<div class="codehilite"><pre><span></span><code>out._prev = {self, other}
+out._op = &#39;+&#39;
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂self = 1
+∂out/∂other = 1
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>self.grad += out.grad
+other.grad += out.grad
+</code></pre></div>
+
+<p>Key detail:</p>
+<div class="codehilite"><pre><span></span><code>+=, not =
+</code></pre></div>
+
+<p>because a node may receive gradient contributions through multiple paths.</p>
+<hr />
+<h1 id="145-multiplication-in-enginepy">145. Multiplication in <code>engine.py</code></h1>
+<p>Multiplication:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="n">other</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="n">Value</span><span class="p">)</span> <span class="k">else</span> <span class="n">Value</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="s1">&#39;*&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backward</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+        <span class="n">other</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="n">out</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="n">_backward</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Forward:</p>
+<div class="codehilite"><pre><span></span><code>out.data = self.data * other.data
+</code></pre></div>
+
+<p>Local derivatives:</p>
+<div class="codehilite"><pre><span></span><code>∂out/∂self = other.data
+∂out/∂other = self.data
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code>self.grad += other.data * out.grad
+other.grad += self.data * out.grad
+</code></pre></div>
+
+<p>This is multiplication’s local chain rule.</p>
+<hr />
+<h1 id="146-power-in-enginepy">146. Power in <code>engine.py</code></h1>
+<p>Power by a scalar constant:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__pow__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">))</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">**</span><span class="n">other</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="sa">f</span><span class="s1">&#39;**</span><span class="si">{</span><span class="n">other</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backward</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="n">other</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">**</span> <span class="p">(</span><span class="n">other</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="n">out</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="n">_backward</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>This supports expressions like:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x</span> <span class="o">**</span> <span class="mi">2</span>
+<span class="n">x</span> <span class="o">**</span> <span class="o">-</span><span class="mi">1</span>
+</code></pre></div>
+
+<p>Derivative rule:</p>
+<div class="codehilite"><pre><span></span><code>d/dx xⁿ = n*xⁿ⁻¹
+</code></pre></div>
+
+<p>So the backward formula is:</p>
+<div class="codehilite"><pre><span></span><code>incoming gradient * local derivative
+= out.grad * other * self.data**(other-1)
+</code></pre></div>
+
+<p>The exponent is required to be a plain Python number, not another <code>Value</code>.</p>
+<p>That keeps the derivative rule simple.</p>
+<hr />
+<h1 id="147-relu-in-actual-micrograd">147. ReLU in actual micrograd</h1>
+<p>In the notebook, Karpathy used <code>tanh</code>.</p>
+<p>In the actual repository, the nonlinearity shown is <code>relu</code>.</p>
+<p>ReLU means:</p>
+<div class="codehilite"><pre><span></span><code>relu(x) = max(0, x)
+</code></pre></div>
+
+<p>Forward:</p>
+<div class="codehilite"><pre><span></span><code>if x &lt; 0: relu(x) = 0
+if x &gt; 0: relu(x) = x
+</code></pre></div>
+
+<p>Backward:</p>
+<div class="codehilite"><pre><span></span><code>if output &gt; 0: gradient passes through
+if output &lt;= 0: gradient becomes 0
+</code></pre></div>
+
+<p>Conceptual implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">relu</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mi">0</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="s1">&#39;ReLU&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_backward</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">data</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="n">out</span><span class="o">.</span><span class="n">_backward</span> <span class="o">=</span> <span class="n">_backward</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>The exact nonlinearity is not the central issue.</p>
+<p>The important pattern is the same:</p>
+<div class="codehilite"><pre><span></span><code>define forward value
+define local derivative
+chain incoming gradient backward
+</code></pre></div>
+
+<p>Karpathy notes that <code>tanh</code>, <code>relu</code>, sigmoid, and similar functions are all nonlinearities commonly used in MLPs.</p>
+<hr />
+<h1 id="148-other-convenience-operations-in-enginepy">148. Other convenience operations in <code>engine.py</code></h1>
+<p>The actual <code>Value</code> class also defines arithmetic conveniences using the primitives.</p>
+<p>Examples:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__neg__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span>
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__sub__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span> <span class="o">+</span> <span class="p">(</span><span class="o">-</span><span class="n">other</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__radd__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span> <span class="o">+</span> <span class="n">other</span>
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__rmul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span> <span class="o">*</span> <span class="n">other</span>
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__truediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span> <span class="o">*</span> <span class="n">other</span><span class="o">**-</span><span class="mi">1</span>
+
+<span class="k">def</span><span class="w"> </span><span class="fm">__rtruediv__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">other</span> <span class="o">*</span> <span class="bp">self</span><span class="o">**-</span><span class="mi">1</span>
+</code></pre></div>
+
+<p>These are mostly syntactic conveniences.</p>
+<p>They make expressions like these work:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="mi">1</span> <span class="o">+</span> <span class="n">a</span>
+<span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+<span class="o">-</span><span class="n">a</span>
+<span class="n">a</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="mi">2</span> <span class="o">*</span> <span class="n">a</span>
+<span class="n">a</span> <span class="o">/</span> <span class="n">b</span>
+<span class="mi">2</span> <span class="o">/</span> <span class="n">a</span>
+</code></pre></div>
+
+<p>Most are built out of already-defined differentiable operations.</p>
+<p>This avoids duplicating backward formulas.</p>
+<hr />
+<h1 id="149-valuebackward-in-enginepy">149. <code>Value.backward()</code> in <code>engine.py</code></h1>
+<p>The public backward method performs reverse-mode autodiff.</p>
+<p>Conceptually:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+    <span class="n">topo</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">visited</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_topo</span><span class="p">(</span><span class="n">v</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">v</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">visited</span><span class="p">:</span>
+            <span class="n">visited</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">child</span> <span class="ow">in</span> <span class="n">v</span><span class="o">.</span><span class="n">_prev</span><span class="p">:</span>
+                <span class="n">build_topo</span><span class="p">(</span><span class="n">child</span><span class="p">)</span>
+            <span class="n">topo</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">v</span><span class="p">)</span>
+
+    <span class="n">build_topo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">topo</span><span class="p">):</span>
+        <span class="n">v</span><span class="o">.</span><span class="n">_backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Steps:</p>
+<div class="codehilite"><pre><span></span><code>1. topologically sort all nodes leading into self
+2. set self.grad = 1
+3. traverse nodes in reverse topological order
+4. call each node’s local _backward
+</code></pre></div>
+
+<p>This is the whole autograd mechanism.</p>
+<hr />
+<h1 id="150-why-backward-starts-with-selfgrad-1">150. Why <code>backward()</code> starts with <code>self.grad = 1</code></h1>
+<p>If calling:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>then <code>self</code> is the loss.</p>
+<p>The derivative of the loss with respect to itself is:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂loss = 1
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">1</span>
+</code></pre></div>
+
+<p>is the seed value for the reverse pass.</p>
+<p>Everything else is obtained by chain rule.</p>
+<hr />
+<h1 id="151-nnpy-neural-network-library">151. <code>nn.py</code>: neural network library</h1>
+<p>The second major file is:</p>
+<div class="codehilite"><pre><span></span><code>nn.py
+</code></pre></div>
+
+<p>This defines the neural-network abstractions:</p>
+<div class="codehilite"><pre><span></span><code>Module
+Neuron
+Layer
+MLP
+</code></pre></div>
+
+<p>The autograd engine does not know neural networks.</p>
+<p><code>nn.py</code> builds neural-network structures using <code>Value</code>.</p>
+<hr />
+<h1 id="152-module-base-class">152. <code>Module</code> base class</h1>
+<p>The actual micrograd code includes a base class:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Module</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">zero_grad</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[]</span>
+</code></pre></div>
+
+<p>This mirrors PyTorch’s <code>nn.Module</code>.</p>
+<p>Purpose:</p>
+<div class="codehilite"><pre><span></span><code>provide common behavior for all neural network modules
+</code></pre></div>
+
+<p>The most important method:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">zero_grad</span><span class="p">()</span>
+</code></pre></div>
+
+<p>It resets all parameter gradients.</p>
+<p>This formalizes the bug fix from the training loop.</p>
+<p>Instead of writing:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+</code></pre></div>
+
+<p>you can call:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</code></pre></div>
+
+<hr />
+<h1 id="153-why-moduleparameters-returns">153. Why <code>Module.parameters()</code> returns <code>[]</code></h1>
+<p>The base <code>Module</code> does not know what parameters its subclasses have.</p>
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[]</span>
+</code></pre></div>
+
+<p>is a default placeholder.</p>
+<p>Subclasses override it.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span></span><code>Neuron.parameters returns weights and bias
+Layer.parameters returns parameters of all neurons
+MLP.parameters returns parameters of all layers
+</code></pre></div>
+
+<hr />
+<h1 id="154-neuron-in-nnpy">154. <code>Neuron</code> in <code>nn.py</code></h1>
+<p>A neuron has:</p>
+<div class="codehilite"><pre><span></span><code>weights
+bias
+nonlinearity option
+</code></pre></div>
+
+<p>Conceptual version:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Neuron</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">,</span> <span class="n">nonlin</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="p">[</span><span class="n">Value</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nin</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nonlin</span> <span class="o">=</span> <span class="n">nonlin</span>
+</code></pre></div>
+
+<p>Notes:</p>
+<div class="codehilite"><pre><span></span><code>nin = number of inputs
+w = one scalar weight per input
+b = scalar bias
+nonlin = whether to apply activation function
+</code></pre></div>
+
+<p>In the notebook, the bias was randomly initialized.</p>
+<p>In the repository version, Karpathy’s code may use a simple bias initialization such as zero.</p>
+<p>The exact initialization is not central for the lecture’s conceptual flow.</p>
+<hr />
+<h1 id="155-neuron__call__">155. <code>Neuron.__call__</code></h1>
+<p>Forward pass:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="n">act</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">wi</span><span class="o">*</span><span class="n">xi</span> <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">act</span><span class="o">.</span><span class="n">relu</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonlin</span> <span class="k">else</span> <span class="n">act</span>
+</code></pre></div>
+
+<p>The neuron computes:</p>
+<div class="codehilite"><pre><span></span><code>act = w · x + b
+</code></pre></div>
+
+<p>Then either:</p>
+<div class="codehilite"><pre><span></span><code>return relu(act)
+</code></pre></div>
+
+<p>or, if it is the output layer:</p>
+<div class="codehilite"><pre><span></span><code>return act
+</code></pre></div>
+
+<p>The <code>nonlin</code> flag lets the final layer be linear.</p>
+<p>This is common in neural networks:</p>
+<div class="codehilite"><pre><span></span><code>hidden layers often use nonlinearities
+final layer may or may not use one depending on the task
+</code></pre></div>
+
+<hr />
+<h1 id="156-neuronparameters">156. <code>Neuron.parameters()</code></h1>
+<p>A neuron’s trainable parameters:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">]</span>
+</code></pre></div>
+
+<p>This returns all weight <code>Value</code>s plus the bias <code>Value</code>.</p>
+<hr />
+<h1 id="157-layer-in-nnpy">157. <code>Layer</code> in <code>nn.py</code></h1>
+<p>A layer is a list of neurons:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Layer</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">,</span> <span class="n">nout</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span> <span class="o">=</span> <span class="p">[</span><span class="n">Neuron</span><span class="p">(</span><span class="n">nin</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nout</span><span class="p">)]</span>
+</code></pre></div>
+
+<p>Here:</p>
+<div class="codehilite"><pre><span></span><code>nin = number of inputs to each neuron
+nout = number of neurons in the layer
+</code></pre></div>
+
+<p>Forward pass:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>So a layer maps:</p>
+<div class="codehilite"><pre><span></span><code>input vector of length nin
+→ output vector of length nout
+</code></pre></div>
+
+<p>If <code>nout = 1</code>, return the single scalar directly.</p>
+<hr />
+<h1 id="158-layerparameters">158. <code>Layer.parameters()</code></h1>
+<p>A layer’s parameters are all parameters of all its neurons:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]</span>
+</code></pre></div>
+
+<p>This flattens the nested structure:</p>
+<div class="codehilite"><pre><span></span><code>layer
+→ neurons
+→ weights and biases
+</code></pre></div>
+
+<p>into one list.</p>
+<hr />
+<h1 id="159-mlp-in-nnpy">159. <code>MLP</code> in <code>nn.py</code></h1>
+<p>An MLP is a list of layers.</p>
+<p>Conceptual version:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MLP</span><span class="p">(</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">,</span> <span class="n">nouts</span><span class="p">):</span>
+        <span class="n">sz</span> <span class="o">=</span> <span class="p">[</span><span class="n">nin</span><span class="p">]</span> <span class="o">+</span> <span class="n">nouts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Layer</span><span class="p">(</span><span class="n">sz</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">sz</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">],</span> <span class="n">nonlin</span><span class="o">=</span><span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">nouts</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nouts</span><span class="p">))</span>
+        <span class="p">]</span>
+</code></pre></div>
+
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code>sz = [3, 4, 4, 1]
+</code></pre></div>
+
+<p>Layers:</p>
+<div class="codehilite"><pre><span></span><code>Layer(3, 4)
+Layer(4, 4)
+Layer(4, 1)
+</code></pre></div>
+
+<p>The final layer uses:</p>
+<div class="codehilite"><pre><span></span><code>nonlin=False
+</code></pre></div>
+
+<p>so the final output is linear.</p>
+<p>Earlier in the notebook, the toy MLP used <code>tanh</code> more directly; the repository version uses ReLU-style hidden layers.</p>
+<p>The conceptual design is the same.</p>
+<hr />
+<h1 id="160-mlp__call__">160. <code>MLP.__call__</code></h1>
+<p>Forward pass:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span>
+</code></pre></div>
+
+<p>Data flows sequentially:</p>
+<div class="codehilite"><pre><span></span><code>x
+→ layer 1
+→ layer 2
+→ ...
+→ output layer
+</code></pre></div>
+
+<p>Each layer creates more <code>Value</code> operations.</p>
+<p>The final output is a <code>Value</code> or list of <code>Value</code>s depending on the architecture.</p>
+<hr />
+<h1 id="161-mlpparameters">161. <code>MLP.parameters()</code></h1>
+<p>An MLP’s parameters are all layer parameters:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]</span>
+</code></pre></div>
+
+<p>This gives a flat list usable by training code:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>This abstraction lets optimization code ignore the internal hierarchy.</p>
+<hr />
+<h1 id="162-__repr__-methods-in-nnpy">162. <code>__repr__</code> methods in <code>nn.py</code></h1>
+<p>The repository also includes readable string representations for modules.</p>
+<p>For example, a neuron might print as:</p>
+<div class="codehilite"><pre><span></span><code>ReLUNeuron(3)
+</code></pre></div>
+
+<p>A layer might print as:</p>
+<div class="codehilite"><pre><span></span><code>Layer of [ReLUNeuron(3), ReLUNeuron(3), ...]
+</code></pre></div>
+
+<p>An MLP might print as:</p>
+<div class="codehilite"><pre><span></span><code>MLP of [Layer(...), Layer(...), ...]
+</code></pre></div>
+
+<p>These are debugging conveniences, not core math.</p>
+<p>They help inspect model structure.</p>
+<hr />
+<h1 id="163-how-enginepy-and-nnpy-fit-together">163. How <code>engine.py</code> and <code>nn.py</code> fit together</h1>
+<p>The relationship is:</p>
+<div class="codehilite"><pre><span></span><code>engine.py:
+    knows scalar values and gradients
+
+nn.py:
+    uses scalar values to build neural networks
+</code></pre></div>
+
+<p><code>engine.py</code> has no concept of:</p>
+<div class="codehilite"><pre><span></span><code>neurons
+layers
+MLPs
+datasets
+losses
+training
+</code></pre></div>
+
+<p>It only knows differentiable scalar expressions.</p>
+<p><code>nn.py</code> builds neural-network expressions using those scalars.</p>
+<p>This separation is clean:</p>
+<div class="codehilite"><pre><span></span><code>autograd engine below
+neural network library above
+</code></pre></div>
+
+<hr />
+<h1 id="164-tests-comparing-micrograd-to-pytorch">164. Tests: comparing micrograd to PyTorch</h1>
+<p>The repository has tests that compare micrograd computations against PyTorch.</p>
+<p>The tests construct equivalent expressions in:</p>
+<div class="codehilite"><pre><span></span><code>micrograd
+PyTorch
+</code></pre></div>
+
+<p>Then check that both agree on:</p>
+<div class="codehilite"><pre><span></span><code>forward values
+backward gradients
+</code></pre></div>
+
+<p>This is exactly what Karpathy manually demonstrated earlier with the neuron.</p>
+<p>Purpose:</p>
+<div class="codehilite"><pre><span></span><code>validate that micrograd’s autograd implementation is correct
+</code></pre></div>
+
+<p>PyTorch acts as a reference implementation.</p>
+<hr />
+<h1 id="165-what-the-tests-establish">165. What the tests establish</h1>
+<p>The tests show that for supported operations:</p>
+<div class="codehilite"><pre><span></span><code>micrograd forward pass matches PyTorch forward pass
+micrograd backward pass matches PyTorch backward pass
+</code></pre></div>
+
+<p>This gives confidence that:</p>
+<div class="codehilite"><pre><span></span><code>local derivative formulas are correct
+topological backward order is correct
+gradient accumulation is correct
+</code></pre></div>
+
+<p>Of course, micrograd is much smaller and less general than PyTorch.</p>
+<p>But for the scalar expressions it supports, it agrees.</p>
+<hr />
+<h1 id="166-demo-notebook">166. Demo notebook</h1>
+<p>The repository also has a demo notebook.</p>
+<p>Karpathy says it is a slightly more complicated binary classification demo than the four-example toy dataset in the lecture.</p>
+<p>Instead of four examples, it uses many 2D points:</p>
+<div class="codehilite"><pre><span></span><code>blue points
+red points
+</code></pre></div>
+
+<p>The MLP learns to classify them.</p>
+<p>Conceptually:</p>
+<div class="codehilite"><pre><span></span><code>input: 2D point
+output: class score
+loss: classification-style objective
+training: gradient descent
+</code></pre></div>
+
+<p>The demo visualizes the learned decision boundary.</p>
+<hr />
+<h1 id="167-relationship-between-the-lecture-toy-dataset-and-the-demo">167. Relationship between the lecture toy dataset and the demo</h1>
+<p>Lecture toy problem:</p>
+<div class="codehilite"><pre><span></span><code>4 examples
+3D inputs
+targets ±1
+tiny MLP
+mean squared error
+</code></pre></div>
+
+<p>Demo notebook:</p>
+<div class="codehilite"><pre><span></span><code>many 2D examples
+binary classes
+MLP classifier
+visual decision boundary
+</code></pre></div>
+
+<p>Both use the same underlying process:</p>
+<div class="codehilite"><pre><span></span><code>forward pass
+loss
+zero grad
+backward
+parameter update
+repeat
+</code></pre></div>
+
+<p>The demo is just a more visually interesting application.</p>
+<hr />
+<h1 id="168-what-the-github-walkthrough-proves">168. What the GitHub walkthrough proves</h1>
+<p>By walking through the final repository, Karpathy shows:</p>
+<div class="codehilite"><pre><span></span><code>the whole engine is the same as what was built in the notebook
+</code></pre></div>
+
+<p>There is no hidden machinery.</p>
+<p>The power comes from:</p>
+<div class="codehilite"><pre><span></span><code>small Value object
+local backward functions
+topological sort
+gradient descent
+</code></pre></div>
+
+<p>The neural-net code is also small:</p>
+<div class="codehilite"><pre><span></span><code>Neuron
+Layer
+MLP
+parameters
+zero_grad
+</code></pre></div>
+
+<p>Together, they are enough to train small neural networks.</p>
+<hr />
+<h1 id="169-key-distinction-conceptual-completeness-vs-production-completeness">169. Key distinction: conceptual completeness vs production completeness</h1>
+<p>Micrograd is conceptually complete for understanding backprop.</p>
+<p>It is not production complete.</p>
+<p>It lacks:</p>
+<div class="codehilite"><pre><span></span><code>tensor operations
+GPU kernels
+batching efficiency
+advanced optimizers
+mixed precision
+distributed training
+large operation library
+memory optimization
+automatic broadcasting semantics
+serious numerical stability work
+</code></pre></div>
+
+<p>But it contains the essential conceptual ingredients:</p>
+<div class="codehilite"><pre><span></span><code>differentiable values
+computation graph
+reverse-mode autodiff
+gradient accumulation
+parameterized neural nets
+gradient-based optimization
+</code></pre></div>
+
+<p>That is why it is valuable pedagogically.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0015.html">← Previous: Karpathy micrograd outline — Part 6 of 8</a>
+        <a href="index.html">Index</a>
+        <a href="0017.html">Next: Karpathy micrograd outline — Part 8 of 8 →</a>
+    </nav>
+</body>
+</html>

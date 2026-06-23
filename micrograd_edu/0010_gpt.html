@@ -1,0 +1,658 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 1 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-1-of-8">Karpathy micrograd outline — Part 1 of 8</h1>
+<h2 id="scope-intro-derivatives-first-value-object-expression-graph-visualization-setup-for-backprop">Scope: intro → derivatives → first <code>Value</code> object → expression graph visualization → setup for backprop</h2>
+<p>Approx. video range: <strong>0:00–32:10</strong></p>
+<hr />
+<h1 id="1-goal-of-the-lecture">1. Goal of the lecture</h1>
+<p>Karpathy’s purpose is to show <strong>neural network training under the hood</strong>.</p>
+<p>The end state of the lecture:</p>
+<div class="codehilite"><pre><span></span><code>blank notebook
+→ build a tiny autograd engine
+→ build a tiny neural net library on top
+→ train a neural network
+</code></pre></div>
+
+<p>The core object of study is <strong>micrograd</strong>.</p>
+<p>Micrograd is:</p>
+<div class="codehilite"><pre><span></span><code>a tiny automatic differentiation engine
+</code></pre></div>
+
+<p>More specifically:</p>
+<div class="codehilite"><pre><span></span><code>micrograd = scalar-valued autograd engine
+autograd = automatic gradient
+automatic gradient = automatic backpropagation
+</code></pre></div>
+
+<p>Backpropagation is the algorithm that efficiently computes:</p>
+<div class="codehilite"><pre><span></span><code>gradient of loss with respect to parameters
+</code></pre></div>
+
+<p>For a neural network, this means:</p>
+<div class="codehilite"><pre><span></span><code>how does each weight affect the loss?
+</code></pre></div>
+
+<p>Once you know that, you can update weights to make the loss smaller.</p>
+<hr />
+<h1 id="2-what-micrograd-does">2. What micrograd does</h1>
+<p>Micrograd lets you build mathematical expressions out of scalar values.</p>
+<p>Example structure:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">4.0</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">b</span><span class="o">**</span><span class="mi">3</span>
+<span class="o">...</span>
+<span class="n">g</span> <span class="o">=</span> <span class="o">...</span>
+</code></pre></div>
+
+<p>The actual expression in the README is intentionally meaningless. Its purpose is to show that micrograd supports operations like:</p>
+<div class="codehilite"><pre><span></span><code>addition
+multiplication
+power
+negation
+division
+ReLU-like squashing
+composition of many operations
+</code></pre></div>
+
+<p>The important point is not the specific expression.</p>
+<p>The important point is that micrograd builds a <strong>computation graph</strong>.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">c</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</code></pre></div>
+
+<p>means:</p>
+<div class="codehilite"><pre><span></span><code>c is a Value
+c.data stores the numeric result
+c knows it was created by +
+c points back to a and b
+</code></pre></div>
+
+<p>So each <code>Value</code> stores not only its number, but also its local history.</p>
+<hr />
+<h1 id="3-forward-pass-vs-backward-pass">3. Forward pass vs backward pass</h1>
+<p>A forward pass evaluates the expression numerically.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">g</span><span class="o">.</span><span class="n">data</span>
+</code></pre></div>
+
+<p>returns the scalar output value.</p>
+<p>But the important part is:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">g</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>This runs backpropagation starting from <code>g</code>.</p>
+<p>Backprop walks backward through the graph and computes derivatives such as:</p>
+<div class="codehilite"><pre><span></span><code>dg/da
+dg/db
+dg/dc
+...
+</code></pre></div>
+
+<p>These are stored as:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">c</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Interpretation:</p>
+<div class="codehilite"><pre><span></span><code>a.grad = how much g changes if a is nudged slightly upward
+b.grad = how much g changes if b is nudged slightly upward
+</code></pre></div>
+
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">138</span>
+</code></pre></div>
+
+<p>then a tiny positive change to <code>a</code> should increase <code>g</code> at slope roughly <code>138</code>.</p>
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mi">645</span>
+</code></pre></div>
+
+<p>then <code>b</code> has an even stronger positive local influence on <code>g</code>.</p>
+<hr />
+<h1 id="4-neural-networks-are-just-mathematical-expressions">4. Neural networks are just mathematical expressions</h1>
+<p>Karpathy emphasizes that neural networks are not a special case for backprop.</p>
+<p>They are just mathematical expressions.</p>
+<p>A neural network takes as input:</p>
+<div class="codehilite"><pre><span></span><code>input data
+weights / parameters
+</code></pre></div>
+
+<p>and produces:</p>
+<div class="codehilite"><pre><span></span><code>predictions
+</code></pre></div>
+
+<p>Then the predictions feed into a loss function:</p>
+<div class="codehilite"><pre><span></span><code>loss = measure of how bad the predictions are
+</code></pre></div>
+
+<p>So the total system is still one mathematical expression:</p>
+<div class="codehilite"><pre><span></span><code>data, weights → neural net → predictions → loss
+</code></pre></div>
+
+<p>Backpropagation does not care that this expression is a “neural network.”</p>
+<p>It only sees:</p>
+<div class="codehilite"><pre><span></span><code>operations connected in a graph
+</code></pre></div>
+
+<p>The same machinery works for arbitrary scalar expressions.</p>
+<hr />
+<h1 id="5-why-micrograd-uses-scalars-not-tensors">5. Why micrograd uses scalars, not tensors</h1>
+<p>Modern libraries like PyTorch operate on tensors.</p>
+<p>A tensor is basically:</p>
+<div class="codehilite"><pre><span></span><code>an n-dimensional array of scalars
+</code></pre></div>
+
+<p>Micrograd instead operates on individual scalar values.</p>
+<p>This is inefficient but pedagogically clean.</p>
+<p>The point:</p>
+<div class="codehilite"><pre><span></span><code>scalar micrograd = understand the math
+tensor PyTorch = same math, packed for speed
+</code></pre></div>
+
+<p>Tensors do not change the underlying calculus. They make computation efficient by batching many scalar operations together and exploiting parallelism.</p>
+<p>Karpathy’s claim:</p>
+<div class="codehilite"><pre><span></span><code>micrograd contains the conceptual essence of neural network training;
+everything else is efficiency.
+</code></pre></div>
+
+<p>He points out that micrograd’s core engine is about 100 lines, and the neural-net library on top is similarly tiny.</p>
+<hr />
+<h1 id="6-derivative-intuition-single-input-function">6. Derivative intuition: single-input function</h1>
+<p>Karpathy starts with a scalar function:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">=</span> <span class="mi">3</span><span class="n">x</span><span class="err">²</span> <span class="o">-</span> <span class="mi">4</span><span class="n">x</span> <span class="o">+</span> <span class="mi">5</span>
+</code></pre></div>
+
+<p>It maps:</p>
+<div class="codehilite"><pre><span></span><code>one scalar input x
+→ one scalar output y
+</code></pre></div>
+
+<p>For example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">f</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span> <span class="o">=</span> <span class="mi">20</span>
+</code></pre></div>
+
+<p>He plots the function over a range of x-values, showing a parabola.</p>
+<p>The goal is to understand the derivative intuitively.</p>
+<p>The derivative at a point means:</p>
+<div class="codehilite"><pre><span></span><code>if I nudge x slightly upward,
+how does f(x) respond?
+</code></pre></div>
+
+<p>Formal definition:</p>
+<div class="codehilite"><pre><span></span><code>f&#39;(x) = lim h→0 [f(x + h) - f(x)] / h
+</code></pre></div>
+
+<p>In code, approximate with small <code>h</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">h</span> <span class="o">=</span> <span class="mf">0.001</span>
+<span class="n">x</span> <span class="o">=</span> <span class="mf">3.0</span>
+<span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span> <span class="o">-</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">))</span> <span class="o">/</span> <span class="n">h</span>
+</code></pre></div>
+
+<p>At <code>x = 3</code>, the derivative is about:</p>
+<div class="codehilite"><pre><span></span><code>14
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>near x = 3, increasing x slightly increases f(x)
+with slope about 14
+</code></pre></div>
+
+<p>Analytically:</p>
+<div class="codehilite"><pre><span></span><code>f(x) = 3x² - 4x + 5
+f&#39;(x) = 6x - 4
+f&#39;(3) = 18 - 4 = 14
+</code></pre></div>
+
+<p>At <code>x = -3</code>, the slope is negative:</p>
+<div class="codehilite"><pre><span></span><code>f&#39;(-3) = -22
+</code></pre></div>
+
+<p>Interpretation:</p>
+<div class="codehilite"><pre><span></span><code>near x = -3, increasing x makes f(x) decrease
+</code></pre></div>
+
+<p>At the bottom of the parabola, the derivative is zero.</p>
+<p>For this function, that point is:</p>
+<div class="codehilite"><pre><span></span><code>x = 2/3
+</code></pre></div>
+
+<p>At that point:</p>
+<div class="codehilite"><pre><span></span><code>a tiny nudge in x barely changes f(x)
+</code></pre></div>
+
+<hr />
+<h1 id="7-derivative-intuition-multiple-input-function">7. Derivative intuition: multiple-input function</h1>
+<p>Next he uses a function with three scalar inputs:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>with values:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">b</span> <span class="o">=</span> <span class="o">-</span><span class="mi">3</span>
+<span class="n">c</span> <span class="o">=</span> <span class="mi">10</span>
+</code></pre></div>
+
+<p>Then:</p>
+<div class="codehilite"><pre><span></span><code>d = 2 * -3 + 10 = 4
+</code></pre></div>
+
+<p>Now there are multiple derivatives:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂a
+∂d/∂b
+∂d/∂c
+</code></pre></div>
+
+<p>Each asks:</p>
+<div class="codehilite"><pre><span></span><code>if I nudge this one input slightly upward,
+holding the others fixed,
+how does d respond?
+</code></pre></div>
+
+<p>Using the finite-difference method:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">h</span> <span class="o">=</span> <span class="mf">0.0001</span>
+
+<span class="n">a</span> <span class="o">+=</span> <span class="n">h</span>
+<span class="n">d2</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+
+<span class="n">slope</span> <span class="o">=</span> <span class="p">(</span><span class="n">d2</span> <span class="o">-</span> <span class="n">d1</span><span class="p">)</span> <span class="o">/</span> <span class="n">h</span>
+</code></pre></div>
+
+<p>For <code>a</code>:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂a = b = -3
+</code></pre></div>
+
+<p>Intuition:</p>
+<div class="codehilite"><pre><span></span><code>a increases
+but b is negative
+so a*b becomes more negative
+so d decreases
+</code></pre></div>
+
+<p>For <code>b</code>:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂b = a = 2
+</code></pre></div>
+
+<p>Intuition:</p>
+<div class="codehilite"><pre><span></span><code>b increases
+a is positive
+so a*b increases
+so d increases
+</code></pre></div>
+
+<p>For <code>c</code>:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂c = 1
+</code></pre></div>
+
+<p>Intuition:</p>
+<div class="codehilite"><pre><span></span><code>d includes +c directly
+so increasing c by h increases d by h
+</code></pre></div>
+
+<p>This establishes the basic meaning of gradients:</p>
+<div class="codehilite"><pre><span></span><code>gradient = local sensitivity of output to inputs
+</code></pre></div>
+
+<hr />
+<h1 id="8-begin-building-micrograd-the-value-object">8. Begin building micrograd: the <code>Value</code> object</h1>
+<p>Neural networks are huge mathematical expressions, so we need a data structure to represent expression graphs.</p>
+<p>Karpathy introduces:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Value</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+</code></pre></div>
+
+<p>A <code>Value</code> wraps a scalar number.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+</code></pre></div>
+
+<p>To make printing readable, he implements:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Value(data=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="si">}</span><span class="s2">)&quot;</span>
+</code></pre></div>
+
+<p>So instead of an ugly Python object representation, we get:</p>
+<div class="codehilite"><pre><span></span><code>Value(data=2.0)
+</code></pre></div>
+
+<hr />
+<h1 id="9-adding-operations-__add__">9. Adding operations: <code>__add__</code></h1>
+<p>Python does not automatically know how to add two <code>Value</code> objects.</p>
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</code></pre></div>
+
+<p>initially fails.</p>
+<p>Karpathy defines:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Now:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">)</span>
+</code></pre></div>
+
+<p>produces:</p>
+<div class="codehilite"><pre><span></span><code>Value(data=-1.0)
+</code></pre></div>
+
+<p>Important distinction:</p>
+<div class="codehilite"><pre><span></span><code>Value + Value
+</code></pre></div>
+
+<p>is implemented by extracting their raw Python numbers:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span>
+</code></pre></div>
+
+<p>then wrapping the result in a new <code>Value</code>.</p>
+<hr />
+<h1 id="10-adding-multiplication-__mul__">10. Adding multiplication: <code>__mul__</code></h1>
+<p>Similarly:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Now expressions like this work:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">10.0</span><span class="p">)</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>Forward result:</p>
+<div class="codehilite"><pre><span></span><code>2 * -3 + 10 = 4
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>d = Value(data=4.0)
+</code></pre></div>
+
+<p>At this point, micrograd can do forward computation but does not yet know graph structure.</p>
+<hr />
+<h1 id="11-storing-graph-connectivity">11. Storing graph connectivity</h1>
+<p>To backpropagate, each output must know which previous values created it.</p>
+<p>Karpathy modifies <code>Value</code>:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Value</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_children</span><span class="o">=</span><span class="p">()):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">_children</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Now when creating a result from addition:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">))</span>
+</code></pre></div>
+
+<p>and multiplication:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">))</span>
+</code></pre></div>
+
+<p>So if:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+</code></pre></div>
+
+<p>then <code>d</code> can point backward to the nodes that produced it.</p>
+<p>For example:</p>
+<div class="codehilite"><pre><span></span><code>d._prev = {e, c}
+</code></pre></div>
+
+<p>where:</p>
+<div class="codehilite"><pre><span></span><code>e = a * b
+</code></pre></div>
+
+<p>This creates the computation graph.</p>
+<hr />
+<h1 id="12-storing-the-operation">12. Storing the operation</h1>
+<p>Knowing the previous nodes is not enough.</p>
+<p>We also want to know what operation produced the value.</p>
+<p>So the constructor becomes:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_children</span><span class="o">=</span><span class="p">(),</span> <span class="n">_op</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_prev</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">_children</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_op</span> <span class="o">=</span> <span class="n">_op</span>
+</code></pre></div>
+
+<p>For addition:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">+</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="s1">&#39;+&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>For multiplication:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">*</span> <span class="n">other</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">),</span> <span class="s1">&#39;*&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Now each node knows:</p>
+<div class="codehilite"><pre><span></span><code>its scalar data
+which previous nodes made it
+which operation made it
+</code></pre></div>
+
+<p>That is enough to represent the mathematical expression.</p>
+<hr />
+<h1 id="13-visualizing-the-expression-graph">13. Visualizing the expression graph</h1>
+<p>Karpathy introduces graph visualization code using Graphviz.</p>
+<p>The visualization has two helper ideas:</p>
+<div class="codehilite"><pre><span></span><code>nodes = all Value objects in the graph
+edges = parent-child relationships between Value objects
+</code></pre></div>
+
+<p>The helper function <code>trace(root)</code> walks backward from the final node and collects all nodes and edges.</p>
+<p>Then <code>draw_dot(root)</code> visualizes them.</p>
+<p>Important detail:</p>
+<p>The actual computation graph contains only <code>Value</code> objects.</p>
+<p>But for visualization, he inserts fake operation nodes:</p>
+<div class="codehilite"><pre><span></span><code>+
+*
+tanh
+etc.
+</code></pre></div>
+
+<p>These operation nodes are not real <code>Value</code> objects. They make the graph easier to read.</p>
+<hr />
+<h1 id="14-adding-labels">14. Adding labels</h1>
+<p>To make diagrams readable, he adds labels:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">_children</span><span class="o">=</span><span class="p">(),</span> <span class="n">_op</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">data</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="n">label</span>
+</code></pre></div>
+
+<p>Then:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;a&#39;</span>
+<span class="n">b</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;b&#39;</span>
+<span class="n">c</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;c&#39;</span>
+<span class="n">e</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;e&#39;</span>
+<span class="n">d</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+</code></pre></div>
+
+<p>Expression:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+
+<span class="n">e</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+<span class="n">e</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;e&#39;</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">c</span>
+<span class="n">d</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+</code></pre></div>
+
+<p>Graph:</p>
+<div class="codehilite"><pre><span></span><code>a ----\
+      * → e ----\
+b ----/          + → d
+c ---------------/
+</code></pre></div>
+
+<p>Numerically:</p>
+<div class="codehilite"><pre><span></span><code>a = 2
+b = -3
+e = a*b = -6
+c = 10
+d = e+c = 4
+</code></pre></div>
+
+<hr />
+<h1 id="15-making-the-graph-deeper">15. Making the graph deeper</h1>
+<p>He adds another value:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">f</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">f</span>
+<span class="n">L</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;L&#39;</span>
+</code></pre></div>
+
+<p>Now:</p>
+<div class="codehilite"><pre><span></span><code>d = 4
+f = -2
+L = d*f = -8
+</code></pre></div>
+
+<p>Graph:</p>
+<div class="codehilite"><pre><span></span><code>a ----\
+      * → e ----\
+b ----/          + → d ----\
+c ---------------/          * → L
+f --------------------------/
+</code></pre></div>
+
+<p>This is the first complete toy computation graph used for backprop.</p>
+<hr />
+<h1 id="16-what-backprop-will-compute">16. What backprop will compute</h1>
+<p>The forward pass computes:</p>
+<div class="codehilite"><pre><span></span><code>L = -8
+</code></pre></div>
+
+<p>Backprop will compute derivatives of <code>L</code> with respect to every node:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂L
+∂L/∂d
+∂L/∂f
+∂L/∂e
+∂L/∂c
+∂L/∂a
+∂L/∂b
+</code></pre></div>
+
+<p>In neural networks, the final node is usually the loss:</p>
+<div class="codehilite"><pre><span></span><code>L = loss
+</code></pre></div>
+
+<p>The most important derivatives are:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂weight
+</code></pre></div>
+
+<p>because weights are what we can change.</p>
+<p>The data inputs also technically get gradients, but usually we do not use them for training because the data is fixed.</p>
+<hr />
+<h1 id="17-adding-the-grad-field">17. Adding the <code>.grad</code> field</h1>
+<p>Karpathy adds:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+</code></pre></div>
+
+<p>to every <code>Value</code>.</p>
+<p>So each node stores:</p>
+<div class="codehilite"><pre><span></span><code>data = forward-pass scalar value
+grad = derivative of final output with respect to this node
+</code></pre></div>
+
+<p>Initially:</p>
+<div class="codehilite"><pre><span></span><code>grad = 0
+</code></pre></div>
+
+<p>Why zero?</p>
+<p>Because before backprop, we assume:</p>
+<div class="codehilite"><pre><span></span><code>this node has no known influence on the output
+</code></pre></div>
+
+<p>Backprop will fill in the actual sensitivities.</p>
+<p>The visualization is updated so each node shows:</p>
+<div class="codehilite"><pre><span></span><code>label
+data
+grad
+</code></pre></div>
+
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code>a | data 2.0000 | grad 0.0000
+</code></pre></div>
+
+<p>At this moment, all gradients are zero.</p>
+<p>The next step is manual backpropagation through the graph.</p>
+    </main>
+
+    <nav class="nav">
+
+        <a href="index.html">Index</a>
+        <a href="0011.html">Next: Karpathy micrograd outline — Part 2 of 8 →</a>
+    </nav>
+</body>
+</html>

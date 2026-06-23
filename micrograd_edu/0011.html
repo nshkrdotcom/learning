@@ -1,0 +1,873 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 2 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-2-of-8">Karpathy micrograd outline — Part 2 of 8</h1>
+<h2 id="scope-manual-backpropagation-through-a-simple-expression-first-optimization-step-manual-backprop-through-a-neuron">Scope: manual backpropagation through a simple expression → first optimization step → manual backprop through a neuron</h2>
+<p>Approx. video range: <strong>32:10–1:09:00</strong></p>
+<hr />
+<h1 id="18-manual-backpropagation-example-1-simple-expression">18. Manual backpropagation example #1: simple expression</h1>
+<p>We continue from the expression:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;a&#39;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">10.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;c&#39;</span><span class="p">)</span>
+
+<span class="n">e</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+<span class="n">e</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;e&#39;</span>
+
+<span class="n">d</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">c</span>
+<span class="n">d</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;d&#39;</span>
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)</span>
+
+<span class="n">L</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">f</span>
+<span class="n">L</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;L&#39;</span>
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>a = 2
+b = -3
+c = 10
+e = a*b = -6
+d = e+c = 4
+f = -2
+L = d*f = -8
+</code></pre></div>
+
+<p>Graph:</p>
+<div class="codehilite"><pre><span></span><code>a ----\
+      * → e ----\
+b ----/          + → d ----\
+c ---------------/          * → L
+f --------------------------/
+</code></pre></div>
+
+<p>Backpropagation means filling in:</p>
+<div class="codehilite"><pre><span></span><code>L.grad
+d.grad
+f.grad
+e.grad
+c.grad
+a.grad
+b.grad
+</code></pre></div>
+
+<p>where each <code>.grad</code> stores:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂that_node
+</code></pre></div>
+
+<hr />
+<h1 id="19-base-case-derivative-of-output-with-respect-to-itself">19. Base case: derivative of output with respect to itself</h1>
+<p>The first derivative is:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂L = 1
+</code></pre></div>
+
+<p>Reason:</p>
+<div class="codehilite"><pre><span></span><code>if L changes by h, L changes by h
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">L</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">1.0</span>
+</code></pre></div>
+
+<p>This is always the starting point of backpropagation.</p>
+<p>In a neural network, the final output is usually the loss, so this means:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂loss = 1
+</code></pre></div>
+
+<hr />
+<h1 id="20-backprop-through-multiplication-l-d-f">20. Backprop through multiplication: <code>L = d * f</code></h1>
+<p>We have:</p>
+<div class="codehilite"><pre><span></span><code>L = d * f
+</code></pre></div>
+
+<p>We need:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂d
+∂L/∂f
+</code></pre></div>
+
+<p>For multiplication:</p>
+<div class="codehilite"><pre><span></span><code>if L = d*f
+then ∂L/∂d = f
+and  ∂L/∂f = d
+</code></pre></div>
+
+<p>Using the current forward values:</p>
+<div class="codehilite"><pre><span></span><code>d = 4
+f = -2
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂d = f = -2
+∂L/∂f = d = 4
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">d</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.0</span>
+<span class="n">f</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">4.0</span>
+</code></pre></div>
+
+<p>Interpretation:</p>
+<div class="codehilite"><pre><span></span><code>increasing d slightly decreases L, because f is negative
+increasing f slightly increases L, because d is positive
+</code></pre></div>
+
+<p>Numerical check:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">h</span> <span class="o">=</span> <span class="mf">0.0001</span>
+</code></pre></div>
+
+<p>If you nudge <code>f</code>:</p>
+<div class="codehilite"><pre><span></span><code>f += h
+L changes by about 4h
+</code></pre></div>
+
+<p>so:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂f ≈ 4
+</code></pre></div>
+
+<p>If you nudge <code>d</code>:</p>
+<div class="codehilite"><pre><span></span><code>d += h
+L changes by about -2h
+</code></pre></div>
+
+<p>so:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂d ≈ -2
+</code></pre></div>
+
+<hr />
+<h1 id="21-the-key-backprop-idea-local-derivatives-chain-rule">21. The key backprop idea: local derivatives + chain rule</h1>
+<p>Now we want to go further backward from <code>d</code> to <code>e</code> and <code>c</code>.</p>
+<p>We know:</p>
+<div class="codehilite"><pre><span></span><code>d = e + c
+</code></pre></div>
+
+<p>and we already know:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂d = -2
+</code></pre></div>
+
+<p>But we need:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂e
+∂L/∂c
+</code></pre></div>
+
+<p>This is the core of backpropagation.</p>
+<p>The local derivatives are:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂e = 1
+∂d/∂c = 1
+</code></pre></div>
+
+<p>because:</p>
+<div class="codehilite"><pre><span></span><code>d = e + c
+</code></pre></div>
+
+<p>A plus operation passes changes straight through.</p>
+<p>But the quantity we need is not merely:</p>
+<div class="codehilite"><pre><span></span><code>∂d/∂e
+</code></pre></div>
+
+<p>We need:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂e
+</code></pre></div>
+
+<p>That requires the chain rule.</p>
+<hr />
+<h1 id="22-chain-rule">22. Chain rule</h1>
+<p>General form:</p>
+<div class="codehilite"><pre><span></span><code>if z depends on y
+and y depends on x
+then z depends on x
+</code></pre></div>
+
+<p>The chain rule says:</p>
+<div class="codehilite"><pre><span></span><code>dz/dx = dz/dy * dy/dx
+</code></pre></div>
+
+<p>For this graph:</p>
+<div class="codehilite"><pre><span></span><code>L depends on d
+d depends on c
+therefore L depends on c
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂c = ∂L/∂d * ∂d/∂c
+</code></pre></div>
+
+<p>We know:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂d = -2
+∂d/∂c = 1
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂c = -2 * 1 = -2
+</code></pre></div>
+
+<p>Similarly:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂e = ∂L/∂d * ∂d/∂e
+       = -2 * 1
+       = -2
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">c</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.0</span>
+<span class="n">e</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mf">2.0</span>
+</code></pre></div>
+
+<hr />
+<h1 id="23-plus-nodes-distribute-gradients">23. Plus nodes distribute gradients</h1>
+<p>For:</p>
+<div class="codehilite"><pre><span></span><code>d = e + c
+</code></pre></div>
+
+<p>the plus node’s local derivative with respect to each input is <code>1</code>.</p>
+<p>Therefore, during backprop:</p>
+<div class="codehilite"><pre><span></span><code>incoming gradient to d = -2
+</code></pre></div>
+
+<p>gets copied to both children:</p>
+<div class="codehilite"><pre><span></span><code>e.grad = -2
+c.grad = -2
+</code></pre></div>
+
+<p>So a useful rule:</p>
+<div class="codehilite"><pre><span></span><code>plus node:
+routes incoming gradient unchanged to all inputs
+</code></pre></div>
+
+<p>More generally:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+</code></pre></div>
+
+<p>during backprop:</p>
+<div class="codehilite"><pre><span></span><code>a.grad += x.grad
+b.grad += x.grad
+</code></pre></div>
+
+<p>The <code>+=</code> part becomes important later.</p>
+<hr />
+<h1 id="24-backprop-through-multiplication-e-a-b">24. Backprop through multiplication: <code>e = a * b</code></h1>
+<p>Now we know:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂e = -2
+</code></pre></div>
+
+<p>and:</p>
+<div class="codehilite"><pre><span></span><code>e = a * b
+</code></pre></div>
+
+<p>We need:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂a
+∂L/∂b
+</code></pre></div>
+
+<p>Use chain rule:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂a = ∂L/∂e * ∂e/∂a
+∂L/∂b = ∂L/∂e * ∂e/∂b
+</code></pre></div>
+
+<p>For multiplication:</p>
+<div class="codehilite"><pre><span></span><code>e = a*b
+∂e/∂a = b
+∂e/∂b = a
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>a = 2
+b = -3
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂a = (-2) * (-3) = 6
+∂L/∂b = (-2) * (2) = -4
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">6.0</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mf">4.0</span>
+</code></pre></div>
+
+<p>Full gradients:</p>
+<div class="codehilite"><pre><span></span><code>L.grad = 1
+d.grad = -2
+f.grad = 4
+e.grad = -2
+c.grad = -2
+a.grad = 6
+b.grad = -4
+</code></pre></div>
+
+<hr />
+<h1 id="25-what-backprop-is-doing-conceptually">25. What backprop is doing conceptually</h1>
+<p>Backpropagation is not magic.</p>
+<p>It repeatedly applies this recipe:</p>
+<div class="codehilite"><pre><span></span><code>1. Know the gradient of the final output with respect to the current node.
+2. Look at the operation that produced the current node.
+3. Compute local derivatives of that operation.
+4. Multiply by the incoming gradient using chain rule.
+5. Pass the result backward to the operation’s inputs.
+</code></pre></div>
+
+<p>For a node:</p>
+<div class="codehilite"><pre><span></span><code>out = operation(inputs)
+</code></pre></div>
+
+<p>you know:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂out
+</code></pre></div>
+
+<p>and compute:</p>
+<div class="codehilite"><pre><span></span><code>∂L/∂input_i = ∂L/∂out * ∂out/∂input_i
+</code></pre></div>
+
+<p>This is all backpropagation is:</p>
+<div class="codehilite"><pre><span></span><code>recursive chain rule through a computation graph
+</code></pre></div>
+
+<hr />
+<h1 id="26-preview-of-optimization-nudging-inputs-to-increase-l">26. Preview of optimization: nudging inputs to increase <code>L</code></h1>
+<p>Now Karpathy shows what the gradients can be used for.</p>
+<p>Current value:</p>
+<div class="codehilite"><pre><span></span><code>L = -8
+</code></pre></div>
+
+<p>Suppose we want to make <code>L</code> increase.</p>
+<p>The gradient tells us how each leaf affects <code>L</code>:</p>
+<div class="codehilite"><pre><span></span><code>a.grad = 6
+b.grad = -4
+c.grad = -2
+f.grad = 4
+</code></pre></div>
+
+<p>To increase <code>L</code>, move each leaf slightly in the direction of its gradient:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">step_size</span> <span class="o">=</span> <span class="mf">0.01</span>
+
+<span class="n">a</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">a</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">b</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">b</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">c</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">c</span><span class="o">.</span><span class="n">grad</span>
+<span class="n">f</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="n">step_size</span> <span class="o">*</span> <span class="n">f</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>This gives:</p>
+<div class="codehilite"><pre><span></span><code>a increases, because a.grad is positive
+b decreases, because b.grad is negative
+c decreases, because c.grad is negative
+f increases, because f.grad is positive
+</code></pre></div>
+
+<p>Then recompute the forward pass:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">e</span> <span class="o">=</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+<span class="n">d</span> <span class="o">=</span> <span class="n">e</span> <span class="o">+</span> <span class="n">c</span>
+<span class="n">L</span> <span class="o">=</span> <span class="n">d</span> <span class="o">*</span> <span class="n">f</span>
+</code></pre></div>
+
+<p>The new <code>L</code> becomes less negative:</p>
+<div class="codehilite"><pre><span></span><code>L increases from about -8 to about -7.286
+</code></pre></div>
+
+<p>This is one step of optimization.</p>
+<p>The pattern is:</p>
+<div class="codehilite"><pre><span></span><code>compute output
+compute gradients
+change inputs/parameters using gradients
+recompute output
+</code></pre></div>
+
+<p>For neural network training, the goal will usually be the opposite:</p>
+<div class="codehilite"><pre><span></span><code>make loss smaller
+</code></pre></div>
+
+<p>So later we will move parameters in the <strong>negative</strong> gradient direction.</p>
+<hr />
+<h1 id="27-manual-backpropagation-example-2-a-neuron">27. Manual backpropagation example #2: a neuron</h1>
+<p>Now Karpathy moves from toy scalar expressions toward neural networks.</p>
+<p>A simple neuron has:</p>
+<div class="codehilite"><pre><span></span><code>inputs x
+weights w
+bias b
+activation function
+</code></pre></div>
+
+<p>For a two-input neuron:</p>
+<div class="codehilite"><pre><span></span><code>x1, x2 = inputs
+w1, w2 = weights
+b = bias
+</code></pre></div>
+
+<p>The neuron computes:</p>
+<div class="codehilite"><pre><span></span><code>n = x1*w1 + x2*w2 + b
+o = tanh(n)
+</code></pre></div>
+
+<p>Where:</p>
+<div class="codehilite"><pre><span></span><code>n = raw activation
+o = output
+</code></pre></div>
+
+<p>The weights determine how strongly each input affects the neuron.</p>
+<p>The bias controls the neuron’s trigger-happiness independent of the inputs.</p>
+<p>The activation function squashes the raw value into a bounded range.</p>
+<hr />
+<h1 id="28-the-tanh-activation">28. The <code>tanh</code> activation</h1>
+<p>Karpathy uses <code>tanh</code>.</p>
+<p>Shape:</p>
+<div class="codehilite"><pre><span></span><code>large negative input → output near -1
+zero input           → output 0
+large positive input → output near +1
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>tanh squashes real numbers into [-1, 1]
+</code></pre></div>
+
+<p>This introduces nonlinearity.</p>
+<p>Without nonlinearities, stacking layers would collapse into one linear operation. Nonlinearity is what allows neural networks to represent more complex functions.</p>
+<hr />
+<h1 id="29-building-the-neuron-expression">29. Building the neuron expression</h1>
+<p>Karpathy creates specific scalar values:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;x1&#39;</span><span class="p">)</span>
+<span class="n">x2</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;x2&#39;</span><span class="p">)</span>
+
+<span class="n">w1</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="o">-</span><span class="mf">3.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;w1&#39;</span><span class="p">)</span>
+<span class="n">w2</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;w2&#39;</span><span class="p">)</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">6.8813735870195432</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;b&#39;</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The bias is chosen carefully so the numbers during backprop come out nicely.</p>
+<p>Intermediate products:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1w1</span> <span class="o">=</span> <span class="n">x1</span> <span class="o">*</span> <span class="n">w1</span>
+<span class="n">x1w1</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;x1*w1&#39;</span>
+
+<span class="n">x2w2</span> <span class="o">=</span> <span class="n">x2</span> <span class="o">*</span> <span class="n">w2</span>
+<span class="n">x2w2</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;x2*w2&#39;</span>
+</code></pre></div>
+
+<p>Then:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1w1x2w2</span> <span class="o">=</span> <span class="n">x1w1</span> <span class="o">+</span> <span class="n">x2w2</span>
+<span class="n">x1w1x2w2</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;x1*w1 + x2*w2&#39;</span>
+
+<span class="n">n</span> <span class="o">=</span> <span class="n">x1w1x2w2</span> <span class="o">+</span> <span class="n">b</span>
+<span class="n">n</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;n&#39;</span>
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>x1*w1 = 2 * -3 = -6
+x2*w2 = 0 * 1 = 0
+x1*w1 + x2*w2 = -6
+n = -6 + 6.881373587... = 0.881373587...
+</code></pre></div>
+
+<p>Then:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">tanh</span><span class="p">()</span>
+<span class="n">o</span><span class="o">.</span><span class="n">label</span> <span class="o">=</span> <span class="s1">&#39;o&#39;</span>
+</code></pre></div>
+
+<p>Output:</p>
+<div class="codehilite"><pre><span></span><code>o = tanh(n) ≈ 0.7071
+</code></pre></div>
+
+<hr />
+<h1 id="30-why-implement-tanh-directly">30. Why implement <code>tanh</code> directly?</h1>
+<p>At this point, the <code>Value</code> class only supports:</p>
+<div class="codehilite"><pre><span></span><code>+
+*
+</code></pre></div>
+
+<p>But <code>tanh</code> mathematically involves exponentials:</p>
+<div class="codehilite"><pre><span></span><code>tanh(x) = (e^(2x) - 1) / (e^(2x) + 1)
+</code></pre></div>
+
+<p>Karpathy says there are two possible approaches:</p>
+<div class="codehilite"><pre><span></span><code>1. implement exp, subtraction, division, etc., then build tanh from them
+2. implement tanh directly as a single operation
+</code></pre></div>
+
+<p>He chooses option 2 first.</p>
+<p>Important design principle:</p>
+<div class="codehilite"><pre><span></span><code>autograd operations do not have to be atomic
+</code></pre></div>
+
+<p>An operation can be simple:</p>
+<div class="codehilite"><pre><span></span><code>+
+*
+</code></pre></div>
+
+<p>or composite:</p>
+<div class="codehilite"><pre><span></span><code>tanh
+</code></pre></div>
+
+<p>The only requirement:</p>
+<div class="codehilite"><pre><span></span><code>for every operation, we must know how to compute its local derivative
+</code></pre></div>
+
+<p>So <code>tanh</code> can be a single node in the graph if we know its derivative.</p>
+<hr />
+<h1 id="31-adding-tanh-to-value">31. Adding <code>tanh</code> to <code>Value</code></h1>
+<p>The method looks conceptually like:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">tanh</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">data</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="p">,),</span> <span class="s1">&#39;tanh&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Important details:</p>
+<div class="codehilite"><pre><span></span><code>input: one Value object
+output: new Value object
+child pointer: points back to the input
+operation label: &#39;tanh&#39;
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span> <span class="o">=</span> <span class="n">n</span><span class="o">.</span><span class="n">tanh</span><span class="p">()</span>
+</code></pre></div>
+
+<p>creates a graph edge:</p>
+<div class="codehilite"><pre><span></span><code>n → tanh → o
+</code></pre></div>
+
+<p>Forward value:</p>
+<div class="codehilite"><pre><span></span><code>n ≈ 0.8814
+o ≈ 0.7071
+</code></pre></div>
+
+<hr />
+<h1 id="32-manual-backprop-through-the-neuron">32. Manual backprop through the neuron</h1>
+<p>Now compute:</p>
+<div class="codehilite"><pre><span></span><code>∂o/∂all previous nodes
+</code></pre></div>
+
+<p>Start with the base case:</p>
+<div class="codehilite"><pre><span></span><code>∂o/∂o = 1
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">1.0</span>
+</code></pre></div>
+
+<hr />
+<h1 id="33-backprop-through-tanh">33. Backprop through <code>tanh</code></h1>
+<p>We have:</p>
+<div class="codehilite"><pre><span></span><code>o = tanh(n)
+</code></pre></div>
+
+<p>Derivative:</p>
+<div class="codehilite"><pre><span></span><code>d/dn tanh(n) = 1 - tanh(n)^2
+</code></pre></div>
+
+<p>But:</p>
+<div class="codehilite"><pre><span></span><code>o = tanh(n)
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>∂o/∂n = 1 - o²
+</code></pre></div>
+
+<p>Since:</p>
+<div class="codehilite"><pre><span></span><code>o ≈ 0.7071
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code>o² ≈ 0.5
+1 - o² ≈ 0.5
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+</code></pre></div>
+
+<p>Interpretation:</p>
+<div class="codehilite"><pre><span></span><code>a tiny increase in n increases o with slope about 0.5
+</code></pre></div>
+
+<p>Because <code>tanh</code> is nonlinear, its derivative depends on where you are.</p>
+<p>Near zero, tanh has high slope.</p>
+<p>Near ±1, tanh saturates and the slope becomes small.</p>
+<hr />
+<h1 id="34-backprop-through-n-x1w1x2w2-b">34. Backprop through <code>n = x1w1x2w2 + b</code></h1>
+<p>We have:</p>
+<div class="codehilite"><pre><span></span><code>n = x1w1x2w2 + b
+</code></pre></div>
+
+<p>This is addition.</p>
+<p>Plus nodes copy gradients to both inputs.</p>
+<p>Incoming gradient:</p>
+<div class="codehilite"><pre><span></span><code>n.grad = 0.5
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1w1x2w2</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>increasing the bias increases the neuron output
+with local sensitivity 0.5
+</code></pre></div>
+
+<hr />
+<h1 id="35-backprop-through-x1w1x2w2-x1w1-x2w2">35. Backprop through <code>x1w1x2w2 = x1w1 + x2w2</code></h1>
+<p>Again addition.</p>
+<p>Incoming gradient:</p>
+<div class="codehilite"><pre><span></span><code>x1w1x2w2.grad = 0.5
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1w1</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">x2w2</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+</code></pre></div>
+
+<p>Both branches receive the same gradient.</p>
+<hr />
+<h1 id="36-backprop-through-x2w2-x2-w2">36. Backprop through <code>x2w2 = x2 * w2</code></h1>
+<p>We have:</p>
+<div class="codehilite"><pre><span></span><code>x2w2 = x2 * w2
+</code></pre></div>
+
+<p>Incoming gradient:</p>
+<div class="codehilite"><pre><span></span><code>x2w2.grad = 0.5
+</code></pre></div>
+
+<p>Multiplication rule:</p>
+<div class="codehilite"><pre><span></span><code>∂(x2*w2)/∂x2 = w2
+∂(x2*w2)/∂w2 = x2
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>x2 = 0
+w2 = 1
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code>x2.grad = w2.data * x2w2.grad
+        = 1 * 0.5
+        = 0.5
+
+w2.grad = x2.data * x2w2.grad
+        = 0 * 0.5
+        = 0
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x2</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">w2</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+</code></pre></div>
+
+<p>Important intuition:</p>
+<div class="codehilite"><pre><span></span><code>w2 has zero gradient because x2 is zero
+</code></pre></div>
+
+<p>If the input is zero, changing the weight connected to it has no effect on the neuron output at that moment.</p>
+<p>Since:</p>
+<div class="codehilite"><pre><span></span><code>x2*w2 = 0*w2 = 0
+</code></pre></div>
+
+<p>wiggling <code>w2</code> changes nothing.</p>
+<hr />
+<h1 id="37-backprop-through-x1w1-x1-w1">37. Backprop through <code>x1w1 = x1 * w1</code></h1>
+<p>We have:</p>
+<div class="codehilite"><pre><span></span><code>x1w1 = x1 * w1
+</code></pre></div>
+
+<p>Incoming gradient:</p>
+<div class="codehilite"><pre><span></span><code>x1w1.grad = 0.5
+</code></pre></div>
+
+<p>Multiplication rule:</p>
+<div class="codehilite"><pre><span></span><code>∂(x1*w1)/∂x1 = w1
+∂(x1*w1)/∂w1 = x1
+</code></pre></div>
+
+<p>Forward values:</p>
+<div class="codehilite"><pre><span></span><code>x1 = 2
+w1 = -3
+</code></pre></div>
+
+<p>Therefore:</p>
+<div class="codehilite"><pre><span></span><code>x1.grad = w1.data * x1w1.grad
+        = -3 * 0.5
+        = -1.5
+
+w1.grad = x1.data * x1w1.grad
+        = 2 * 0.5
+        = 1.0
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.5</span>
+<span class="n">w1</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">1.0</span>
+</code></pre></div>
+
+<p>Interpretation:</p>
+<div class="codehilite"><pre><span></span><code>increasing x1 decreases o
+because w1 is negative
+
+increasing w1 increases o
+because x1 is positive
+</code></pre></div>
+
+<hr />
+<h1 id="38-full-neuron-gradients">38. Full neuron gradients</h1>
+<p>The neuron:</p>
+<div class="codehilite"><pre><span></span><code>o = tanh(x1*w1 + x2*w2 + b)
+</code></pre></div>
+
+<p>with:</p>
+<div class="codehilite"><pre><span></span><code>x1 = 2
+x2 = 0
+w1 = -3
+w2 = 1
+b ≈ 6.88137
+</code></pre></div>
+
+<p>has forward output:</p>
+<div class="codehilite"><pre><span></span><code>o ≈ 0.7071
+</code></pre></div>
+
+<p>Manual backprop gives:</p>
+<div class="codehilite"><pre><span></span><code>o.grad = 1.0
+n.grad = 0.5
+b.grad = 0.5
+x1w1x2w2.grad = 0.5
+x1w1.grad = 0.5
+x2w2.grad = 0.5
+x1.grad = -1.5
+w1.grad = 1.0
+x2.grad = 0.5
+w2.grad = 0.0
+</code></pre></div>
+
+<p>Most important for training:</p>
+<div class="codehilite"><pre><span></span><code>w1.grad = 1.0
+w2.grad = 0.0
+b.grad = 0.5
+</code></pre></div>
+
+<p>because weights and biases are parameters we can modify.</p>
+<p>The input gradients exist too:</p>
+<div class="codehilite"><pre><span></span><code>x1.grad = -1.5
+x2.grad = 0.5
+</code></pre></div>
+
+<p>but in ordinary supervised learning, inputs are data and are not updated.</p>
+<hr />
+<h1 id="39-what-this-means-for-training">39. What this means for training</h1>
+<p>If we wanted to increase this neuron’s output <code>o</code>, the gradients say:</p>
+<div class="codehilite"><pre><span></span><code>increase w1, because w1.grad = 1.0
+do not change w2 much, because w2.grad = 0.0
+increase b, because b.grad = 0.5
+</code></pre></div>
+
+<p>The gradient is local. It tells us what happens for tiny nudges around the current values.</p>
+<p>This is the same kind of information used when training an entire neural network.</p>
+<hr />
+<h1 id="40-problem-manual-backprop-is-ridiculous">40. Problem: manual backprop is ridiculous</h1>
+<p>So far, every gradient was assigned by hand:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">1.0</span>
+<span class="n">n</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">x1w1x2w2</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="o">...</span>
+</code></pre></div>
+
+<p>This works for a tiny graph, but not for real neural networks.</p>
+<p>The next goal is to automate it.</p>
+<p>The insight from the manual examples:</p>
+<div class="codehilite"><pre><span></span><code>each operation knows how to propagate its output gradient to its input gradients
+</code></pre></div>
+
+<p>For addition:</p>
+<div class="codehilite"><pre><span></span><code>out = a + b
+
+a.grad += out.grad
+b.grad += out.grad
+</code></pre></div>
+
+<p>For multiplication:</p>
+<div class="codehilite"><pre><span></span><code>out = a * b
+
+a.grad += b.data * out.grad
+b.grad += a.data * out.grad
+</code></pre></div>
+
+<p>For tanh:</p>
+<div class="codehilite"><pre><span></span><code>out = tanh(a)
+
+a.grad += (1 - out.data²) * out.grad
+</code></pre></div>
+
+<p>So the next step is to store, inside each <code>Value</code>, a small function that knows how to do the local backward pass for that operation.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0010_gpt.html">← Previous: Karpathy micrograd outline — Part 1 of 8</a>
+        <a href="index.html">Index</a>
+        <a href="0012.html">Next: Karpathy micrograd outline — Part 3 of 8 →</a>
+    </nav>
+</body>
+</html>
