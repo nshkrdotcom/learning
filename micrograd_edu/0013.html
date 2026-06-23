@@ -1,0 +1,630 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 4 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-4-of-8">Karpathy micrograd outline — Part 4 of 8</h1>
+<h2 id="scope-pytorch-comparison-building-the-neural-net-library-neuron-layer-mlp-first-mlp-forward-pass">Scope: PyTorch comparison → building the neural-net library: <code>Neuron</code>, <code>Layer</code>, <code>MLP</code> → first MLP forward pass</h2>
+<p>Approx. video range: <strong>1:39:30–1:51:05</strong></p>
+<hr />
+<h1 id="72-comparing-micrograd-to-pytorch">72. Comparing micrograd to PyTorch</h1>
+<p>After building micrograd’s scalar autograd engine, Karpathy shows that the same computation can be done in PyTorch.</p>
+<p>The purpose is not to teach PyTorch deeply yet.</p>
+<p>The purpose is to show:</p>
+<div class="codehilite"><pre><span></span><code>micrograd and PyTorch are conceptually doing the same thing
+</code></pre></div>
+
+<p>Micrograd has:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Value</span>
+</code></pre></div>
+
+<p>PyTorch has:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+</code></pre></div>
+
+<p>Micrograd stores:</p>
+<div class="codehilite"><pre><span></span><code>.data
+.grad
+.backward()
+</code></pre></div>
+
+<p>PyTorch tensors also have:</p>
+<div class="codehilite"><pre><span></span><code>.data
+.grad
+.backward()
+</code></pre></div>
+
+<p>So micrograd has been designed to mimic the conceptual surface of PyTorch.</p>
+<hr />
+<h1 id="73-scalar-value-vs-tensor">73. Scalar <code>Value</code> vs tensor</h1>
+<p>Micrograd works with scalar values:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">2.0</span><span class="p">)</span>
+</code></pre></div>
+
+<p>PyTorch works with tensors:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">])</span>
+</code></pre></div>
+
+<p>A tensor can be:</p>
+<div class="codehilite"><pre><span></span><code>a scalar-like one-element array
+a vector
+a matrix
+a higher-dimensional array
+</code></pre></div>
+
+<p>Example tensor:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">]])</span>
+</code></pre></div>
+
+<p>has shape:</p>
+<div class="codehilite"><pre><span></span><code>2 × 3
+</code></pre></div>
+
+<p>The tensor abstraction is what makes PyTorch efficient.</p>
+<p>Instead of tracking and operating on one scalar at a time, PyTorch tracks arrays of scalars and runs operations on many values in parallel.</p>
+<p>But mathematically:</p>
+<div class="codehilite"><pre><span></span><code>same derivatives
+same chain rule
+same backpropagation idea
+</code></pre></div>
+
+<hr />
+<h1 id="74-why-pytorch-examples-use-double">74. Why PyTorch examples use <code>.double()</code></h1>
+<p>Karpathy uses one-element tensors to match micrograd’s scalar behavior.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">])</span><span class="o">.</span><span class="n">double</span><span class="p">()</span>
+</code></pre></div>
+
+<p>By default, PyTorch often uses <code>float32</code>.</p>
+<p>Python floats are usually double precision, equivalent to <code>float64</code>.</p>
+<p>So he calls:</p>
+<div class="codehilite"><pre><span></span><code><span class="o">.</span><span class="n">double</span><span class="p">()</span>
+</code></pre></div>
+
+<p>to make PyTorch use double precision and match micrograd’s numerical values more closely.</p>
+<p>Purpose:</p>
+<div class="codehilite"><pre><span></span><code>avoid tiny numerical discrepancies due to float precision
+</code></pre></div>
+
+<hr />
+<h1 id="75-why-pytorch-examples-use-requires_gradtrue">75. Why PyTorch examples use <code>requires_grad=True</code></h1>
+<p>In PyTorch, tensors do not automatically track gradients unless asked.</p>
+<p>So Karpathy does:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">x2</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">w1</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">w2</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">b</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
+</code></pre></div>
+
+<p>or equivalently in modern style:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">2.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Reason:</p>
+<div class="codehilite"><pre><span></span><code>gradient tracking has overhead
+</code></pre></div>
+
+<p>In real neural network training, you usually want gradients for parameters, not for all temporary or input tensors.</p>
+<p>PyTorch defaults are efficiency-conscious.</p>
+<hr />
+<h1 id="76-recreating-the-neuron-in-pytorch">76. Recreating the neuron in PyTorch</h1>
+<p>The neuron expression is the same one used earlier:</p>
+<div class="codehilite"><pre><span></span><code>o = tanh(x1*w1 + x2*w2 + b)
+</code></pre></div>
+
+<p>With:</p>
+<div class="codehilite"><pre><span></span><code>x1 = 2
+x2 = 0
+w1 = -3
+w2 = 1
+b = 6.881373587...
+</code></pre></div>
+
+<p>PyTorch version:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">x1</span><span class="o">*</span><span class="n">w1</span> <span class="o">+</span> <span class="n">x2</span><span class="o">*</span><span class="n">w2</span> <span class="o">+</span> <span class="n">b</span>
+<span class="n">o</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Then:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>PyTorch computes gradients.</p>
+<p>Expected results:</p>
+<div class="codehilite"><pre><span></span><code>o.data ≈ 0.7071
+
+x1.grad ≈ -1.5
+w1.grad ≈ 1.0
+x2.grad ≈ 0.5
+w2.grad ≈ 0.0
+b.grad  ≈ 0.5
+</code></pre></div>
+
+<p>These match micrograd.</p>
+<p>This validates the micrograd implementation against the behavior of a real production autograd library.</p>
+<hr />
+<h1 id="77-item-in-pytorch">77. <code>.item()</code> in PyTorch</h1>
+<p>A one-element tensor is still a tensor.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span>
+</code></pre></div>
+
+<p>might display like:</p>
+<div class="codehilite"><pre><span></span><code>tensor([0.7071], dtype=torch.float64, grad_fn=&lt;TanhBackward0&gt;)
+</code></pre></div>
+
+<p>To extract the raw Python number:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">o</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+</code></pre></div>
+
+<p>This returns:</p>
+<div class="codehilite"><pre><span></span><code>0.7071...
+</code></pre></div>
+
+<p>Similarly:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x1</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+</code></pre></div>
+
+<p>extracts the scalar gradient.</p>
+<p>Micrograd stores scalar numbers directly; PyTorch wraps them in tensors.</p>
+<hr />
+<h1 id="78-what-pytorch-adds-beyond-micrograd">78. What PyTorch adds beyond micrograd</h1>
+<p>Micrograd:</p>
+<div class="codehilite"><pre><span></span><code>scalar values
+tiny pedagogical code
+slow
+clear
+</code></pre></div>
+
+<p>PyTorch:</p>
+<div class="codehilite"><pre><span></span><code>tensors
+optimized kernels
+GPU support
+large-scale training
+production-grade engineering
+</code></pre></div>
+
+<p>But the conceptual mechanism is the same:</p>
+<div class="codehilite"><pre><span></span><code>build computation graph
+call backward
+populate gradients
+update parameters
+</code></pre></div>
+
+<p>Karpathy’s point:</p>
+<div class="codehilite"><pre><span></span><code>micrograd is the small, scalar, educational version of PyTorch autograd
+</code></pre></div>
+
+<hr />
+<h1 id="79-moving-from-autograd-to-neural-networks">79. Moving from autograd to neural networks</h1>
+<p>Now that micrograd can differentiate mathematical expressions, Karpathy builds a small neural network library on top of it.</p>
+<p>The target is a multi-layer perceptron, or MLP.</p>
+<p>An MLP is made of:</p>
+<div class="codehilite"><pre><span></span><code>neurons
+layers of neurons
+a sequence of layers
+</code></pre></div>
+
+<p>So he builds three classes:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Neuron</span>
+<span class="n">Layer</span>
+<span class="n">MLP</span>
+</code></pre></div>
+
+<p>This mirrors common neural network library design.</p>
+<hr />
+<h1 id="80-neural-networks-as-a-specific-class-of-expressions">80. Neural networks as a specific class of expressions</h1>
+<p>The autograd engine does not know about neural networks.</p>
+<p>It only knows:</p>
+<div class="codehilite"><pre><span></span><code>Value objects
+operations
+graphs
+gradients
+</code></pre></div>
+
+<p>The neural network library simply uses those tools to build a particular kind of mathematical expression.</p>
+<p>For a neural network:</p>
+<div class="codehilite"><pre><span></span><code>inputs and parameters go in
+a prediction comes out
+</code></pre></div>
+
+<p>Because the prediction is made of <code>Value</code> operations, micrograd can backpropagate through it.</p>
+<hr />
+<h1 id="81-implementing-a-neuron">81. Implementing a <code>Neuron</code></h1>
+<p>A neuron needs:</p>
+<div class="codehilite"><pre><span></span><code>weights
+bias
+forward call
+</code></pre></div>
+
+<p>Constructor:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Neuron</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="p">[</span><span class="n">Value</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nin</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+</code></pre></div>
+
+<p>Here:</p>
+<div class="codehilite"><pre><span></span><code>nin = number of inputs to the neuron
+</code></pre></div>
+
+<p>If <code>nin = 3</code>, the neuron has:</p>
+<div class="codehilite"><pre><span></span><code>3 weights
+1 bias
+</code></pre></div>
+
+<p>Each weight is randomly initialized between <code>-1</code> and <code>1</code>.</p>
+<hr />
+<h1 id="82-why-random-initialization">82. Why random initialization?</h1>
+<p>If all neurons started with identical weights, they would compute identical functions and receive identical gradients.</p>
+<p>Random initialization breaks symmetry.</p>
+<p>Here the initialization is simple and pedagogical:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre></div>
+
+<p>No advanced initialization scheme is used because the network is tiny.</p>
+<hr />
+<h1 id="83-__call__-making-a-neuron-callable">83. <code>__call__</code>: making a neuron callable</h1>
+<p>Karpathy implements:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+</code></pre></div>
+
+<p>This lets a neuron object be used like a function:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">Neuron</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Python internally translates:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>into:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="fm">__call__</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>This mirrors PyTorch modules, which are also called like functions.</p>
+<hr />
+<h1 id="84-neuron-forward-pass">84. Neuron forward pass</h1>
+<p>The neuron computes:</p>
+<div class="codehilite"><pre><span></span><code>activation = w · x + b
+output = tanh(activation)
+</code></pre></div>
+
+<p>Expanded:</p>
+<div class="codehilite"><pre><span></span><code>activation = w1*x1 + w2*x2 + ... + wn*xn + b
+</code></pre></div>
+
+<p>Implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="n">act</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">wi</span><span class="o">*</span><span class="n">xi</span> <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">act</span><span class="o">.</span><span class="n">tanh</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div>
+
+<p>Important pieces:</p>
+<div class="codehilite"><pre><span></span><code>zip(self.w, x) pairs each weight with the corresponding input
+wi*xi multiplies each pair
+sum(..., self.b) adds all products, starting from the bias
+act.tanh() applies the nonlinearity
+</code></pre></div>
+
+<p>The result is a <code>Value</code>.</p>
+<p>Because all operations are <code>Value</code> operations, a computation graph is built automatically.</p>
+<hr />
+<h1 id="85-understanding-zipselfw-x">85. Understanding <code>zip(self.w, x)</code></h1>
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="p">[</span><span class="n">w1</span><span class="p">,</span> <span class="n">w2</span><span class="p">]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">]</span>
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>iterates over:</p>
+<div class="codehilite"><pre><span></span><code>(w1, x1)
+(w2, x2)
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">(</span><span class="n">wi</span><span class="o">*</span><span class="n">xi</span> <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+</code></pre></div>
+
+<p>generates:</p>
+<div class="codehilite"><pre><span></span><code>w1*x1
+w2*x2
+</code></pre></div>
+
+<p>Then <code>sum</code> adds them.</p>
+<hr />
+<h1 id="86-why-sum-selfb-starts-from-the-bias">86. Why <code>sum(..., self.b)</code> starts from the bias</h1>
+<p>Python’s <code>sum</code> can take a second argument:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">sum</span><span class="p">(</span><span class="n">iterable</span><span class="p">,</span> <span class="n">start</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The default <code>start</code> is <code>0</code>.</p>
+<p>Karpathy uses:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">sum</span><span class="p">((</span><span class="n">wi</span><span class="o">*</span><span class="n">xi</span> <span class="k">for</span> <span class="n">wi</span><span class="p">,</span> <span class="n">xi</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">x</span><span class="p">)),</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span>
+</code></pre></div>
+
+<p>so the sum starts from the bias.</p>
+<p>This gives:</p>
+<div class="codehilite"><pre><span></span><code>b + w1*x1 + w2*x2 + ...
+</code></pre></div>
+
+<p>instead of:</p>
+<div class="codehilite"><pre><span></span><code>0 + w1*x1 + w2*x2 + ...
+</code></pre></div>
+
+<p>It is concise and directly expresses the neuron equation.</p>
+<hr />
+<h1 id="87-testing-a-single-neuron">87. Testing a single neuron</h1>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]</span>
+<span class="n">n</span> <span class="o">=</span> <span class="n">Neuron</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>This returns one <code>Value</code>.</p>
+<p>Because weights are random, the exact output changes each time the neuron is initialized.</p>
+<p>The computation graph for this one neuron includes:</p>
+<div class="codehilite"><pre><span></span><code>input-weight multiplications
+additions
+bias addition
+tanh
+output
+</code></pre></div>
+
+<hr />
+<h1 id="88-implementing-a-layer">88. Implementing a <code>Layer</code></h1>
+<p>A layer is a collection of neurons evaluated independently on the same input.</p>
+<p>Constructor:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Layer</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">,</span> <span class="n">nout</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span> <span class="o">=</span> <span class="p">[</span><span class="n">Neuron</span><span class="p">(</span><span class="n">nin</span><span class="p">)</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nout</span><span class="p">)]</span>
+</code></pre></div>
+
+<p>Here:</p>
+<div class="codehilite"><pre><span></span><code>nin = number of inputs to each neuron
+nout = number of neurons in the layer
+</code></pre></div>
+
+<p>If:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">Layer</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code>3 neurons
+each neuron has 2 inputs
+</code></pre></div>
+
+<hr />
+<h1 id="89-layer-forward-pass">89. Layer forward pass</h1>
+<p>Implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="n">outs</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">outs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">outs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">outs</span>
+</code></pre></div>
+
+<p>Each neuron receives the same input vector <code>x</code>.</p>
+<p>If the layer has multiple neurons, it returns a list of outputs.</p>
+<p>If the layer has exactly one neuron, it returns the single output directly instead of wrapping it in a one-item list.</p>
+<p>This convenience matters for the final output layer.</p>
+<hr />
+<h1 id="90-testing-a-layer">90. Testing a layer</h1>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]</span>
+<span class="n">layer</span> <span class="o">=</span> <span class="n">Layer</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Returns something like:</p>
+<div class="codehilite"><pre><span></span><code>[Value(...), Value(...), Value(...)]
+</code></pre></div>
+
+<p>because there are three neurons.</p>
+<p>Each output is the result of an independent neuron.</p>
+<p>Conceptually:</p>
+<div class="codehilite"><pre><span></span><code>same input
+→ multiple neurons
+→ multiple outputs
+</code></pre></div>
+
+<hr />
+<h1 id="91-implementing-an-mlp">91. Implementing an MLP</h1>
+<p>An MLP is a sequence of layers.</p>
+<p>Constructor:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MLP</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nin</span><span class="p">,</span> <span class="n">nouts</span><span class="p">):</span>
+        <span class="n">sz</span> <span class="o">=</span> <span class="p">[</span><span class="n">nin</span><span class="p">]</span> <span class="o">+</span> <span class="n">nouts</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="p">[</span><span class="n">Layer</span><span class="p">(</span><span class="n">sz</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">sz</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nouts</span><span class="p">))]</span>
+</code></pre></div>
+
+<p>Here:</p>
+<div class="codehilite"><pre><span></span><code>nin = input dimensionality
+nouts = list of layer sizes
+</code></pre></div>
+
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>means:</p>
+<div class="codehilite"><pre><span></span><code>input size: 3
+first hidden layer: 4 neurons
+second hidden layer: 4 neurons
+output layer: 1 neuron
+</code></pre></div>
+
+<p>The list:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">sz</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+</code></pre></div>
+
+<p>becomes:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">sz</span> <span class="o">=</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Then consecutive pairs define layers:</p>
+<div class="codehilite"><pre><span></span><code>Layer(3, 4)
+Layer(4, 4)
+Layer(4, 1)
+</code></pre></div>
+
+<hr />
+<h1 id="92-mlp-forward-pass">92. MLP forward pass</h1>
+<p>Implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">x</span>
+</code></pre></div>
+
+<p>This feeds the output of each layer into the next layer.</p>
+<p>Flow:</p>
+<div class="codehilite"><pre><span></span><code>input x
+→ layer 1
+→ layer 2
+→ output layer
+→ prediction
+</code></pre></div>
+
+<p>Because every neuron output is a <code>Value</code>, the whole MLP produces a computation graph.</p>
+<hr />
+<h1 id="93-testing-the-mlp">93. Testing the MLP</h1>
+<p>Example input:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">x</span> <span class="o">=</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Network:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>Call:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</code></pre></div>
+
+<p>This computes a forward pass through:</p>
+<div class="codehilite"><pre><span></span><code>3 input values
+→ 4 neurons
+→ 4 neurons
+→ 1 output neuron
+</code></pre></div>
+
+<p>The output is a single <code>Value</code>.</p>
+<p>Since the final layer has one neuron, the <code>Layer.__call__</code> convenience returns the single value directly.</p>
+<hr />
+<h1 id="94-computation-graph-of-the-mlp">94. Computation graph of the MLP</h1>
+<p>Karpathy visualizes:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">draw_dot</span><span class="p">(</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+</code></pre></div>
+
+<p>The graph is much larger than the earlier toy examples.</p>
+<p>It contains:</p>
+<div class="codehilite"><pre><span></span><code>many weight-input multiplications
+many additions
+many tanh operations
+many intermediate scalar Values
+one final scalar output
+</code></pre></div>
+
+<p>Even for this tiny MLP, the expression graph becomes large.</p>
+<p>This demonstrates why manual differentiation is impossible.</p>
+<p>But micrograd can handle it because every node knows:</p>
+<div class="codehilite"><pre><span></span><code>how it was created
+which previous nodes it depends on
+how to backpropagate its local gradient
+</code></pre></div>
+
+<hr />
+<h1 id="95-at-this-point-the-mlp-can-predict-but-not-yet-learn">95. At this point, the MLP can predict but not yet learn</h1>
+<p>The network currently has random weights.</p>
+<p>It can perform a forward pass:</p>
+<div class="codehilite"><pre><span></span><code>input → output
+</code></pre></div>
+
+<p>But it has not been trained.</p>
+<p>To train it, we need:</p>
+<div class="codehilite"><pre><span></span><code>1. a dataset
+2. a target output for each example
+3. a loss function
+4. backpropagation through the loss
+5. parameter updates
+</code></pre></div>
+
+<p>That begins in the next section.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0012.html">← Previous: Karpathy micrograd outline — Part 3 of 8</a>
+        <a href="index.html">Index</a>
+        <a href="0014.html">Next: Karpathy micrograd outline — Part 5 of 8 →</a>
+    </nav>
+</body>
+</html>

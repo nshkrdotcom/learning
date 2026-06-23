@@ -1,0 +1,558 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 6 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-6-of-8">Karpathy micrograd outline — Part 6 of 8</h1>
+<h2 id="scope-proper-training-loop-zero-grad-bug-corrected-optimization-summary-of-neural-network-training">Scope: proper training loop → zero-grad bug → corrected optimization → summary of neural-network training</h2>
+<p>Approx. video range: <strong>2:08:35–2:16:50</strong></p>
+<hr />
+<h1 id="118-turning-manual-updates-into-a-training-loop">118. Turning manual updates into a training loop</h1>
+<p>Karpathy now makes the repeated optimization process more respectable.</p>
+<p>Instead of manually running:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+<span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>over and over, he writes a loop:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+    <span class="c1"># forward pass</span>
+    <span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+    <span class="c1"># backward pass</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+    <span class="c1"># update</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The three core phases are:</p>
+<div class="codehilite"><pre><span></span><code>1. forward pass
+2. backward pass
+3. parameter update
+</code></pre></div>
+
+<p>This is the basic neural-network training loop.</p>
+<hr />
+<h1 id="119-forward-pass-in-the-loop">119. Forward pass in the loop</h1>
+<p>The forward pass computes predictions:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+</code></pre></div>
+
+<p>This runs all four training examples through the MLP.</p>
+<p>Then it computes the loss:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+</code></pre></div>
+
+<p>The forward pass does two things simultaneously:</p>
+<div class="codehilite"><pre><span></span><code>1. computes numeric prediction and loss values
+2. builds the computation graph needed for backprop
+</code></pre></div>
+
+<p>Because all parameters are <code>Value</code> objects, every arithmetic operation records graph structure.</p>
+<hr />
+<h1 id="120-backward-pass-in-the-loop">120. Backward pass in the loop</h1>
+<p>The backward pass:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>does:</p>
+<div class="codehilite"><pre><span></span><code>1. topologically sorts all nodes leading into loss
+2. sets loss.grad = 1
+3. walks backward through the graph
+4. applies every local _backward function
+5. accumulates gradients into parameters
+</code></pre></div>
+
+<p>After this call, every parameter has:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = ∂loss/∂p
+</code></pre></div>
+
+<p>These gradients describe how changing each weight or bias would locally affect the loss.</p>
+<hr />
+<h1 id="121-parameter-update-in-the-loop">121. Parameter update in the loop</h1>
+<p>The update:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>is gradient descent.</p>
+<p>Because:</p>
+<div class="codehilite"><pre><span></span><code>gradient points uphill in loss
+</code></pre></div>
+
+<p>the update moves in the opposite direction:</p>
+<div class="codehilite"><pre><span></span><code>negative gradient direction
+</code></pre></div>
+
+<p>The learning rate controls the step size.</p>
+<p>Karpathy uses a learning rate around:</p>
+<div class="codehilite"><pre><span></span><code>0.05
+</code></pre></div>
+
+<p>after noting that:</p>
+<div class="codehilite"><pre><span></span><code>0.01 is slow
+0.1 can be dangerously large
+</code></pre></div>
+
+<hr />
+<h1 id="122-initial-apparent-success">122. Initial apparent success</h1>
+<p>Running the loop prints losses decreasing over steps.</p>
+<p>The predictions become close to targets:</p>
+<div class="codehilite"><pre><span></span><code>target:      [ 1, -1, -1,  1]
+prediction: [≈1, ≈-1, ≈-1, ≈1]
+</code></pre></div>
+
+<p>This looks like the network is training correctly.</p>
+<p>But then Karpathy notices a serious bug.</p>
+<p>The loop is missing a step.</p>
+<hr />
+<h1 id="123-the-bug-forgetting-to-zero-gradients">123. The bug: forgetting to zero gradients</h1>
+<p>The bug is:</p>
+<div class="codehilite"><pre><span></span><code>gradients are not reset before each backward pass
+</code></pre></div>
+
+<p>This is one of the common neural-net mistakes:</p>
+<div class="codehilite"><pre><span></span><code>forgot to zero_grad before backward
+</code></pre></div>
+
+<p>In micrograd, every parameter has:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>When <code>loss.backward()</code> runs, local backward functions do:</p>
+<div class="codehilite"><pre><span></span><code><span class="o">+=</span>
+</code></pre></div>
+
+<p>not assignment.</p>
+<p>That was necessary because gradients from multiple graph paths must accumulate during one backward pass.</p>
+<p>But across separate training iterations, we do <strong>not</strong> want old gradients to remain.</p>
+<hr />
+<h1 id="124-why-gradient-accumulation-is-needed-inside-one-backward-pass">124. Why gradient accumulation is needed inside one backward pass</h1>
+<p>Inside a single graph, one parameter can influence the loss through multiple paths.</p>
+<p>Example:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">a</span> <span class="o">=</span> <span class="n">Value</span><span class="p">(</span><span class="mf">3.0</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">a</span>
+</code></pre></div>
+
+<p>The gradient should be:</p>
+<div class="codehilite"><pre><span></span><code>db/da = 2
+</code></pre></div>
+
+<p>So when backprop reaches <code>a</code> from two branches, contributions must add.</p>
+<p>That is why operation backward functions use:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">+=</span> <span class="o">...</span>
+</code></pre></div>
+
+<p>not:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="o">...</span>
+</code></pre></div>
+
+<p>Within one backward pass:</p>
+<div class="codehilite"><pre><span></span><code>accumulation is correct
+</code></pre></div>
+
+<hr />
+<h1 id="125-why-accumulation-is-wrong-across-training-iterations">125. Why accumulation is wrong across training iterations</h1>
+<p>Training iteration 1:</p>
+<div class="codehilite"><pre><span></span><code>compute loss_1
+backward → p.grad contains ∂loss_1/∂p
+update p.data
+</code></pre></div>
+
+<p>Training iteration 2:</p>
+<div class="codehilite"><pre><span></span><code>compute loss_2
+backward → p.grad should contain ∂loss_2/∂p only
+</code></pre></div>
+
+<p>But if we do not reset:</p>
+<div class="codehilite"><pre><span></span><code>p.grad still contains ∂loss_1/∂p
+</code></pre></div>
+
+<p>Then because backward uses <code>+=</code>, after iteration 2:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = ∂loss_1/∂p + ∂loss_2/∂p
+</code></pre></div>
+
+<p>After many iterations:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = stale accumulated gradients from all previous losses
+</code></pre></div>
+
+<p>That is wrong for ordinary gradient descent.</p>
+<p>It effectively changes the update rule and can create huge unintended steps.</p>
+<hr />
+<h1 id="126-why-the-buggy-loop-still-seemed-to-work">126. Why the buggy loop still seemed to work</h1>
+<p>Karpathy notes that the previous buggy loop still trained the tiny model.</p>
+<p>Reason:</p>
+<div class="codehilite"><pre><span></span><code>the problem is extremely simple
+the network has enough capacity
+the accumulated gradients acted like a large effective step size
+</code></pre></div>
+
+<p>So the model still found a good solution.</p>
+<p>But this is dangerous.</p>
+<p>On a harder problem, stale accumulated gradients could:</p>
+<div class="codehilite"><pre><span></span><code>destabilize training
+prevent convergence
+make the loss explode
+hide subtle correctness errors
+</code></pre></div>
+
+<p>This is common in neural-network work:</p>
+<div class="codehilite"><pre><span></span><code>buggy code can appear to work on easy problems
+</code></pre></div>
+
+<hr />
+<h1 id="127-correct-fix-zero-gradients-before-backward">127. Correct fix: zero gradients before backward</h1>
+<p>Before each backward pass, reset all parameter gradients:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+</code></pre></div>
+
+<p>Correct training loop:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+    <span class="c1"># forward pass</span>
+    <span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+    <span class="c1"># zero grad</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+    <span class="c1"># backward pass</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+    <span class="c1"># update</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.05</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">loss</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+</code></pre></div>
+
+<p>The order matters:</p>
+<div class="codehilite"><pre><span></span><code>forward
+zero gradients
+backward
+update
+</code></pre></div>
+
+<p>Zeroing happens after the forward pass but before backward.</p>
+<p>It could also happen before the forward pass, as long as it happens before <code>loss.backward()</code>.</p>
+<hr />
+<h1 id="128-relation-to-pytorchs-zero_grad">128. Relation to PyTorch’s <code>zero_grad</code></h1>
+<p>In PyTorch, optimizers commonly use:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+<span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+<span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</code></pre></div>
+
+<p>or module-level:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">model</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Same reason:</p>
+<div class="codehilite"><pre><span></span><code>PyTorch gradients accumulate by default
+</code></pre></div>
+
+<p>This accumulation is useful for some advanced workflows, such as accumulating gradients over multiple mini-batches.</p>
+<p>But for standard training, you reset gradients each step.</p>
+<p>Micrograd exposes the same issue in a small and visible way.</p>
+<hr />
+<h1 id="129-corrected-optimization-is-slower-but-cleaner">129. Corrected optimization is slower but cleaner</h1>
+<p>After zeroing gradients correctly, training descends more gradually.</p>
+<p>Previously, stale gradients made the model move too aggressively.</p>
+<p>With the corrected loop:</p>
+<div class="codehilite"><pre><span></span><code>loss decreases more slowly
+training behavior is more controlled
+</code></pre></div>
+
+<p>Karpathy increases steps or adjusts learning rate to continue reducing loss.</p>
+<p>Eventually predictions again approach:</p>
+<div class="codehilite"><pre><span></span><code>[1, -1, -1, 1]
+</code></pre></div>
+
+<p>but now for the right reason.</p>
+<hr />
+<h1 id="130-final-form-of-the-training-loop">130. Final form of the training loop</h1>
+<p>The canonical micrograd training loop is:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_steps</span><span class="p">):</span>
+
+    <span class="c1"># forward pass</span>
+    <span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+
+    <span class="c1"># backward pass</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+
+    <span class="c1"># update</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>This is the essential deep-learning loop.</p>
+<p>PyTorch equivalent conceptually:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">data</span><span class="p">:</span>
+    <span class="n">ypred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">loss_fn</span><span class="p">(</span><span class="n">ypred</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+</code></pre></div>
+
+<p>Micrograd has no optimizer object, so the update is written manually.</p>
+<hr />
+<h1 id="131-what-neural-network-training-is">131. What neural-network training is</h1>
+<p>Karpathy summarizes neural-network training as:</p>
+<div class="codehilite"><pre><span></span><code>define a mathematical expression
+measure its performance using a loss
+compute gradients of loss with respect to parameters
+adjust parameters to reduce loss
+repeat
+</code></pre></div>
+
+<p>The network is a parameterized function:</p>
+<div class="codehilite"><pre><span></span><code>prediction = neural_net(data, weights)
+</code></pre></div>
+
+<p>The loss function measures how bad predictions are:</p>
+<div class="codehilite"><pre><span></span><code>loss = loss_function(predictions, targets)
+</code></pre></div>
+
+<p>Training changes weights so that loss decreases.</p>
+<hr />
+<h1 id="132-the-role-of-the-loss-function">132. The role of the loss function</h1>
+<p>The loss function is designed so that:</p>
+<div class="codehilite"><pre><span></span><code>low loss = network behavior is good
+high loss = network behavior is bad
+</code></pre></div>
+
+<p>In the toy problem:</p>
+<div class="codehilite"><pre><span></span><code>loss = sum of squared prediction errors
+</code></pre></div>
+
+<p>So minimizing the loss means making predictions match targets.</p>
+<p>In larger real tasks, the loss may be different.</p>
+<p>For language models, Karpathy mentions next-token prediction and cross-entropy loss.</p>
+<p>But the structure remains:</p>
+<div class="codehilite"><pre><span></span><code>model prediction
+→ loss
+→ backward
+→ parameter update
+</code></pre></div>
+
+<hr />
+<h1 id="133-the-role-of-backpropagation">133. The role of backpropagation</h1>
+<p>Backpropagation computes:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂parameter
+</code></pre></div>
+
+<p>for every parameter.</p>
+<p>This tells us:</p>
+<div class="codehilite"><pre><span></span><code>how each parameter locally affects the loss
+</code></pre></div>
+
+<p>Then gradient descent uses this information:</p>
+<div class="codehilite"><pre><span></span><code>move parameters opposite the gradient
+</code></pre></div>
+
+<p>Backpropagation itself is:</p>
+<div class="codehilite"><pre><span></span><code>recursive chain rule over a computation graph
+</code></pre></div>
+
+<p>Micrograd implemented this using:</p>
+<div class="codehilite"><pre><span></span><code>Value objects
+local _backward functions
+topological sort
+gradient accumulation
+</code></pre></div>
+
+<hr />
+<h1 id="134-the-role-of-gradient-descent">134. The role of gradient descent</h1>
+<p>Gradient descent is the iterative update procedure:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>It uses local slope information to reduce the loss.</p>
+<p>The gradient is local, so the process must be repeated:</p>
+<div class="codehilite"><pre><span></span><code>small local step
+recompute loss and gradients
+small local step
+recompute loss and gradients
+...
+</code></pre></div>
+
+<p>This progressively improves the model.</p>
+<hr />
+<h1 id="135-the-role-of-parameters">135. The role of parameters</h1>
+<p>The weights and biases are the adjustable parts of the network.</p>
+<p>Inputs and targets are fixed by the dataset.</p>
+<p>Parameters are changed by training.</p>
+<p>For the toy MLP:</p>
+<div class="codehilite"><pre><span></span><code>41 scalar parameters
+</code></pre></div>
+
+<p>For modern large neural networks:</p>
+<div class="codehilite"><pre><span></span><code>billions or even hundreds of billions of parameters
+</code></pre></div>
+
+<p>But conceptually each parameter still has:</p>
+<div class="codehilite"><pre><span></span><code>data
+grad
+</code></pre></div>
+
+<p>and gets updated using gradient information.</p>
+<hr />
+<h1 id="136-scaling-up-to-modern-neural-networks">136. Scaling up to modern neural networks</h1>
+<p>Karpathy emphasizes that the same principles scale.</p>
+<p>In GPT-like language models:</p>
+<div class="codehilite"><pre><span></span><code>input: sequence of tokens
+task: predict next token
+loss: cross-entropy
+parameters: enormous number of neural network weights
+training: backprop + gradient-based update
+</code></pre></div>
+
+<p>Compared with micrograd, modern systems add:</p>
+<div class="codehilite"><pre><span></span><code>tensors instead of scalars
+GPU/TPU acceleration
+large datasets
+more complex architectures
+better optimizers
+regularization
+batching
+distributed training
+numerical stability engineering
+</code></pre></div>
+
+<p>But the core is still:</p>
+<div class="codehilite"><pre><span></span><code>forward pass
+loss
+backward pass
+gradient update
+</code></pre></div>
+
+<hr />
+<h1 id="137-why-micrograd-is-enough-to-understand-the-core">137. Why micrograd is enough to understand the core</h1>
+<p>Micrograd is tiny because it strips away efficiency layers.</p>
+<p>It shows:</p>
+<div class="codehilite"><pre><span></span><code>what a value is
+what a gradient is
+how operations compose
+how chain rule flows backward
+how parameters are updated
+</code></pre></div>
+
+<p>Modern frameworks are larger because they must handle:</p>
+<div class="codehilite"><pre><span></span><code>large tensors
+hardware acceleration
+memory efficiency
+many operation types
+autograd edge cases
+deployment concerns
+</code></pre></div>
+
+<p>But micrograd exposes the conceptual skeleton.</p>
+<p>Karpathy’s central message:</p>
+<div class="codehilite"><pre><span></span><code>if you understand micrograd,
+you understand the mathematical core of neural-network training
+</code></pre></div>
+
+<hr />
+<h1 id="138-end-state-of-the-constructed-system">138. End state of the constructed system</h1>
+<p>By this point in the lecture, we have:</p>
+<div class="codehilite"><pre><span></span><code>1. built scalar autograd from scratch
+2. implemented differentiable operations
+3. implemented backpropagation
+4. built neurons, layers, and MLPs
+5. created a toy supervised dataset
+6. defined a loss
+7. trained a neural network using gradient descent
+8. fixed the zero-grad bug
+</code></pre></div>
+
+<p>The remaining part of the video walks through the actual micrograd GitHub repository and maps the notebook concepts to the final codebase.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0014.html">← Previous: Karpathy micrograd outline — Part 5 of 8</a>
+        <a href="index.html">Index</a>
+        <a href="0016.html">Next: Karpathy micrograd outline — Part 7 of 8 →</a>
+    </nav>
+</body>
+</html>

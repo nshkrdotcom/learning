@@ -1,0 +1,621 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karpathy micrograd outline — Part 5 of 8</title>
+    <style>
+        :root {
+            --indigo: #1A237E;
+            --magenta: #C2185B;
+            --orange: #FF6F00;
+            --text-color: #333;
+            --bg-color: #fff;
+            --code-bg: #f5f5f5;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: var(--indigo);
+        }
+        h1 { border-bottom: 2px solid var(--magenta); padding-bottom: 10px; }
+        a { color: var(--magenta); text-decoration: none; }
+        a:hover { text-decoration: underline; color: var(--orange); }
+        code {
+            background-color: var(--code-bg);
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            background-color: var(--code-bg);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 5px solid var(--orange);
+        }
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .toc {
+            background: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { margin-bottom: 5px; }
+        .highlight .k { color: var(--indigo); font-weight: bold; }
+        .highlight .nf { color: var(--magenta); }
+        .highlight .s2 { color: var(--orange); }
+    </style>
+</head>
+<body>
+    <header>
+        <a href="index.html">← Back to Series Index</a>
+    </header>
+
+    <main>
+        <h1 id="karpathy-micrograd-outline-part-5-of-8">Karpathy micrograd outline — Part 5 of 8</h1>
+<h2 id="scope-tiny-dataset-loss-function-backprop-through-the-whole-network-collecting-parameters-first-gradient-descent-updates">Scope: tiny dataset → loss function → backprop through the whole network → collecting parameters → first gradient descent updates</h2>
+<p>Approx. video range: <strong>1:51:05–2:08:35</strong></p>
+<hr />
+<h1 id="96-creating-a-tiny-dataset">96. Creating a tiny dataset</h1>
+<p>Karpathy now creates a supervised learning problem.</p>
+<p>Inputs:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">xs</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">],</span>
+<span class="p">]</span>
+</code></pre></div>
+
+<p>Targets:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ys</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+</code></pre></div>
+
+<p>So the desired behavior is:</p>
+<div class="codehilite"><pre><span></span><code>input example 1 → output near  1
+input example 2 → output near -1
+input example 3 → output near -1
+input example 4 → output near  1
+</code></pre></div>
+
+<p>This is a tiny binary classification-style task.</p>
+<p>The network is still:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>3 input dimensions
+4 neurons in hidden layer 1
+4 neurons in hidden layer 2
+1 output neuron
+</code></pre></div>
+
+<hr />
+<h1 id="97-getting-initial-predictions">97. Getting initial predictions</h1>
+<p>Before training, the network has random parameters.</p>
+<p>Forward pass over all examples:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+</code></pre></div>
+
+<p>Each <code>n(x)</code> is a scalar <code>Value</code>.</p>
+<p>The predictions are initially random-ish because the weights are random.</p>
+<p>Example shape of results:</p>
+<div class="codehilite"><pre><span></span><code>ypred = [
+    Value(data=...),
+    Value(data=...),
+    Value(data=...),
+    Value(data=...),
+]
+</code></pre></div>
+
+<p>The desired outputs are:</p>
+<div class="codehilite"><pre><span></span><code>[1.0, -1.0, -1.0, 1.0]
+</code></pre></div>
+
+<p>The predictions are usually not close enough yet.</p>
+<p>Training means modifying the parameters so that:</p>
+<div class="codehilite"><pre><span></span><code>ypred[0] moves toward  1
+ypred[1] moves toward -1
+ypred[2] moves toward -1
+ypred[3] moves toward  1
+</code></pre></div>
+
+<hr />
+<h1 id="98-need-a-single-scalar-objective">98. Need a single scalar objective</h1>
+<p>To train by gradient descent, we need one scalar number that measures how bad the network is.</p>
+<p>This scalar is the <strong>loss</strong>.</p>
+<p>Requirements:</p>
+<div class="codehilite"><pre><span></span><code>loss should be low when predictions are good
+loss should be high when predictions are bad
+loss should be differentiable with respect to network parameters
+</code></pre></div>
+
+<p>Then we can compute:</p>
+<div class="codehilite"><pre><span></span><code>∂loss/∂parameter
+</code></pre></div>
+
+<p>for every weight and bias.</p>
+<hr />
+<h1 id="99-mean-squared-error-loss">99. Mean squared error loss</h1>
+<p>Karpathy uses a sum of squared errors.</p>
+<p>For each prediction-target pair:</p>
+<div class="codehilite"><pre><span></span><code>error = yout - ygt
+loss contribution = error²
+</code></pre></div>
+
+<p>In code:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">losses</span> <span class="o">=</span> <span class="p">[(</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">)]</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">losses</span><span class="p">)</span>
+</code></pre></div>
+
+<p>Or directly:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>for every training example:
+    compare prediction to target
+    square the difference
+sum all squared differences
+</code></pre></div>
+
+<p>The loss is zero only if every prediction exactly equals its target.</p>
+<hr />
+<h1 id="100-why-square-the-error">100. Why square the error?</h1>
+<p>For one example:</p>
+<div class="codehilite"><pre><span></span><code>prediction = yout
+target = ygt
+error = yout - ygt
+</code></pre></div>
+
+<p>If prediction is too high:</p>
+<div class="codehilite"><pre><span></span><code>error &gt; 0
+</code></pre></div>
+
+<p>If prediction is too low:</p>
+<div class="codehilite"><pre><span></span><code>error &lt; 0
+</code></pre></div>
+
+<p>We do not want positive and negative errors to cancel.</p>
+<p>Squaring does two things:</p>
+<div class="codehilite"><pre><span></span><code>1. makes all errors nonnegative
+2. penalizes larger errors more strongly
+</code></pre></div>
+
+<p>So:</p>
+<div class="codehilite"><pre><span></span><code>small error → small loss contribution
+large error → large loss contribution
+perfect prediction → zero contribution
+</code></pre></div>
+
+<p>Alternative would be absolute value, but squared error is smooth and easy to differentiate.</p>
+<hr />
+<h1 id="101-loss-as-part-of-the-computation-graph">101. Loss as part of the computation graph</h1>
+<p>Each prediction <code>yout</code> is a <code>Value</code>.</p>
+<p>Each target <code>ygt</code> is a Python float.</p>
+<p>When computing:</p>
+<div class="codehilite"><pre><span></span><code><span class="p">(</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span>
+</code></pre></div>
+
+<p>micrograd builds graph nodes for:</p>
+<div class="codehilite"><pre><span></span><code>subtract target
+power by 2
+</code></pre></div>
+
+<p>Then <code>sum(...)</code> builds addition nodes combining all four loss terms.</p>
+<p>So the loss is itself a <code>Value</code>.</p>
+<p>The graph now contains:</p>
+<div class="codehilite"><pre><span></span><code>four forward passes through the MLP
+four squared-error branches
+one final summed loss node
+</code></pre></div>
+
+<p>This is much larger than a graph for a single prediction.</p>
+<hr />
+<h1 id="102-backprop-through-the-loss">102. Backprop through the loss</h1>
+<p>Once the loss is built:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>This backpropagates through:</p>
+<div class="codehilite"><pre><span></span><code>loss sum
+squared error terms
+four prediction graphs
+all MLP layers
+all neurons
+all weights and biases
+</code></pre></div>
+
+<p>Every parameter now has a <code>.grad</code>.</p>
+<p>Example access pattern:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">neurons</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>This means:</p>
+<div class="codehilite"><pre><span></span><code>gradient of loss with respect to:
+first layer
+first neuron
+first weight
+</code></pre></div>
+
+<p>If that gradient is negative:</p>
+<div class="codehilite"><pre><span></span><code>increasing that weight slightly decreases the loss
+</code></pre></div>
+
+<p>If that gradient is positive:</p>
+<div class="codehilite"><pre><span></span><code>increasing that weight slightly increases the loss
+</code></pre></div>
+
+<p>Gradient sign tells the local direction of influence.</p>
+<p>Gradient magnitude tells local sensitivity.</p>
+<hr />
+<h1 id="103-visualizing-the-full-loss-graph">103. Visualizing the full loss graph</h1>
+<p>Karpathy shows that:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">draw_dot</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span>
+</code></pre></div>
+
+<p>produces an enormous graph.</p>
+<p>Reason:</p>
+<div class="codehilite"><pre><span></span><code>loss includes all four examples
+each example includes a full MLP forward pass
+all four prediction graphs join into one summed loss
+</code></pre></div>
+
+<p>Even this tiny network creates a large scalar expression.</p>
+<p>This reinforces the earlier point:</p>
+<div class="codehilite"><pre><span></span><code>manual differentiation is impossible at realistic scale
+</code></pre></div>
+
+<p>But the graph is still only made from simple scalar operations.</p>
+<p>Micrograd can backpropagate through it automatically because each node has:</p>
+<div class="codehilite"><pre><span></span><code>_prev
+_op
+_backward
+grad
+</code></pre></div>
+
+<hr />
+<h1 id="104-gradients-exist-for-inputs-too">104. Gradients exist for inputs too</h1>
+<p>Because the whole graph includes input values, micrograd can compute gradients with respect to input data as well.</p>
+<p>But in ordinary supervised learning:</p>
+<div class="codehilite"><pre><span></span><code>inputs are fixed
+targets are fixed
+parameters are adjustable
+</code></pre></div>
+
+<p>So although gradients may exist for inputs, we usually ignore them.</p>
+<p>The important gradients are for:</p>
+<div class="codehilite"><pre><span></span><code>weights
+biases
+</code></pre></div>
+
+<p>Those are the parameters we update.</p>
+<hr />
+<h1 id="105-need-a-way-to-collect-all-parameters">105. Need a way to collect all parameters</h1>
+<p>The MLP has many parameters.</p>
+<p>For:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span> <span class="o">=</span> <span class="n">MLP</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+</code></pre></div>
+
+<p>Number of parameters:</p>
+<p>Layer 1:</p>
+<div class="codehilite"><pre><span></span><code>4 neurons
+each has 3 weights + 1 bias
+4 * 4 = 16
+</code></pre></div>
+
+<p>Layer 2:</p>
+<div class="codehilite"><pre><span></span><code>4 neurons
+each has 4 weights + 1 bias
+4 * 5 = 20
+</code></pre></div>
+
+<p>Layer 3:</p>
+<div class="codehilite"><pre><span></span><code>1 neuron
+has 4 weights + 1 bias
+1 * 5 = 5
+</code></pre></div>
+
+<p>Total:</p>
+<div class="codehilite"><pre><span></span><code>16 + 20 + 5 = 41 parameters
+</code></pre></div>
+
+<p>It is inconvenient to update them one by one.</p>
+<p>So each module gets a <code>.parameters()</code> method.</p>
+<hr />
+<h1 id="106-neuronparameters">106. <code>Neuron.parameters()</code></h1>
+<p>A neuron’s parameters are:</p>
+<div class="codehilite"><pre><span></span><code>all its weights
+its bias
+</code></pre></div>
+
+<p>Implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Neuron</span><span class="p">:</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">]</span>
+</code></pre></div>
+
+<p>If a neuron has three inputs:</p>
+<div class="codehilite"><pre><span></span><code>self.w = [w1, w2, w3]
+self.b = b
+</code></pre></div>
+
+<p>then:</p>
+<div class="codehilite"><pre><span></span><code><span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">]</span>
+</code></pre></div>
+
+<p>returns:</p>
+<div class="codehilite"><pre><span></span><code>[w1, w2, w3, b]
+</code></pre></div>
+
+<p>All are <code>Value</code> objects.</p>
+<hr />
+<h1 id="107-layerparameters">107. <code>Layer.parameters()</code></h1>
+<p>A layer contains multiple neurons.</p>
+<p>Each neuron has its own parameters.</p>
+<p>Straightforward version:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">Layer</span><span class="p">:</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">neuron</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">neuron</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">params</span>
+</code></pre></div>
+
+<p>Karpathy then compresses this into a nested list comprehension:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">neuron</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">neurons</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">neuron</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]</span>
+</code></pre></div>
+
+<p>Meaning:</p>
+<div class="codehilite"><pre><span></span><code>for every neuron in the layer:
+    for every parameter in that neuron:
+        collect parameter
+</code></pre></div>
+
+<hr />
+<h1 id="108-mlpparameters">108. <code>MLP.parameters()</code></h1>
+<p>An MLP contains multiple layers.</p>
+<p>Each layer has parameters.</p>
+<p>Implementation:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">MLP</span><span class="p">:</span>
+    <span class="o">...</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">parameters</span><span class="p">()]</span>
+</code></pre></div>
+
+<p>Now:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+</code></pre></div>
+
+<p>returns a flat list of all parameter <code>Value</code> objects in the entire network.</p>
+<p>For the chosen architecture:</p>
+<div class="codehilite"><pre><span></span><code><span class="nb">len</span><span class="p">(</span><span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">())</span>
+</code></pre></div>
+
+<p>returns:</p>
+<div class="codehilite"><pre><span></span><code>41
+</code></pre></div>
+
+<hr />
+<h1 id="109-why-this-mirrors-pytorch">109. Why this mirrors PyTorch</h1>
+<p>PyTorch modules have:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+</code></pre></div>
+
+<p>which returns all trainable tensors.</p>
+<p>Micrograd’s API mirrors that idea:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">()</span>
+</code></pre></div>
+
+<p>returns all trainable scalar <code>Value</code> parameters.</p>
+<p>So the training loop can be generic:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">...</span>
+</code></pre></div>
+
+<p>It does not need to know the network’s internal structure.</p>
+<hr />
+<h1 id="110-first-manual-gradient-descent-update">110. First manual gradient descent update</h1>
+<p>After computing:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+</code></pre></div>
+
+<p>each parameter has:</p>
+<div class="codehilite"><pre><span></span><code>p.data = current parameter value
+p.grad = derivative of loss with respect to parameter
+</code></pre></div>
+
+<p>Gradient descent updates parameters to reduce loss.</p>
+<p>The gradient points in the direction of increasing loss.</p>
+<p>So to reduce loss, move in the opposite direction:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>or:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">-=</span> <span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>Karpathy uses a step size such as:</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">0.01</span>
+</code></pre></div>
+
+<p>or experiments with larger values like:</p>
+<div class="codehilite"><pre><span></span><code><span class="mf">0.1</span>
+</code></pre></div>
+
+<hr />
+<h1 id="111-sign-intuition-for-gradient-descent">111. Sign intuition for gradient descent</h1>
+<p>Suppose:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = negative
+</code></pre></div>
+
+<p>This means:</p>
+<div class="codehilite"><pre><span></span><code>increasing p decreases loss
+</code></pre></div>
+
+<p>because the derivative of loss with respect to <code>p</code> is negative.</p>
+<p>Update:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">lr</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>If <code>p.grad</code> is negative:</p>
+<div class="codehilite"><pre><span></span><code>-lr * p.grad is positive
+</code></pre></div>
+
+<p>so <code>p.data</code> increases.</p>
+<p>That is correct.</p>
+<p>Suppose:</p>
+<div class="codehilite"><pre><span></span><code>p.grad = positive
+</code></pre></div>
+
+<p>This means:</p>
+<div class="codehilite"><pre><span></span><code>increasing p increases loss
+</code></pre></div>
+
+<p>So to reduce loss, <code>p</code> should decrease.</p>
+<p>Update:</p>
+<div class="codehilite"><pre><span></span><code>-lr * positive = negative
+</code></pre></div>
+
+<p>so <code>p.data</code> decreases.</p>
+<p>That is also correct.</p>
+<hr />
+<h1 id="112-recompute-the-loss-after-one-update">112. Recompute the loss after one update</h1>
+<p>After updating all parameters:</p>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">n</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="mf">0.01</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>recompute predictions:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">ypred</span> <span class="o">=</span> <span class="p">[</span><span class="n">n</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">xs</span><span class="p">]</span>
+</code></pre></div>
+
+<p>recompute loss:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">loss</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">((</span><span class="n">yout</span> <span class="o">-</span> <span class="n">ygt</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="k">for</span> <span class="n">ygt</span><span class="p">,</span> <span class="n">yout</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="n">ypred</span><span class="p">))</span>
+</code></pre></div>
+
+<p>The new loss should be lower.</p>
+<p>This confirms that the gradient direction was useful.</p>
+<p>The process is:</p>
+<div class="codehilite"><pre><span></span><code>forward pass
+backward pass
+parameter update
+forward pass again
+</code></pre></div>
+
+<hr />
+<h1 id="113-iterating-gradient-descent">113. Iterating gradient descent</h1>
+<p>Training repeats the same cycle:</p>
+<div class="codehilite"><pre><span></span><code>1. forward pass: compute predictions
+2. compute loss
+3. backward pass: compute gradients
+4. update parameters
+5. repeat
+</code></pre></div>
+
+<p>Each iteration should generally reduce the loss if the learning rate is reasonable.</p>
+<p>Karpathy manually repeats the procedure a few times and observes the loss decreasing.</p>
+<p>The predictions move toward their targets:</p>
+<div class="codehilite"><pre><span></span><code>target  1 → prediction becomes more positive
+target -1 → prediction becomes more negative
+</code></pre></div>
+
+<p>Eventually, for this tiny dataset, predictions become close to:</p>
+<div class="codehilite"><pre><span></span><code>[1, -1, -1, 1]
+</code></pre></div>
+
+<hr />
+<h1 id="114-learning-rate">114. Learning rate</h1>
+<p>The learning rate controls step size:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">learning_rate</span> <span class="o">=</span> <span class="mf">0.01</span>
+</code></pre></div>
+
+<p>Update:</p>
+<div class="codehilite"><pre><span></span><code><span class="n">p</span><span class="o">.</span><span class="n">data</span> <span class="o">+=</span> <span class="o">-</span><span class="n">learning_rate</span> <span class="o">*</span> <span class="n">p</span><span class="o">.</span><span class="n">grad</span>
+</code></pre></div>
+
+<p>If learning rate is too small:</p>
+<div class="codehilite"><pre><span></span><code>training is stable but slow
+</code></pre></div>
+
+<p>If learning rate is too large:</p>
+<div class="codehilite"><pre><span></span><code>training may overshoot
+loss may jump or explode
+</code></pre></div>
+
+<p>Karpathy demonstrates that large updates can briefly destabilize training.</p>
+<p>The gradient only describes the local shape of the loss.</p>
+<p>If you step too far, you may move into a region where that local approximation is no longer reliable.</p>
+<hr />
+<h1 id="115-local-nature-of-the-gradient">115. Local nature of the gradient</h1>
+<p>The gradient answers:</p>
+<div class="codehilite"><pre><span></span><code>if I change this parameter by a tiny amount,
+what happens to the loss?
+</code></pre></div>
+
+<p>It does not guarantee that a large change will help.</p>
+<p>So gradient descent assumes:</p>
+<div class="codehilite"><pre><span></span><code>small enough steps
+</code></pre></div>
+
+<p>The update is based on local linear approximation.</p>
+<p>This is why learning rate tuning matters.</p>
+<hr />
+<h1 id="116-why-this-tiny-problem-trains-easily">116. Why this tiny problem trains easily</h1>
+<p>The dataset has only four examples.</p>
+<p>The network has 41 parameters.</p>
+<p>So the network has more than enough capacity to fit the data.</p>
+<p>Karpathy gets very low loss after enough steps.</p>
+<p>That means the network has found parameter values that make:</p>
+<div class="codehilite"><pre><span></span><code>n(xs[0]) ≈  1
+n(xs[1]) ≈ -1
+n(xs[2]) ≈ -1
+n(xs[3]) ≈  1
+</code></pre></div>
+
+<p>This is successful training, but on a toy problem.</p>
+<hr />
+<h1 id="117-what-has-been-achieved-so-far">117. What has been achieved so far</h1>
+<p>At this point, we have implemented:</p>
+<div class="codehilite"><pre><span></span><code>a scalar autograd engine
+a neural network module system
+a small MLP
+a supervised dataset
+a mean squared error loss
+manual gradient descent updates
+</code></pre></div>
+
+<p>And the network can learn.</p>
+<p>The remaining cleanup is to write a proper training loop and fix an important bug involving gradient accumulation across training iterations.</p>
+    </main>
+
+    <nav class="nav">
+        <a href="0013.html">← Previous: Karpathy micrograd outline — Part 4 of 8</a>
+        <a href="index.html">Index</a>
+        <a href="0015.html">Next: Karpathy micrograd outline — Part 6 of 8 →</a>
+    </nav>
+</body>
+</html>
