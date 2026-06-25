@@ -1,0 +1,19 @@
+.venv/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+
+# Local MechLedger state
+.mechledger/runs/
+.mechledger/index.sqlite
+.mechledger/cache/
+.mechledger/tmp/
+.mechledger/copilot/
+.mechledger/session_drafts/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.tar.zst
