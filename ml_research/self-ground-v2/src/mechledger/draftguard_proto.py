@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from mechledger.core.claim_ledger import ClaimLedger
 from mechledger.core.draft_severity import DraftSeverity
+from mechledger.draftguard import extract_sentence_window, phrase_matches
 
 CLAIM_TAG = re.compile(r"\[CLAIM:(?P<claim_id>C[0-9]+[A-Za-z0-9_-]*)\]")
 SENTENCE = re.compile(r"[^.!?\n]+(?:[.!?]+|\n|$)", re.MULTILINE)
@@ -74,30 +75,6 @@ def check_markdown_text(text: str, ledger: ClaimLedger) -> DraftGuardProtoResult
         else:
             result.passed_claim_ids.append(claim_id)
     return result
-
-
-def extract_sentence_window(text: str, offset: int, radius: int = 2) -> str:
-    sentences = list(SENTENCE.finditer(text))
-    if not sentences:
-        return _paragraph(text, offset)
-    containing = None
-    for index, match in enumerate(sentences):
-        if match.start() <= offset <= match.end():
-            containing = index
-            break
-    if containing is None:
-        return _paragraph(text, offset)
-    start = max(0, containing - radius)
-    end = min(len(sentences), containing + radius + 1)
-    return " ".join(match.group(0).strip() for match in sentences[start:end])
-
-
-def phrase_matches(text: str, phrase: str) -> bool:
-    words = re.findall(r"[A-Za-z0-9_]+", phrase.lower())
-    if len(words) < 2:
-        return False
-    pattern = r"\b" + r"\W+".join(re.escape(word) for word in words) + r"\b"
-    return re.search(pattern, text.lower(), flags=re.IGNORECASE | re.MULTILINE) is not None
 
 
 def _paragraph(text: str, offset: int) -> str:

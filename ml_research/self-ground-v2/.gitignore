@@ -7,6 +7,18 @@ dist/
 build/
 *.egg-info/
 
+# MechLedger local run records and indexes
+.mechledger/runs/
+.mechledger/alias_cache.txt
+.mechledger/index.sqlite
+.mechledger/cache/
+.mechledger/tmp/
+.mechledger/copilot/
+.mechledger/session_drafts/
+
+# Optional MechLedger bundles
+*.tar.zst
+
 # Canonical MechLedger research records must remain trackable even when a
 # developer has a broad global `logs/` ignore.
 !research/

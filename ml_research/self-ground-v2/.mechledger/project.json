@@ -1,0 +1,20 @@
+{
+  "cache_policy": {
+    "stale_heartbeat_seconds": 120,
+    "temp_fallback": true
+  },
+  "created_at": "2026-06-25T00:00:00Z",
+  "default_claim_ledger": "research/logs/claim_ledger.md",
+  "default_decision_log": "research/logs/decision_log.md",
+  "default_research_log": "research/logs/research_log.md",
+  "default_run_ledger": "research/logs/run_ledger.csv",
+  "draft_guard": {
+    "allow_overrides": true,
+    "missing_caveat_severity": "warning",
+    "stale_claim_hash": "warning",
+    "unresolved_debt_severity": "warning"
+  },
+  "project_id": "mechledger-self-ground-v2",
+  "research_root": "research",
+  "schema_version": "0.1.0"
+}

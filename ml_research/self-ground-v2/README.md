@@ -1,9 +1,12 @@
-# MechLedger Milestone -1
+# MechLedger
 
-This directory is the Milestone -1 extraction kernel for MechLedger, built in
-the `self-ground-v2/` repo path. It extracts SELF-GROUND's research-integrity
-logic into dependency-light, framework-free Python modules that can be tested
-against real SELF-GROUND artifacts before a CLI surface exists.
+MechLedger is a Git-native research-integrity tool for mechanistic
+interpretability repositories. It keeps tagged draft claims connected to claim
+ledger entries, decisions, run records, artifacts, and visible scientific debt.
+
+This `self-ground-v2/` repo now contains the Milestone 0 product surface plus a
+Milestone 1 run-auditor foundation, built on the Milestone -1 SELF-GROUND
+extraction kernel.
 
 ## Scope
 
@@ -12,25 +15,47 @@ Implemented here:
 - Claim-status DAG and SELF-GROUND status mapping
 - Scientific-debt records and report views
 - Claim ledger heading/YAML parser and canonical claim hash
+- Decision log, ExperimentSpec, research log, and run ledger parsers
 - Pure calibration, compatibility, and telemetry assessment logic
-- Draft Guard prototype for tagged Markdown sentence windows
-- Backfilled E001-E004 claim ledger and reuse decision log
+- Production Draft Guard for Markdown, LaTeX, and HTML claim tags
+- Project scaffold, index, format, hook install, session close, status, and next
+- Run wrapper, run IDs, alias cache, run directories, heartbeat, artifacts,
+  run-ledger proposals, claim proposals, and scientific-debt reports
+- Minimal dependency-light SDK helpers
+- Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
 
 Intentionally not implemented here:
 
-- CLI entrypoint or `typer.Typer()` app
-- Run wrapper, heartbeat, SDK, run directory writer, alias cache, file locking,
-  SQLite indexer, hooks, dashboard, or copilot surface
+- Heavy model execution or intervention abstractions
+- Hosted dashboard, copilot review queues, RO-Crate export, sync merge, garbage
+  collection, redaction, prediction locking, or Tier 3+ platform surfaces
 - Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
   `numpy`, or `scipy`
+
+## Quick Start
+
+```bash
+uv run mechledger --help
+uv run mechledger init
+uv run mechledger draft check research/paper/draft.md
+uv run mechledger index --check
+uv run mechledger run -- python scripts/your_experiment.py
+uv run mechledger status
+```
+
+See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
+usage, artifacts, aliases, crystallization, claim review, decisions, debt
+waivers, and assessment examples.
 
 ## Layout
 
 ```text
 src/mechledger/core/          claim status, debt, and claim ledger logic
 src/mechledger/assessments/   pure assessment helpers over JSON-shaped inputs
-src/mechledger/draftguard_proto.py
+src/mechledger/draftguard.py  production Draft Guard
+src/mechledger/cli.py         Typer command surface
+src/mechledger/sdk/           dependency-light active-run helpers
 research/logs/                dogfood claim ledger, decision log, source copies
 tests/                        TDD coverage and real/synthetic fixtures
 ```
@@ -42,7 +67,14 @@ Run from this directory:
 ```bash
 uv run pytest
 uv run ruff check .
+uv run mechledger --help
+uv run mechledger index --check
 ```
 
-Milestone 0 should wrap this kernel only after the Milestone -1 report is
-reviewed.
+## Boundaries
+
+MechLedger does not execute interventions, discover artifacts outside registered
+paths or run-local artifact directories, merge SQLite, enforce untagged paper
+claims, detect constants hidden in Python source, make scientific truth
+decisions, or verify citations/recompute reported statistics. It may allow work
+to continue with unresolved scientific debt, but it surfaces that debt.
