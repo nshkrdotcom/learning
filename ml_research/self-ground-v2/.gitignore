@@ -3,17 +3,12 @@
 .ruff_cache/
 __pycache__/
 *.py[cod]
-
-# Local MechLedger state
-.mechledger/runs/
-.mechledger/index.sqlite
-.mechledger/cache/
-.mechledger/tmp/
-.mechledger/copilot/
-.mechledger/session_drafts/
-
-# Build artifacts
 dist/
 build/
 *.egg-info/
-*.tar.zst
+
+# Canonical MechLedger research records must remain trackable even when a
+# developer has a broad global `logs/` ignore.
+!research/
+!research/logs/
+!research/logs/**

@@ -1,30 +1,48 @@
-# MechLedger
+# MechLedger Milestone -1
 
-MechLedger is a dependency-light, Git-native research integrity system for mechanistic interpretability repositories. It keeps tagged draft claims connected to claim ledger entries, run records, artifacts, decisions, and visible scientific debt.
+This directory is the Milestone -1 extraction kernel for MechLedger, built in
+the `self-ground-v2/` repo path. It extracts SELF-GROUND's research-integrity
+logic into dependency-light, framework-free Python modules that can be tested
+against real SELF-GROUND artifacts before a CLI surface exists.
 
-This `self-ground-v2` directory is a clean extraction from the original SELF-GROUND work. It intentionally does not copy the TransformerLens/SAELens execution harness. The reusable part is the audit kernel: claim status discipline, causal-language guardrails, evidence debt, run records, and artifact provenance.
+## Scope
 
-## Quick Start
+Implemented here:
 
-```bash
-uv sync --dev
-uv run mechledger init
-uv run mechledger draft check research/paper/draft.md
-uv run mechledger run -- python scripts/your_experiment.py
-uv run mechledger gate check latest
+- Claim-status DAG and SELF-GROUND status mapping
+- Scientific-debt records and report views
+- Claim ledger heading/YAML parser and canonical claim hash
+- Pure calibration, compatibility, and telemetry assessment logic
+- Draft Guard prototype for tagged Markdown sentence windows
+- Backfilled E001-E004 claim ledger and reuse decision log
+- Milestone -1 report with dogfood results and divergences
+
+Intentionally not implemented here:
+
+- CLI entrypoint or `typer.Typer()` app
+- Run wrapper, heartbeat, SDK, run directory writer, alias cache, file locking,
+  SQLite indexer, hooks, dashboard, or copilot surface
+- Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
+  `numpy`, or `scipy`
+
+## Layout
+
+```text
+src/mechledger/core/          claim status, debt, and claim ledger logic
+src/mechledger/assessments/   pure assessment helpers over JSON-shaped inputs
+src/mechledger/draftguard_proto.py
+research/logs/                dogfood claim ledger, decision log, source copies
+tests/                        TDD coverage and real/synthetic fixtures
 ```
 
-## Core Commands
+## QC
 
-- `mechledger init`: create `research/` and `.mechledger/project.json`.
-- `mechledger draft check`: lint `[CLAIM:C001]`, `\claim{C001}`, and `<!-- CLAIM:C001 -->` tags against `research/logs/claim_ledger.md`.
-- `mechledger index --check`: validate claim, decision, experiment, run ledger, and local run files.
-- `mechledger run -- <command>`: wrap an arbitrary native command and capture run metadata.
-- `mechledger attach RUN_ID PATH`: register an artifact explicitly.
-- `mechledger artifact annotate RUN_ID A001 --claim-relevance supporting`: mark reviewed evidence.
-- `mechledger gate check RUN_ID`: emit a scientific debt report.
-- `mechledger next`: classify experiments as ready or blocked from machine-readable prerequisites.
+Run from this directory:
 
-## Non-Goals
+```bash
+uv run pytest
+uv run ruff check .
+```
 
-MechLedger does not execute interventions for you, discover arbitrary artifacts, merge SQLite, enforce untagged paper claims, detect constants hidden in source code, make scientific truth decisions, or verify citations/statistics. It records declared evidence relationships and keeps scientific debt visible.
+Milestone 0 should wrap this kernel only after the Milestone -1 report is
+reviewed.
