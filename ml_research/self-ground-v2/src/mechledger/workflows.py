@@ -9,8 +9,9 @@ from mechledger.alias import resolve_run_id
 from mechledger.core.claim_ledger import parse_claim_ledger
 from mechledger.core.decision_log import parse_decision_log
 from mechledger.core.run_ledger import DEFAULT_RUN_LEDGER_COLUMNS, parse_run_ledger
-from mechledger.debt_report import write_scientific_debt_report
+from mechledger.debt_report import generate_scientific_debt_report, write_scientific_debt_report
 from mechledger.project import Project, now_utc
+from mechledger.run_auditor import ALLOWED_RUN_CLASSES, append_event, write_run_json
 
 
 def append_run_ledger(project: Project, alias: str, *, yes: bool = False) -> str:
@@ -163,7 +164,14 @@ def propose_claim(project: Project, alias: str, *, regenerate: bool = False) -> 
     return path
 
 
-def review_claim(project: Project, alias: str, *, apply: bool = False, yes: bool = False) -> str:
+def review_claim(
+    project: Project,
+    alias: str,
+    *,
+    apply: bool = False,
+    yes: bool = False,
+    force_stale: bool = False,
+) -> str:
     run_id = resolve_run_id(project, alias)
     proposal_path = project.runs_dir / run_id / "claim_update_proposal.json"
     if not proposal_path.exists():
@@ -174,10 +182,20 @@ def review_claim(project: Project, alias: str, *, apply: bool = False, yes: bool
     stale = False
     if target and target in ledger.claims:
         stale = ledger.claims[target].block_hash != proposal.get("expected_claim_block_hash")
-    if apply and stale:
-        raise ValueError("claim proposal is stale; regenerate or force review after checking diff")
+    if apply and stale and not force_stale:
+        raise ValueError(
+            "claim proposal is stale; regenerate or use --force-stale after checking diff"
+        )
     if apply and not yes:
         raise PermissionError("confirmation required; rerun with --yes")
+    if apply and stale and force_stale:
+        proposal["force_applied"] = True
+        proposal["review_status"] = "stale"
+        proposal["reviewed_at"] = now_utc()
+        proposal_path.write_text(
+            json.dumps(proposal, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        return "force-stale accepted; no claim ledger mutation was applied"
     return "stale" if stale else "current"
 
 
@@ -207,6 +225,63 @@ def waive_debt(project: Project, debt_id: str, decision_id: str) -> Path:
             write_scientific_debt_report(report_path.parent, report)
             return report_path
     raise FileNotFoundError(f"Debt {debt_id} not found in local debt reports.")
+
+
+def reclassify_run(
+    project: Project,
+    alias: str,
+    *,
+    to_class: str,
+    decision_id: str,
+    reason: str,
+) -> str:
+    if not reason.strip():
+        raise ValueError("Reclassification reason must be non-empty.")
+    if to_class not in ALLOWED_RUN_CLASSES:
+        raise ValueError(f"Invalid run class: {to_class}")
+    decisions = parse_decision_log(project.root / project.config.default_decision_log)
+    decision = decisions.decisions.get(decision_id)
+    if decision is None or decision.status != "accepted":
+        raise ValueError(f"Decision {decision_id} must exist and have status accepted.")
+    run_id = resolve_run_id(project, alias)
+    run_dir = project.runs_dir / run_id
+    run_json_path = run_dir / "run.json"
+    if not run_json_path.exists():
+        raise FileNotFoundError(f"Run directory is missing run.json: {run_json_path}")
+    run_data = json.loads(run_json_path.read_text(encoding="utf-8"))
+    from_class = run_data.get("run_class")
+    if from_class == to_class:
+        raise ValueError(f"Run {run_id} is already classified as {to_class}.")
+    transition = {
+        "transition_id": f"RCT-{now_utc().replace(':', '').replace('-', '')}",
+        "run_id": run_id,
+        "from_run_class": from_class,
+        "to_run_class": to_class,
+        "approved_by": None,
+        "decision_id": decision_id,
+        "rationale": reason.strip(),
+        "reviewed_artifacts": [],
+        "created_at": now_utc(),
+    }
+    transition_path = run_dir / "run_class_transition.json"
+    transitions = []
+    if transition_path.exists():
+        existing = json.loads(transition_path.read_text(encoding="utf-8"))
+        transitions = existing if isinstance(existing, list) else [existing]
+    transitions.append(transition)
+    transition_path.write_text(
+        json.dumps(transitions, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    run_data["run_class"] = to_class
+    write_run_json(run_dir, run_data)
+    append_event(
+        run_dir,
+        "run_reclassified",
+        f"{from_class} -> {to_class}",
+        {"decision_id": decision_id, "reason": reason.strip()},
+    )
+    generate_scientific_debt_report(project, run_id)
+    return run_id
 
 
 def session_close(project: Project, *, accept: bool = False, since: str | None = None) -> Path:
@@ -256,6 +331,63 @@ def decision_new_from_diff(project: Project) -> Path:
             "affected_claims: []\ndecision_type: methodology\ncopilot_session_id: null\n```\n\n"
             "Decision:\nTODO\n\nReason:\nTODO\n\nEvidence:\n"
             + "".join(f"- {item}\n" for item in diff_summary)
+        )
+    return path
+
+
+def decision_new_from_declared_surfaces(project: Project) -> Path:
+    from mechledger.core.experiment_spec import parse_experiment_spec
+
+    decisions = parse_decision_log(project.root / project.config.default_decision_log)
+    next_num = len(decisions.decisions) + 1
+    decision_id = f"D{next_num:03d}"
+    path = project.root / project.config.default_decision_log
+    surfaces: dict[str, set[str]] = {
+        "config_files": set(),
+        "expected_artifacts": set(),
+        "claim_linked_runs": set(),
+        "research_log": {project.config.default_research_log},
+    }
+    affected_experiments: set[str] = set()
+    affected_claims: set[str] = set()
+    for experiment_path in sorted((project.root / "research/experiments").glob("*.md")):
+        if experiment_path.name.startswith("TEMPLATE_"):
+            continue
+        spec = parse_experiment_spec(experiment_path)
+        affected_experiments.add(spec.experiment_id)
+        surfaces["config_files"].update(spec.config_files)
+        surfaces["expected_artifacts"].update(spec.expected_artifacts)
+    claims = parse_claim_ledger(project.root / project.config.default_claim_ledger)
+    for claim in claims.claims.values():
+        affected_claims.add(claim.claim_id)
+        surfaces["claim_linked_runs"].update(claim.linked_runs)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(
+            f"\n## {decision_id} - Review declared surfaces\n\n"
+            "```yaml\n"
+            f"decision_id: {decision_id}\n"
+            "status: proposed\n"
+            "affected_experiments:\n"
+            + "".join(f"  - {item}\n" for item in sorted(affected_experiments))
+            + "affected_claims:\n"
+            + "".join(f"  - {item}\n" for item in sorted(affected_claims))
+            + "decision_type: methodology\ncopilot_session_id: null\n```\n\n"
+            "Decision:\nTODO\n\nReason:\nTODO\n\n"
+            "Declared surfaces considered:\n"
+        )
+        for surface_type, values in surfaces.items():
+            handle.write(f"- {surface_type}:\n")
+            if values:
+                for value in sorted(values):
+                    handle.write(f"  - {value}\n")
+            else:
+                handle.write("  - none declared\n")
+        handle.write(
+            "\nRefused implicit surfaces:\n"
+            "- Python source constants\n"
+            "- implicit notebook state\n"
+            "- undeclared config files\n"
+            "- external data changes not registered as artifacts\n"
         )
     return path
 

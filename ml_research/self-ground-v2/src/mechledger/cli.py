@@ -9,28 +9,36 @@ import typer
 
 from mechledger.alias import resolve_run_id
 from mechledger.artifacts import annotate_artifact, register_artifact
-from mechledger.core.claim_ledger import parse_claim_ledger
-from mechledger.core.decision_log import parse_decision_log
 from mechledger.core.experiment_spec import parse_experiment_spec
-from mechledger.core.run_ledger import parse_run_ledger
 from mechledger.debt_report import generate_scientific_debt_report
 from mechledger.draftguard import check_draft_files
 from mechledger.formatter import format_project
 from mechledger.hooks import install_direct_hook, install_precommit_config
 from mechledger.indexer import rebuild_index, validate_project
+from mechledger.prerequisites import (
+    evaluate_experiment_prerequisites,
+    load_prerequisite_context,
+)
 from mechledger.project import command_cwd, find_project, init_project
 from mechledger.run_auditor import capture_run
 from mechledger.workflows import (
     append_run_ledger,
     crystallize_experiment,
+    decision_new_from_declared_surfaces,
     decision_new_from_diff,
     propose_claim,
+    reclassify_run,
     review_claim,
     session_close,
     waive_debt,
 )
 
 ALLOW_EXTRA_ARGS = {"allow_extra_args": True, "ignore_unknown_options": True}
+RUN_EXTRA_ARGS = {
+    "allow_extra_args": True,
+    "ignore_unknown_options": True,
+    "help_option_names": [],
+}
 
 app = typer.Typer(no_args_is_help=True, help="MechLedger research-integrity CLI.")
 draft_app = typer.Typer(help="Check tagged draft claims.")
@@ -242,7 +250,7 @@ def session_cleanup() -> None:
         _fail(str(exc), code=2)
 
 
-@app.command(context_settings=ALLOW_EXTRA_ARGS)
+@app.command(context_settings=RUN_EXTRA_ARGS)
 def run(
     ctx: typer.Context,
     experiment: Annotated[str | None, typer.Option("--experiment")] = None,
@@ -257,10 +265,22 @@ def run(
     seed: Annotated[int | None, typer.Option("--seed")] = None,
 ) -> None:
     try:
-        project = find_project()
         argv = list(ctx.args)
         if argv and argv[0] == "--":
             argv = argv[1:]
+        if argv == ["--help"]:
+            _print_run_help()
+            raise typer.Exit(0)
+        if argv and argv[0] == "reclassify" and "--help" in argv:
+            _handle_run_reclassify_help()
+            raise typer.Exit(0)
+        project = find_project()
+        if _looks_like_run_reclassify(argv):
+            canonical = _handle_run_reclassify(project, argv)
+            to_class = _option_value(argv, "--to") or ""
+            typer.echo(f"Reclassified run {canonical} to {to_class}.")
+            typer.echo("Regenerated scientific debt report.")
+            return
         run_id_out, exit_code = capture_run(
             project,
             argv,
@@ -376,9 +396,25 @@ def run_ledger_append(
 @experiment_app.command("validate")
 def experiment_validate(paths: list[Path]) -> None:
     try:
+        project = find_project()
+        context = load_prerequisite_context(project)
+        had_blockers = False
+        had_debt = False
         for path in paths:
             spec = parse_experiment_spec(path)
-            typer.echo(f"valid {spec.experiment_id}: {path}")
+            evaluation = evaluate_experiment_prerequisites(spec, context)
+            for finding in evaluation.findings:
+                typer.echo(finding.format())
+            if evaluation.input_errors:
+                raise typer.Exit(2)
+            had_blockers = had_blockers or bool(evaluation.blockers)
+            had_debt = had_debt or bool(evaluation.debt_or_warnings)
+            if evaluation.is_clean:
+                typer.echo(f"valid {spec.experiment_id}: {path}")
+        if had_blockers or had_debt:
+            raise typer.Exit(1)
+    except typer.Exit:
+        raise
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -415,10 +451,11 @@ def claim_review(
     run_id: str,
     apply: Annotated[bool, typer.Option("--apply")] = False,
     yes: Annotated[bool, typer.Option("--yes")] = False,
+    force_stale: Annotated[bool, typer.Option("--force-stale")] = False,
 ) -> None:
     try:
         project = find_project()
-        state = review_claim(project, run_id, apply=apply, yes=yes)
+        state = review_claim(project, run_id, apply=apply, yes=yes, force_stale=force_stale)
         typer.echo(f"Claim proposal state: {state}")
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
@@ -437,12 +474,19 @@ def debt_waive(debt_id: str, decision: Annotated[str, typer.Option("--decision")
 @decision_app.command("new")
 def decision_new(
     from_diff: Annotated[bool, typer.Option("--from-diff")] = False,
+    from_declared_surfaces: Annotated[bool, typer.Option("--from-declared-surfaces")] = False,
 ) -> None:
     try:
         project = find_project()
-        if not from_diff:
-            _fail("Only `decision new --from-diff` is implemented in this pass.", code=3)
-        path = decision_new_from_diff(project)
+        if from_declared_surfaces:
+            path = decision_new_from_declared_surfaces(project)
+        elif from_diff:
+            path = decision_new_from_diff(project)
+        else:
+            _fail(
+                "Use `decision new --from-diff` or `decision new --from-declared-surfaces`.",
+                code=3,
+            )
         typer.echo(f"Appended proposed decision to {path.relative_to(project.root)}")
     except typer.Exit:
         raise
@@ -500,23 +544,26 @@ def status() -> None:
 def next_command() -> None:
     try:
         project = find_project()
-        decisions = parse_decision_log(project.root / project.config.default_decision_log)
-        claims = parse_claim_ledger(project.root / project.config.default_claim_ledger)
-        run_ledger = parse_run_ledger(project.root / project.config.default_run_ledger)
-        completed_experiments = {
-            row.get("phase") for row in run_ledger.rows if row.get("status") == "completed"
-        }
+        context = load_prerequisite_context(project)
         ready: list[str] = []
         blocked: list[str] = []
+        gated: list[str] = []
         for path in sorted((project.root / "research/experiments").glob("*.md")):
             if path.name.startswith("TEMPLATE_"):
                 continue
             spec = parse_experiment_spec(path)
-            blockers = _experiment_blockers(
-                spec, decisions.decisions, claims.claims, completed_experiments, project
-            )
-            if blockers:
-                blocked.append(f"{spec.experiment_id} - {spec.title}: {', '.join(blockers)}")
+            evaluation = evaluate_experiment_prerequisites(spec, context)
+            if evaluation.input_errors or evaluation.blockers:
+                findings = evaluation.input_errors or evaluation.blockers
+                blocked.append(
+                    f"{spec.experiment_id} - {spec.title}: "
+                    + "; ".join(finding.message for finding in findings)
+                )
+            elif evaluation.debt_or_warnings:
+                gated.append(
+                    f"{spec.experiment_id} - {spec.title}: "
+                    + "; ".join(finding.message for finding in evaluation.debt_or_warnings)
+                )
             elif spec.status in {"planned", "draft"}:
                 ready.append(f"{spec.experiment_id} - {spec.title}")
         if ready:
@@ -526,6 +573,10 @@ def next_command() -> None:
         if blocked:
             typer.echo("BLOCKED")
             for item in blocked:
+                typer.echo(f"  {item}")
+        if gated:
+            typer.echo("DEBT/WARNING GATED")
+            for item in gated:
                 typer.echo(f"  {item}")
         raise typer.Exit(0 if ready or not blocked else 1)
     except typer.Exit:
@@ -540,6 +591,94 @@ def _default_drafts(project) -> list[Path]:
     for pattern in ("**/*.md", "**/*.markdown", "**/*.tex"):
         paths.extend(sorted(root.glob(pattern)))
     return paths
+
+
+def _print_run_help() -> None:
+    typer.echo(
+        "Usage: mechledger run [OPTIONS] -- COMMAND [ARGS]...\n\n"
+        "Capture a local command as a MechLedger run.\n\n"
+        "Options:\n"
+        "  --experiment TEXT\n"
+        "  --class TEXT                 Run class, default scratch.\n"
+        "  --purpose TEXT\n"
+        "  --hypothesis TEXT\n"
+        "  --run-id TEXT\n"
+        "  --model TEXT\n"
+        "  --hook-point TEXT\n"
+        "  --sae-release TEXT\n"
+        "  --sae-id TEXT\n"
+        "  --seed INTEGER\n\n"
+        "Workflow:\n"
+        "  mechledger run -- python script.py\n"
+        "  mechledger run reclassify RUN_ID --to CLASS --decision D### --reason TEXT"
+    )
+
+
+def _looks_like_run_reclassify(argv: list[str]) -> bool:
+    if not argv or argv[0] != "reclassify":
+        return False
+    return "--help" in argv or any(option in argv for option in ("--to", "--decision", "--reason"))
+
+
+def _handle_run_reclassify(project, argv: list[str]) -> str:
+    if "--help" in argv:
+        _handle_run_reclassify_help()
+        raise typer.Exit(0)
+    if len(argv) < 2:
+        raise ValueError(
+            "Usage: mechledger run reclassify RUN_ID --to CLASS --decision D### --reason TEXT"
+        )
+    run_id = argv[1]
+    to_class = _required_option(argv, "--to")
+    decision = _required_option(argv, "--decision")
+    reason = _required_option(argv, "--reason")
+    known_tokens = {
+        "reclassify",
+        run_id,
+        "--to",
+        to_class,
+        "--decision",
+        decision,
+        "--reason",
+        reason,
+    }
+    extras = [token for token in argv if token not in known_tokens]
+    if extras:
+        raise ValueError(f"Unexpected run reclassify arguments: {' '.join(extras)}")
+    return reclassify_run(
+        project,
+        run_id,
+        to_class=to_class,
+        decision_id=decision,
+        reason=reason,
+    )
+
+
+def _handle_run_reclassify_help() -> None:
+    typer.echo(
+        "Usage: mechledger run reclassify RUN_ID --to CLASS "
+        "--decision D### --reason TEXT\n\n"
+        "Reclassify a local run after accepted human decision review. "
+        "This updates the run directory and regenerated scientific-debt report; "
+        "it does not edit committed ledgers."
+    )
+
+
+def _required_option(argv: list[str], option: str) -> str:
+    value = _option_value(argv, option)
+    if value is None or not value.strip():
+        raise ValueError(f"Missing required option for run reclassify: {option}")
+    return value
+
+
+def _option_value(argv: list[str], option: str) -> str | None:
+    try:
+        index = argv.index(option)
+    except ValueError:
+        return None
+    if index + 1 >= len(argv) or argv[index + 1].startswith("--"):
+        return ""
+    return argv[index + 1]
 
 
 def _staged_files(root: Path) -> list[str]:
@@ -566,27 +705,6 @@ def _debt_counts(project) -> dict[str, int]:
                 severity = debt.get("severity", "unknown")
                 counts[severity] = counts.get(severity, 0) + 1
     return counts
-
-
-def _experiment_blockers(spec, decisions, claims, completed_experiments, project) -> list[str]:
-    blockers: list[str] = []
-    for prereq in spec.prerequisites:
-        kind = prereq.get("type")
-        if kind == "decision_accepted":
-            decision = decisions.get(prereq.get("id"))
-            if decision is None or decision.status != "accepted":
-                blockers.append(f"{prereq.get('id')} accepted")
-        elif kind in {"experiment_completed", "experiment_completed_and_reviewed"}:
-            if prereq.get("id") not in completed_experiments:
-                blockers.append(f"{prereq.get('id')} completed")
-        elif kind == "claim_status_at_least":
-            claim = claims.get(prereq.get("id"))
-            if claim is None:
-                blockers.append(f"{prereq.get('id')} exists")
-        elif kind == "artifact_exists":
-            if not (project.root / str(prereq.get("path"))).exists():
-                blockers.append(f"{prereq.get('path')} exists")
-    return blockers
 
 
 def _fail(message: str, *, code: int) -> None:

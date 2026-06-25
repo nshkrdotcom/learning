@@ -4,9 +4,9 @@ MechLedger is a Git-native research-integrity tool for mechanistic
 interpretability repositories. It keeps tagged draft claims connected to claim
 ledger entries, decisions, run records, artifacts, and visible scientific debt.
 
-This `self-ground-v2/` repo now contains the Milestone 0 product surface plus a
-Milestone 1 run-auditor foundation, built on the Milestone -1 SELF-GROUND
-extraction kernel.
+This `self-ground-v2/` repo now contains the Milestone 0 product surface, a
+Milestone 1 run-auditor foundation, and the Milestone 2 experiment/claim
+workflow surface built on the Milestone -1 SELF-GROUND extraction kernel.
 
 ## Scope
 
@@ -21,12 +21,17 @@ Implemented here:
 - Project scaffold, index, format, hook install, session close, status, and next
 - Run wrapper, run IDs, alias cache, run directories, heartbeat, artifacts,
   run-ledger proposals, claim proposals, and scientific-debt reports
+- Policy-aware ExperimentSpec prerequisite validation and `next` readiness views
+- Accepted-decision-gated run reclassification with regenerated debt reports
+- Declared-surface decision proposals, strict debt waivers, and stale claim
+  proposal review
 - Minimal dependency-light SDK helpers
 - Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
 
 Intentionally not implemented here:
 
+- Milestone 3 full evidence assessment workflows
 - Heavy model execution or intervention abstractions
 - Hosted dashboard, copilot review queues, RO-Crate export, sync merge, garbage
   collection, redaction, prediction locking, or Tier 3+ platform surfaces
@@ -41,6 +46,8 @@ uv run mechledger init
 uv run mechledger draft check research/paper/draft.md
 uv run mechledger index --check
 uv run mechledger run -- python scripts/your_experiment.py
+uv run mechledger experiment validate research/experiments/*.md
+uv run mechledger next
 uv run mechledger status
 ```
 

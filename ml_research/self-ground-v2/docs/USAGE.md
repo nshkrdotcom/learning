@@ -104,6 +104,54 @@ unique experiment/slug prefix
 Alias resolution reads `.mechledger/alias_cache.txt`, not a routine directory
 sweep.
 
+## Reclassifying A Run
+
+```bash
+uv run mechledger run reclassify latest \
+  --to serious_evidence_run \
+  --decision D012 \
+  --reason "human-reviewed transition after artifact review"
+```
+
+The decision must exist in `research/logs/decision_log.md` with
+`status: accepted`. Reclassification updates only the local run directory:
+`run.json`, `events.jsonl`, `run_class_transition.json`, and the generated
+scientific-debt report. It does not edit `research/logs/run_ledger.csv`.
+
+Supported classes are `scratch`, `notebook_exploration`, `diagnostic`,
+`serious_evidence_run`, `paper_candidate`, `replication`, and
+`published_result`.
+
+## Experiment Prerequisites And Next
+
+ExperimentSpecs can declare machine-readable prerequisites in YAML:
+
+```yaml
+prerequisites:
+  - type: decision_accepted
+    id: D012
+  - type: claim_status_at_least
+    id: C003
+    status: single_run_evidence
+  - type: artifact_exists
+    path: results/e003/baseline.json
+    consequence: scientific_debt
+```
+
+Supported prerequisite types are `decision_accepted`, `experiment_completed`,
+`experiment_completed_and_reviewed`, `claim_status_at_least`, and
+`artifact_exists`. Consequence defaults to `blocking`; `scientific_debt` and
+`warning` stay visible but do not make the experiment a clean pass.
+
+```bash
+uv run mechledger experiment validate research/experiments/E003_*.md
+uv run mechledger next
+```
+
+`next` uses the same prerequisite engine and separates `READY`, `BLOCKED`, and
+`DEBT/WARNING GATED` experiments. Claim status comparisons use the claim-status
+DAG; incomparable statuses are input errors.
+
 ## Crystallizing Exploratory Runs
 
 ```bash
@@ -124,7 +172,10 @@ uv run mechledger claim review latest
 ```
 
 Proposals include expected claim-ledger hashes. Freeform prose edits do not make
-a proposal stale; semantic YAML changes do.
+a proposal stale; semantic YAML changes do. `claim review --apply` refuses stale
+proposals unless explicitly run with `--force-stale --yes`, which records the
+forced stale review in the proposal and still does not silently mutate the claim
+ledger.
 
 ## Writing A Decision Record
 
@@ -143,9 +194,13 @@ copilot_session_id: null
 ```
 ````
 
-`mechledger decision new --from-diff` can append a proposed decision based on
-declared surfaces. It does not detect Python constants, implicit notebook state,
-undeclared config files, or external data changes.
+`mechledger decision new --from-diff` appends a proposed decision from changed
+research files. `mechledger decision new --from-declared-surfaces` appends a
+proposed decision from machine-readable declared surfaces such as ExperimentSpec
+`config_files`, `expected_artifacts`, claim-linked runs, and the configured
+research log. It explicitly documents implicit surfaces it refused to infer,
+including Python constants, notebook state, undeclared config files, and
+unregistered external data changes.
 
 ## Waiving Scientific Debt
 
@@ -154,6 +209,8 @@ uv run mechledger debt waive DPT002 --decision D012
 ```
 
 The decision must exist and be accepted. Waived debt remains visible in reports.
+Missing debt, missing decisions, and proposed/rejected decisions fail as unsafe
+input errors.
 
 ## Assessment Examples
 

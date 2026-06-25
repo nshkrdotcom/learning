@@ -129,7 +129,11 @@ def write_scientific_debt_report(run_dir: Path, report: ScientificDebtReport) ->
         "## Debts",
     ]
     for debt in report.debts:
-        lines.append(f"- {debt.debt_id} [{debt.severity.value}] {debt.debt_type}: {debt.message}")
+        waiver = f" waiver={debt.waiver_decision_id}" if debt.waiver_decision_id else ""
+        lines.append(
+            f"- {debt.debt_id} [{debt.severity.value}/{debt.status}]"
+            f"{waiver} {debt.debt_type}: {debt.message}"
+        )
     (run_dir / "scientific_debt_report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
