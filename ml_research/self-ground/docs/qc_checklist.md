@@ -410,3 +410,61 @@ Observed results:
 - [x] old-ranking patch sanity reports selected features inactive and logits unchanged
 - [x] E002-ranking patch sanity reports nonzero decoded patch and changed logits
 - [x] ablate+amplify diagnostic remains `insufficient_evidence`
+
+## E004 Specificity Rescue Matrix
+
+- [x] E003 specificity failure diagnosis written
+- [x] stricter control suites implemented
+- [x] `multi_control` expands control rows and records validation artifacts
+- [x] richer pre-intervention ranking fields written
+- [x] feature-selection modes implemented
+- [x] E004 CUDA matrix completed
+- [x] E004 comparison and claim adjudication written
+- [x] specificity forensics written
+- [x] mechanism reports reject candidate evidence when any control suite fails
+- [x] ledgers updated
+
+Commands run for this pass:
+
+```bash
+uv run python scripts/diagnose_e003_specificity_failure.py --run-dir runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density --ranking-dir runs/e003_real_sae_ranking_pythia70m_l2_calibrated_pf10_top50 --calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 --out runs/diagnostics/e003_specificity_failure
+uv run python scripts/run_e004_specificity_rescue_matrix.py --device cuda --task-file runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibrated_behavioral_tasks.jsonl --task-bank-calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 --layers blocks.1.hook_resid_post,blocks.2.hook_resid_post,blocks.3.hook_resid_post --feature-selection-modes top-absolute,top-target-control-gap,top-family-consistent-gap,top-low-control-activation,ensemble-specificity --operations ablate,amplify --control-suite multi_control --ranking-top-k 100 --eval-top-k 5 --min-family-consistency 2 --random-seeds 7,11,13 --out-root runs/e004_specificity_rescue_matrix
+uv run python scripts/compare_e004_matrix.py --matrix-root runs/e004_specificity_rescue_matrix --e003 runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density --out runs/e004_specificity_rescue_matrix/comparison
+uv run python scripts/write_specificity_forensics_report.py --runs runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi runs/e004_specificity_rescue_matrix/eval/block2_absolute_ablate_amplify_multi --out runs/e004_specificity_rescue_matrix/forensics
+```
+
+Observed results:
+
+- [x] E003 diagnosis labels include `control_dominates_globally` and
+  `target_effect_present_but_nonspecific`
+- [x] E004 attempted cells: `15`
+- [x] E004 completed cells: `15`
+- [x] E004 blocked cells: `0`
+- [x] E004 candidate cells: `0`
+- [x] best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`
+- [x] best aggregate claim status: `insufficient_evidence`
+- [x] best aggregate specificity gap: `0.13617621988490008`
+- [x] best aggregate top/control ratio: `1.179209179474212`
+- [x] best aggregate multi-control minimum gap: `-0.01942424497742584`
+- [x] best aggregate family minimum gap: `-0.0900231236996858`
+- [x] adjudication interpretation:
+  `current_sae_model_layer_search_insufficient`
+
+Verification commands:
+
+```bash
+uv run ruff check .
+uv run pytest
+uv run pytest --run-integration
+SELF_GROUND_SAE_MODEL=EleutherAI/pythia-70m-deduped SELF_GROUND_SAE_RELEASE=pythia-70m-deduped-res-sm SELF_GROUND_SAE_ID=blocks.2.hook_resid_post uv run pytest --run-integration
+```
+
+Verification results:
+
+- [x] `uv run ruff check .` passed
+- [x] `uv run pytest` passed: `211 passed, 12 skipped`
+- [x] `uv run pytest --run-integration` passed:
+  `218 passed, 5 skipped`
+- [x] SAE-configured integration passed:
+  `223 passed`

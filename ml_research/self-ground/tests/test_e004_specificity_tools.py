@@ -229,3 +229,40 @@ def test_e004_orchestrator_blocks_when_cuda_unavailable(tmp_path, monkeypatch) -
 
     assert payload["status"] == "blocked"
     assert (tmp_path / "matrix" / "BLOCKED.json").exists()
+
+
+def test_e004_orchestrator_resumes_completed_eval_cells(tmp_path, monkeypatch) -> None:
+    completed = tmp_path / "matrix" / "eval" / "block2_absolute_ablate_multi"
+    _write_json(completed / "mechanism_report.json", {"claim_status": "insufficient_evidence"})
+    _write_json(completed / "inspection_summary.json", {"claim_status": "insufficient_evidence"})
+
+    calls: list[list[str]] = []
+
+    def fail_if_called(command: list[str]):
+        calls.append(command)
+        raise AssertionError("completed E004 cell should not be recomputed")
+
+    monkeypatch.setattr(run_e004_module, "_run", fail_if_called)
+    args = Namespace(
+        device="cpu",
+        task_file=tmp_path / "tasks.jsonl",
+        task_bank_calibration_dir=tmp_path / "calibration",
+        layers="blocks.2.hook_resid_post",
+        feature_selection_modes="top-absolute",
+        operations="ablate",
+        amplify_factors="2.0",
+        control_suite="multi_control",
+        ranking_top_k=10,
+        eval_top_k=2,
+        min_calibrated_per_family=1,
+        min_family_consistency=2,
+        random_seeds="7,11,13",
+        out_root=tmp_path / "matrix",
+        force=False,
+    )
+
+    payload = run_matrix(args)
+
+    assert payload["completed_cells"] == 1
+    assert payload["cells"][0]["resumed_from_existing_artifacts"] is True
+    assert calls == []

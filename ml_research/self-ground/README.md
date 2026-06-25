@@ -441,6 +441,27 @@ uv run python scripts/compare_e004_matrix.py \
   --out runs/e004_specificity_rescue_matrix/comparison
 ```
 
+Observed E004 result:
+
+- matrix artifact:
+  `runs/e004_specificity_rescue_matrix/comparison/comparison.json`
+- attempted cells: 15
+- completed cells: 15
+- blocked cells: 0
+- candidate cells: 0
+- best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`
+- best aggregate claim status: `insufficient_evidence`
+- best aggregate specificity gap: `0.13617621988490008`
+- best aggregate top/control ratio: `1.179209179474212`
+- best aggregate multi-control minimum gap: `-0.01942424497742584`
+- best aggregate family minimum gap: `-0.0900231236996858`
+
+E004 improved aggregate specificity over E003 in some cells, especially at
+block 1, but no run passed all configured control suites and all required
+families. The current Pythia-70M-deduped plus `pythia-70m-deduped-res-sm`
+calibrated negation setup remains `insufficient_evidence`.
+
 Framework-shaped schemas, generic backend/plugin abstractions, and generic
 trackers are not active in this repo.
 

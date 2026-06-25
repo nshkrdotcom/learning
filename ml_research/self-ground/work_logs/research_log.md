@@ -338,3 +338,67 @@ The run still does not support candidate evidence because matched-control
 movement exceeds target-prompt movement. The current blocker is no longer
 family coverage; it is negation-specific feature/control separation under the
 current task/evaluator setup.
+
+## 2026-06-24: E004 Specificity Rescue Matrix
+
+Ran the artifact-only E003 specificity diagnosis:
+
+```bash
+uv run python scripts/diagnose_e003_specificity_failure.py \
+  --run-dir runs/e003_negation_eval_pythia70m_l2_calibrated_pf10_top5_density \
+  --ranking-dir runs/e003_real_sae_ranking_pythia70m_l2_calibrated_pf10_top50 \
+  --calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 \
+  --out runs/diagnostics/e003_specificity_failure
+```
+
+Diagnosis labels:
+
+- `control_dominates_globally`
+- `control_dominates_specific_families`
+- `possible_control_prompt_confound`
+- `specificity_failure_concentrated_in_template`
+- `target_effect_present_but_nonspecific`
+- `true_negative_for_current_layer_feature_set`
+
+Ran the bounded E004 matrix on CUDA:
+
+```bash
+uv run python scripts/run_e004_specificity_rescue_matrix.py \
+  --device cuda \
+  --task-file runs/e003_task_bank_calibration_pythia70m_margin0p1_min10/calibrated_behavioral_tasks.jsonl \
+  --task-bank-calibration-dir runs/e003_task_bank_calibration_pythia70m_margin0p1_min10 \
+  --layers blocks.1.hook_resid_post,blocks.2.hook_resid_post,blocks.3.hook_resid_post \
+  --feature-selection-modes top-absolute,top-target-control-gap,top-family-consistent-gap,top-low-control-activation,ensemble-specificity \
+  --operations ablate,amplify \
+  --control-suite multi_control \
+  --ranking-top-k 100 \
+  --eval-top-k 5 \
+  --min-family-consistency 2 \
+  --random-seeds 7,11,13 \
+  --out-root runs/e004_specificity_rescue_matrix
+```
+
+Matrix result:
+
+- attempted cells: 15
+- completed cells: 15
+- blocked cells: 0
+- candidate cells: 0
+- best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`
+- best aggregate claim status: `insufficient_evidence`
+- best aggregate target delta: `0.8960492369057476`
+- best aggregate control delta: `0.7598730170208475`
+- best aggregate specificity gap: `0.13617621988490008`
+- best aggregate top/control ratio: `1.179209179474212`
+- multi-control minimum gap: `-0.01942424497742584`
+- family minimum gap: `-0.0900231236996858`
+
+Interpretation:
+
+E004 improved aggregate specificity over E003 in block 1, but no cell reached
+candidate evidence. The best aggregate run still failed `multi_control`
+because at least `hard_negative_control` and
+`matched_non_negation_current` failed, and one required family remained
+negative. The current model/SAE/task setup should be treated as unsupported
+for the negation-specific SAE feature-set claim.

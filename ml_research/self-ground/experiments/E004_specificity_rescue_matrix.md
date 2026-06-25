@@ -132,3 +132,39 @@ SAELens calibrated negation setup remains unsupported for this SAE/layer search.
 - model-general or layer-general conclusions;
 - monosemantic feature claims;
 - causal mechanism claims beyond the exact decoded SAE/token-contrast cell.
+
+## Observed Result
+
+Artifacts:
+
+- matrix summary:
+  `runs/e004_specificity_rescue_matrix/matrix_run_summary.json`
+- comparison:
+  `runs/e004_specificity_rescue_matrix/comparison/comparison.json`
+- adjudication:
+  `runs/e004_specificity_rescue_matrix/comparison/claim_adjudication.md`
+- forensics:
+  `runs/e004_specificity_rescue_matrix/forensics/forensics_summary.md`
+
+Result:
+
+- attempted cells: 15
+- completed cells: 15
+- blocked cells: 0
+- candidate cells: 0
+- best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`
+- best aggregate claim status: `insufficient_evidence`
+- best aggregate target delta: `0.8960492369057476`
+- best aggregate control delta: `0.7598730170208475`
+- best aggregate specificity gap: `0.13617621988490008`
+- best aggregate top/control ratio: `1.179209179474212`
+- multi-control minimum gap: `-0.01942424497742584`
+- family minimum gap: `-0.0900231236996858`
+
+Interpretation:
+
+E004 improved aggregate target/control specificity over E003 in block 1, but
+the stricter `multi_control` and per-family gates did not pass. The current
+Pythia-70M-deduped / `pythia-70m-deduped-res-sm` calibrated negation setup
+remains unsupported as candidate evidence.

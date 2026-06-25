@@ -93,6 +93,12 @@ candidate evidence.
     )
 
 
+def _eval_cell_complete(path: Path) -> bool:
+    return (path / "mechanism_report.json").exists() and (
+        path / "inspection_summary.json"
+    ).exists()
+
+
 def run_matrix(args: argparse.Namespace) -> dict[str, Any]:
     out_root = Path(args.out_root)
     out_root.mkdir(parents=True, exist_ok=True)
@@ -124,6 +130,14 @@ def run_matrix(args: argparse.Namespace) -> dict[str, Any]:
             / "rankings"
             / f"{layer_slug}_rich_calibrated_top{args.ranking_top_k}"
         )
+        layer_eval_dirs = {
+            mode: out_root / "eval" / _cell_slug(layer, mode, operations, args.control_suite)
+            for mode in modes
+        }
+        layer_eval_complete = (
+            all(_eval_cell_complete(path) for path in layer_eval_dirs.values())
+            and not args.force
+        )
         ranking_command = [
             sys.executable,
             "scripts/run_real_activation_ranking.py",
@@ -152,7 +166,9 @@ def run_matrix(args: argparse.Namespace) -> dict[str, Any]:
             "--task-source-id",
             TASK_SOURCE_ID,
         ]
-        ranking_ok = (ranking_dir / "feature_rankings.csv").exists() and not args.force
+        ranking_ok = layer_eval_complete or (
+            (ranking_dir / "feature_rankings.csv").exists() and not args.force
+        )
         ranking_result = None
         if not ranking_ok:
             ranking_result = _run(ranking_command)
@@ -168,6 +184,20 @@ def run_matrix(args: argparse.Namespace) -> dict[str, Any]:
         for mode in modes:
             attempted += 1
             eval_dir = out_root / "eval" / _cell_slug(layer, mode, operations, args.control_suite)
+            if _eval_cell_complete(eval_dir) and not args.force:
+                completed += 1
+                cells.append(
+                    {
+                        "layer": layer,
+                        "feature_selection_mode": mode,
+                        "operation": operations,
+                        "control_suite": args.control_suite,
+                        "status": "completed",
+                        "run_dir": str(eval_dir),
+                        "resumed_from_existing_artifacts": True,
+                    }
+                )
+                continue
             if not ranking_ok:
                 blocked += 1
                 _write_blocker(

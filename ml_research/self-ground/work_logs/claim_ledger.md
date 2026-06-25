@@ -122,3 +122,56 @@ Next action:
 Diagnose why the top calibrated SAE feature set moves matched non-negation
 controls more than target prompts. Do not change evidence thresholds or drop
 required families.
+
+## 2026-06-24 E004 Specificity Rescue Matrix Result
+
+- diagnosis:
+  `runs/diagnostics/e003_specificity_failure/specificity_summary.json`
+- matrix:
+  `runs/e004_specificity_rescue_matrix/matrix_run_summary.json`
+- comparison:
+  `runs/e004_specificity_rescue_matrix/comparison/comparison.json`
+- adjudication:
+  `runs/e004_specificity_rescue_matrix/comparison/claim_adjudication.md`
+- forensics:
+  `runs/e004_specificity_rescue_matrix/forensics/forensics_summary.md`
+
+E004 status: no candidate evidence.
+
+Matrix result:
+
+- attempted cells: 15;
+- completed cells: 15;
+- blocked cells: 0;
+- candidate cells: 0;
+- best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`;
+- best aggregate claim status: `insufficient_evidence`;
+- best aggregate specificity gap: `0.13617621988490008`;
+- best aggregate top/control ratio: `1.179209179474212`;
+- best aggregate multi-control minimum gap: `-0.01942424497742584`;
+- best aggregate family minimum gap: `-0.0900231236996858`.
+
+Strongest supported claim:
+
+The calibrated task bank and decoded SAE patch path produce real logit
+movement, and some block 1 feature-selection modes improve aggregate
+target/control specificity over E003. This is still insufficient evidence:
+the best aggregate E004 run fails at least one configured control suite and at
+least one required family.
+
+Unsupported:
+
+- candidate evidence for a negation-scope SAE feature set;
+- broad negation mechanism discovery;
+- upstream SAEBench/RAVEL benchmark evidence;
+- model-general, layer-general, or task-general conclusions;
+- monosemantic feature claims;
+- causal mechanism claims beyond the exact decoded SAE/token-contrast
+  artifact rows.
+
+Next action:
+
+Decide whether to retire this Pythia-70M-deduped SAE/hook search as negative
+for the current claim or redesign the ranking objective/control task mapping
+before any additional expensive runs.

@@ -524,6 +524,29 @@ uv run python scripts/compare_e004_matrix.py \
   --out runs/e004_specificity_rescue_matrix/comparison
 ```
 
+Observed matrix result:
+
+- attempted cells: 15
+- completed cells: 15
+- blocked cells: 0
+- candidate cells: 0
+- comparison artifact:
+  `runs/e004_specificity_rescue_matrix/comparison/comparison.json`
+- best aggregate run:
+  `runs/e004_specificity_rescue_matrix/eval/block1_ensemble_specificity_ablate_amplify_multi`
+- best aggregate status: `insufficient_evidence`
+- best aggregate target delta: `0.8960492369057476`
+- best aggregate control delta: `0.7598730170208475`
+- best aggregate specificity gap: `0.13617621988490008`
+- best aggregate top/control ratio: `1.179209179474212`
+- multi-control minimum gap: `-0.01942424497742584`
+- family minimum gap: `-0.0900231236996858`
+
+Interpretation: E004 rescues aggregate specificity in some block 1 cells, but
+not the stricter claim. The best aggregate run still fails at least one
+control suite (`hard_negative_control`, `matched_non_negation_current`) and at
+least one required family. No E004 cell reached candidate evidence.
+
 ## Limitations
 
 - Next-token contrasts are narrow tests, not broad behavioral understanding.
