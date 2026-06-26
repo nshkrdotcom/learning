@@ -8,7 +8,8 @@ This `self-ground-v2/` repo now contains the Milestone 0 product surface, a
 Milestone 1 run-auditor foundation, the Milestone 2 experiment/claim workflow
 surface, Milestone 3 deterministic evidence assessment workflows, and the next
 flat-file product surfaces for archival export, local audit records, question
-tracking, external label metadata, local inspection, and paper-safe reports.
+tracking, external label metadata, local inspection, paper-safe reports, local
+integrity checks, explicit redaction records, and run cleanup/archival.
 
 ## Scope
 
@@ -43,6 +44,15 @@ Implemented here:
 - Deterministic Draft Guard suggestion and claim-language reports
 - Optional platform record schemas/validators for future activation, circuit,
   weight, comparison, correspondence, training-dynamics, and remote-job metadata
+- Local sync/conflict reporting with `sync status` and `sync diff`; these report
+  drift and never merge state
+- Explicit run/artifact redaction records, redacted artifact placeholders, and
+  redacted-supporting-evidence debt
+- Integrity/tamper records with accepted-decision resolution workflow
+- Run pinning, dry-run garbage collection, archive-before-delete cleanup, and
+  per-run reproducibility bundles
+- Conservative environment redaction and explicit SDK `external_call` event
+  metadata requirements
 - Minimal dependency-light SDK helpers, including a pure-Python sign-test helper
 - Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
@@ -50,9 +60,9 @@ Implemented here:
 Intentionally not implemented here:
 
 - Heavy model execution or intervention abstractions
-- Hosted dashboard/server, LLM copilot review queues, sync merge, garbage
-  collection, broad redaction, RDF/JSON-LD as canonical storage, or Tier 3+
-  platform surfaces
+- Hosted dashboard/server, LLM copilot review queues, remote sync merge, broad
+  redaction workflows beyond explicit local records, RDF/JSON-LD as canonical
+  storage, or model-execution platform surfaces
 - Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
   `numpy`, or `scipy`
 
@@ -72,6 +82,10 @@ uv run mechledger prediction score PRED001 --against-run latest
 uv run mechledger export appendix --out research/paper/mechledger_appendix.md
 uv run mechledger dashboard data --out .mechledger/dashboard/data.json
 uv run mechledger questions list
+uv run mechledger sync status
+uv run mechledger integrity check
+uv run mechledger pin latest
+uv run mechledger gc --keep-last 100 --keep-pinned
 uv run mechledger experiment validate research/experiments/*.md
 uv run mechledger next
 uv run mechledger status
@@ -80,8 +94,8 @@ uv run mechledger status
 See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
 usage, artifacts, aliases, Tier 2 evidence registration, prediction locking,
 exports, sessions, questions, labels, query commands, language reports,
-optional records, crystallization, claim review, decisions, debt waivers, and
-assessment examples.
+optional records, sync reporting, redaction, integrity records, run lifecycle,
+crystallization, claim review, decisions, debt waivers, and assessment examples.
 
 ## Layout
 
@@ -108,11 +122,12 @@ uv run mechledger index --check
 
 ## Boundaries
 
-MechLedger does not execute interventions, discover artifacts outside registered
-paths or run-local artifact directories, merge SQLite, enforce untagged paper
-claims, detect constants hidden in Python source, make scientific truth
-decisions, import heavy ML libraries in core, compute p-values/null statistics,
-verify citations/recompute reported statistics, or use RO-Crate/RDF/SQLite as
+MechLedger does not execute interventions, intercept arbitrary network calls,
+discover artifacts outside registered paths or run-local artifact directories,
+merge SQLite, perform remote sync merge, enforce untagged paper claims, detect
+constants hidden in Python source, make scientific truth decisions, import
+heavy ML libraries in core, compute p-values/null statistics, verify
+citations/recompute reported statistics, or use RO-Crate/RDF/SQLite as
 canonical storage. Users register metrics and artifacts from their own research
 environment. MechLedger may allow work to continue with unresolved scientific
 debt, but it surfaces that debt. External labels are metadata by default, and

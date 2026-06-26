@@ -336,8 +336,15 @@ def _artifact_path_exists(context: ProjectPrerequisiteContext, raw_path: str) ->
     project_path = context.project.root / raw_path
     if project_path.exists():
         return True
+    if Path(str(project_path) + ".redacted").exists():
+        return True
     resolved = str(project_path.resolve())
-    return raw_path in context.artifact_paths or resolved in context.artifact_paths
+    return (
+        raw_path in context.artifact_paths
+        or resolved in context.artifact_paths
+        or f"{raw_path}.redacted" in context.artifact_paths
+        or f"{resolved}.redacted" in context.artifact_paths
+    )
 
 
 def _read_json_object(path: Path) -> dict[str, Any]:

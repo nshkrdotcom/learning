@@ -461,6 +461,131 @@ linked runs/claims/decisions, and artifact pointers only; MechLedger does not
 compute activations, circuits, weights, correspondences, training dynamics, or
 remote jobs.
 
+## Local Sync And Integrity
+
+Report drift between local run directories, committed ledgers, claim run links,
+and the alias cache:
+
+```bash
+uv run mechledger sync status
+uv run mechledger sync diff
+```
+
+`sync status` prints counts by finding type. `sync diff` prints concrete IDs,
+paths, and diagnostic messages. These commands do not merge local run
+directories, do not merge SQLite, and do not treat cache files as canonical.
+
+Exit codes:
+
+```text
+0: no blocking sync findings
+1: blocking sync findings exist
+2: usage, parse, or project-state error
+```
+
+Create explicit redaction records:
+
+```bash
+uv run mechledger redact RUN_ID --reason "contains private notes"
+uv run mechledger redact artifact results/private.json --run RUN_ID --reason "contains private labels"
+```
+
+Run redaction writes `.mechledger/runs/RUN_ID/redaction_record.json`. Artifact
+redaction is irreversible by this CLI: it writes `PATH.redacted`, records
+original and placeholder hashes, updates registered artifact metadata, and keeps
+the placeholder as a terminal artifact node. Redacting supporting or required
+evidence creates visible `redacted_supporting_evidence` debt; it does not
+change claim status. MechLedger refuses to redact arbitrary out-of-project files
+or unregistered artifacts.
+
+Check broader tamper/staleness records:
+
+```bash
+uv run mechledger integrity check
+uv run mechledger integrity check --run RUN_ID --json
+uv run mechledger integrity resolve TP-... --decision D012 --status waived --note "reviewed"
+```
+
+Integrity checks detect locked prediction edits, claim block staleness after
+claim proposal generation, supporting artifact changes after local baselining,
+decision status changes after local baselining, draft tags pointing to missing
+claims, and run-ledger proposal changes. Records are written to
+`.mechledger/integrity/tamper_records.jsonl` and are stable across repeated
+checks. Resolution statuses `accepted_as_new_version` and `waived` require an
+accepted decision.
+
+Integrity exit codes:
+
+```text
+0: no unresolved tamper/staleness records
+1: unresolved records exist
+2: usage, parse, or project-state error
+```
+
+## Run Lifecycle And Cleanup
+
+Pin a run so cleanup never removes it:
+
+```bash
+uv run mechledger pin latest
+```
+
+Pinning resolves aliases, sets `pinned: true` in `run.json`, appends a
+`run_pinned` event, and is idempotent.
+
+Clean up local run directories:
+
+```bash
+uv run mechledger gc --keep-last 100 --keep-pinned
+uv run mechledger gc --keep-last 100 --keep-pinned --yes
+uv run mechledger gc --archive bundles/ --keep-last 100 --keep-pinned --yes
+```
+
+`gc` is dry-run by default. It never removes pinned runs, never edits
+`research/logs/run_ledger.csv`, and never deletes committed `research/**` files.
+With `--archive`, each run is bundled before deletion; if archive creation
+fails, the run directory remains. `--keep-last 0` is refused unless paired with
+`--allow-remove-all-unpinned`.
+
+Create a per-run bundle:
+
+```bash
+uv run mechledger bundle RUN_ID --out bundles/RUN_ID.tar.gz
+uv run mechledger bundle RUN_ID --out bundles/RUN_ID.tar.zst
+```
+
+The bundle includes run metadata files plus registered artifact bytes when
+available and records hashes for every included file in `manifest.json`.
+`.tar.zst` requires the local `zstd` tool; MechLedger does not silently write a
+different archive format.
+
+## Environment And External Calls
+
+Run capture writes `environment.json` through a conservative redaction helper.
+Allowlisted non-sensitive keys such as `PYTHONPATH`, `CUDA_VISIBLE_DEVICES`,
+`VIRTUAL_ENV`, `CONDA_DEFAULT_ENV`, `HF_HOME`, and `TRANSFORMERS_CACHE` are
+preserved. Keys matching token, secret, password, key, credential, OpenAI,
+Anthropic, AWS secret, or HF token patterns have values replaced with
+`[REDACTED]`.
+
+External API calls are not intercepted. If user code makes one and wants it in
+the ledger, it should record an explicit SDK event:
+
+```python
+ml.log_event(
+    "external_call",
+    "queried external source",
+    metadata={
+        "external": True,
+        "service": "neuronpedia",
+        "reproducibility_scope": "metadata-only",
+    },
+)
+```
+
+The SDK requires `external=True`, `service`, and `reproducibility_scope` for
+`external_call` events. MechLedger itself does not make hidden network calls.
+
 ## Short Run Aliases
 
 Commands that take a run ID also accept:

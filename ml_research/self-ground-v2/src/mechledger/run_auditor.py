@@ -19,6 +19,7 @@ from mechledger.alias import append_alias
 from mechledger.artifacts import auto_collect_artifacts
 from mechledger.debt_report import generate_scientific_debt_report
 from mechledger.project import Project, now_utc, run_ledger_header
+from mechledger.redaction_policy import redact_environment
 
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,120}$")
 ALLOWED_RUN_CLASSES = {
@@ -34,26 +35,6 @@ ALLOWED_RUN_CLASSES = {
     "replication",
     "published_result",
 }
-ENV_ALLOWLIST = {
-    "PYTHONPATH",
-    "CUDA_VISIBLE_DEVICES",
-    "VIRTUAL_ENV",
-    "CONDA_DEFAULT_ENV",
-    "HF_HOME",
-    "TRANSFORMERS_CACHE",
-}
-SECRET_MARKERS = (
-    "TOKEN",
-    "KEY",
-    "SECRET",
-    "PASSWORD",
-    "AWS_SECRET",
-    "OPENAI",
-    "ANTHROPIC",
-    "HF_TOKEN",
-)
-
-
 def generate_run_id(
     project: Project,
     *,
@@ -346,14 +327,7 @@ def git_state(root: Path) -> dict[str, Any]:
 
 
 def captured_environment() -> dict[str, str]:
-    result = {}
-    for key, value in os.environ.items():
-        if key not in ENV_ALLOWLIST:
-            continue
-        if any(marker in key.upper() for marker in SECRET_MARKERS):
-            continue
-        result[key] = value
-    return result
+    return redact_environment(os.environ)
 
 
 def _heartbeat_loop(run_dir: Path, stop: threading.Event) -> None:

@@ -53,13 +53,25 @@ class ActiveRun:
     def log_event(
         self, event_type: str, message: str, metadata: dict[str, Any] | None = None
     ) -> None:
+        metadata = metadata or {}
+        if event_type == "external_call":
+            missing = [
+                key
+                for key in ("external", "service", "reproducibility_scope")
+                if key not in metadata
+            ]
+            if metadata.get("external") is not True or missing:
+                raise ValueError(
+                    "external_call events require metadata with external=True, "
+                    "service, and reproducibility_scope."
+                )
         _append_jsonl(
             self.run_dir / "events.jsonl",
             {
                 "timestamp": now_utc(),
                 "event_type": event_type,
                 "message": message,
-                "metadata": metadata or {},
+                "metadata": metadata,
             },
         )
 

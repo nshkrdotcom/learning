@@ -33,11 +33,17 @@ from mechledger.external_labels import (
 from mechledger.formatter import format_project
 from mechledger.hooks import install_direct_hook, install_precommit_config
 from mechledger.indexer import rebuild_index, validate_project
+from mechledger.integrity import (
+    check_integrity,
+    resolve_tamper_record,
+    unresolved_tamper_count,
+)
 from mechledger.language_report import (
     claim_language_report,
     write_claim_language_report,
     write_draft_suggestions,
 )
+from mechledger.lifecycle import garbage_collect, pin_run, write_run_bundle
 from mechledger.open_questions import (
     add_question,
     list_questions,
@@ -58,6 +64,7 @@ from mechledger.prerequisites import (
 )
 from mechledger.project import command_cwd, find_project, init_project
 from mechledger.records import list_records, show_record, validate_record
+from mechledger.redaction import redact_artifact, redact_run
 from mechledger.run_auditor import capture_run
 from mechledger.sessions import (
     add_session_note,
@@ -68,6 +75,12 @@ from mechledger.sessions import (
     review_session,
     session_path,
     start_session,
+)
+from mechledger.sync_status import (
+    blocking_findings,
+    evaluate_sync,
+    format_sync_diff,
+    format_sync_status,
 )
 from mechledger.tier2 import (
     append_metric,
@@ -117,6 +130,8 @@ labels_app = typer.Typer(help="Import and inspect external label metadata.")
 dashboard_app = typer.Typer(help="Write local dashboard data.")
 query_app = typer.Typer(help="Inspect canonical MechLedger records locally.")
 records_app = typer.Typer(help="Validate optional platform metadata records.")
+sync_app = typer.Typer(help="Report local run and ledger sync drift.")
+integrity_app = typer.Typer(help="Check and resolve local tamper/staleness records.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -138,6 +153,8 @@ app.add_typer(labels_app, name="labels")
 app.add_typer(dashboard_app, name="dashboard")
 app.add_typer(query_app, name="query")
 app.add_typer(records_app, name="records")
+app.add_typer(sync_app, name="sync")
+app.add_typer(integrity_app, name="integrity")
 
 
 @app.command()
@@ -510,6 +527,176 @@ def export_appendix(
         typer.echo(f"appendix: {path.relative_to(project.root)}")
     except typer.Exit:
         raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@sync_app.command("status")
+def sync_status_command() -> None:
+    try:
+        project = find_project()
+        findings = evaluate_sync(project)
+        typer.echo(format_sync_status(findings), nl=False)
+        raise typer.Exit(1 if blocking_findings(findings) else 0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@sync_app.command("diff")
+def sync_diff_command() -> None:
+    try:
+        project = find_project()
+        findings = evaluate_sync(project)
+        typer.echo(format_sync_diff(findings), nl=False)
+        raise typer.Exit(1 if blocking_findings(findings) else 0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@app.command("redact")
+def redact_command(
+    target: str,
+    path: Annotated[Path | None, typer.Argument()] = None,
+    reason: Annotated[str, typer.Option("--reason")] = "",
+    run: Annotated[str | None, typer.Option("--run")] = None,
+) -> None:
+    try:
+        project = find_project()
+        if target == "artifact":
+            if path is None:
+                _fail("Usage: mechledger redact artifact PATH --reason TEXT", code=2)
+            record, action = redact_artifact(project, path, reason=reason, run_alias=run)
+        else:
+            if path is not None:
+                _fail("Usage: mechledger redact RUN_ID --reason TEXT", code=2)
+            record, action = redact_run(project, target, reason=reason)
+        typer.echo(f"redaction_id: {record.redaction_id}")
+        typer.echo(f"target_type: {record.target_type}")
+        typer.echo(f"target_path: {record.target_path}")
+        typer.echo(f"placeholder_path: {record.placeholder_path or 'none'}")
+        typer.echo(f"action: {action}")
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@integrity_app.command("check")
+def integrity_check_command(
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    output_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        project = find_project()
+        unresolved = check_integrity(project, run_alias=run)
+        if output_json:
+            typer.echo(
+                json.dumps(
+                    [record.model_dump(mode="json") for record in unresolved],
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            typer.echo(f"unresolved_tamper_records: {len(unresolved)}")
+            for record in unresolved:
+                typer.echo(
+                    f"{record.tamper_id}\t{record.object_type}\t{record.object_id}\t"
+                    f"{record.consequence}"
+                )
+        raise typer.Exit(1 if unresolved else 0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@integrity_app.command("resolve")
+def integrity_resolve_command(
+    tamper_id: str,
+    decision: Annotated[str, typer.Option("--decision")],
+    status: Annotated[str, typer.Option("--status")] = "accepted_as_new_version",
+    note: Annotated[str, typer.Option("--note")] = "",
+) -> None:
+    try:
+        project = find_project()
+        record = resolve_tamper_record(
+            project,
+            tamper_id,
+            decision_id=decision,
+            status=status,
+            note=note,
+        )
+        typer.echo(f"tamper_id: {record.tamper_id}")
+        typer.echo(f"resolution_status: {record.resolution_status}")
+        typer.echo(f"resolution_decision_id: {record.resolution_decision_id}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@app.command("pin")
+def pin_command(run_id: str) -> None:
+    try:
+        project = find_project()
+        canonical, changed = pin_run(project, run_id)
+        typer.echo(f"run_id: {canonical}")
+        typer.echo("pinned: true")
+        typer.echo(f"action: {'pinned' if changed else 'already_pinned'}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@app.command("gc")
+def gc_command(
+    keep_last: Annotated[int, typer.Option("--keep-last")] = 100,
+    keep_pinned: Annotated[bool, typer.Option("--keep-pinned/--no-keep-pinned")] = True,
+    archive: Annotated[Path | None, typer.Option("--archive")] = None,
+    yes: Annotated[bool, typer.Option("--yes")] = False,
+    allow_remove_all_unpinned: Annotated[
+        bool, typer.Option("--allow-remove-all-unpinned")
+    ] = False,
+) -> None:
+    try:
+        project = find_project()
+        manifest = garbage_collect(
+            project,
+            keep_last=keep_last,
+            keep_pinned=keep_pinned,
+            archive_dir=archive,
+            yes=yes,
+            allow_remove_all_unpinned=allow_remove_all_unpinned,
+        )
+        typer.echo(f"dry_run: {str(manifest['dry_run']).lower()}")
+        typer.echo(
+            "planned_remove_run_ids: "
+            + (", ".join(manifest["planned_remove_run_ids"]) or "none")
+        )
+        typer.echo(
+            "removed_run_ids: " + (", ".join(manifest["removed_run_ids"]) or "none")
+        )
+        typer.echo(
+            "archived_run_ids: " + (", ".join(manifest["archived_run_ids"]) or "none")
+        )
+        typer.echo("gc_manifest: .mechledger/gc_manifest.json")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@app.command("bundle")
+def bundle_command(
+    run_id: str,
+    out: Annotated[Path, typer.Option("--out")],
+) -> None:
+    try:
+        project = find_project()
+        path, manifest = write_run_bundle(project, run_id, out)
+        typer.echo(f"run_id: {manifest['run_id']}")
+        typer.echo(f"bundle: {path.relative_to(project.root)}")
+        typer.echo(f"files: {len(manifest['files'])}")
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -1384,6 +1571,10 @@ def status() -> None:
         typer.echo("\nScientific Debt:")
         for severity, count in sorted(debt_counts.items()):
             typer.echo(f"  {severity}: {count}")
+        tamper_count = unresolved_tamper_count(project)
+        if tamper_count:
+            typer.echo("\nIntegrity:")
+            typer.echo(f"  unresolved tamper records: {tamper_count}")
     except typer.Exit:
         raise
     except Exception as exc:  # noqa: BLE001
