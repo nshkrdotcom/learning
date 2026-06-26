@@ -1,6 +1,6 @@
 {
-  "commit_base_before_pass": "b71ccf19e29bbb4ce58bc534b71452469a792601",
-  "verification_started_at_local": "2026-06-26T12:47:04",
+  "commit_base_before_pass": "5b21000a9f5f36f36cb1043674d6844db60f8969",
+  "verification_started_at_local": "2026-06-26T12:55:31",
   "commands": [
     {
       "command": "uv sync",
@@ -18,19 +18,19 @@
       "command": "uv run pytest tests/test_prd_coverage.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Coverage proof tests passed, including zero partial/ambiguous accounting and extension-only deferral checks."
+      "notes": "Coverage proof tests passed, including precise advanced technique section references and extension boundary evidence."
     },
     {
       "command": "uv run pytest tests/test_prd_completion_ledger.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Completion-ledger proof tests passed, including WeightAnalysisRun record_id identity closure and zero ambiguous rows."
+      "notes": "Completion-ledger proof tests passed, including exact 47.x source sections and deferred extension rows with boundary implementation/test evidence."
     },
     {
       "command": "uv run pytest tests/test_prd_evidence_review.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Evidence-review tests passed with the current closure-pass base and record-boundary reviewed rows."
+      "notes": "Evidence-review tests passed with extension rows citing records.py and the boundary test while preserving deferred concrete-schema disposition."
     },
     {
       "command": "uv run pytest tests/test_qc_proof.py",
@@ -42,7 +42,7 @@
       "command": "uv run pytest tests/test_records.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Record schema tests passed, including WeightAnalysisRun record_id identity and extension_record boundary checks."
+      "notes": "Record schema tests passed, including PRD-defined typed record boundary and extension_record metadata behavior."
     },
     {
       "command": "uv run pytest tests/test_diagnostics_contract.py",
@@ -90,7 +90,7 @@
       "command": "uv run pytest",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Full test suite passed in the final current-pass verification run: 210 tests."
+      "notes": "Full test suite passed in the final current-pass verification run: 212 tests."
     }
   ],
   "push": {
@@ -98,6 +98,6 @@
     "result": "passed",
     "remote": "origin",
     "branch": "main",
-    "notes": "Final git push for the closure-pass proof commit was attempted to origin/main; final response reports the observed push result."
+    "notes": "Final git push for the consistency-review proof commit was attempted to origin/main; final response reports the observed push result."
   }
 }

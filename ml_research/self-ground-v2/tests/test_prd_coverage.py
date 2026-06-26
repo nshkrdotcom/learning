@@ -11,6 +11,20 @@ VALID_STATUSES = {
     "missing",
     "ambiguous_or_requires_decision",
 }
+EXTENSION_DEFERRED_IDS = {
+    "feature_correspondence_record_extension",
+    "training_dynamics_record_extension",
+    "remote_job_metadata_record_extension",
+}
+ADVANCED_TECHNIQUE_DOC_SECTIONS = {
+    "activation_record": "47.1",
+    "weight_analysis_run": "47.2",
+    "weight_analysis_record_alias": "47.2",
+    "circuit_graph": "47.3",
+    "circuit_graph_record_alias": "47.3",
+    "cross_model_comparison": "47.4",
+    "cross_model_comparison_record_alias": "47.4",
+}
 
 REQUIRED_SURFACE_IDS = [
     "no_execution_framework",
@@ -383,7 +397,11 @@ def test_prd_coverage_evidence_notes_are_not_generic_boilerplate() -> None:
             "deferred_by_prd",
             "intentionally_out_of_scope",
         }:
-            assert not entry["implementation_files"], entry["id"]
+            if entry["id"] in EXTENSION_DEFERRED_IDS:
+                assert entry["implementation_files"] == ["src/mechledger/records.py"]
+                assert entry["test_files"] == ["tests/test_records.py"]
+            else:
+                assert not entry["implementation_files"], entry["id"]
             assert entry["remaining_gap"] and entry["remaining_gap"] != "none", entry["id"]
 
 
@@ -414,7 +432,21 @@ def test_prd_coverage_has_closed_partial_and_ambiguous_accounting() -> None:
         assert "extension" in text
         assert "do not define" in text
         assert "concrete schema" in text
-        assert not entry["implementation_files"]
+        assert entry["implementation_files"] == ["src/mechledger/records.py"]
+        assert entry["test_files"] == ["tests/test_records.py"]
+
+
+def test_prd_coverage_advanced_technique_sections_are_precise() -> None:
+    entries = {entry["id"]: entry for entry in _coverage()["entries"]}
+
+    for entry_id, expected_section in ADVANCED_TECHNIQUE_DOC_SECTIONS.items():
+        assert entries[entry_id]["doc_section"] == expected_section, entry_id
+
+    for entry_id in EXTENSION_DEFERRED_IDS:
+        assert (
+            entries[entry_id]["doc_section"]
+            == "47. Advanced Technique Schemas (no concrete schema defined)"
+        )
 
 
 def test_prd_coverage_markdown_has_no_legacy_milestone_acceptance_rows() -> None:

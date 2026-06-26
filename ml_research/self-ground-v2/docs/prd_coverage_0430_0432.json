@@ -3783,7 +3783,7 @@
       "title": "Per Run Bundle"
     },
     {
-      "doc_section": "50.6",
+      "doc_section": "47.1",
       "evidence_notes": "Activation Record: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "activation_record",
       "implementation_files": [
@@ -3822,7 +3822,7 @@
       "title": "Weight Analysis Run"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "47.2",
       "evidence_notes": "Weight Analysis Record Alias: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "weight_analysis_record_alias",
       "implementation_files": [
@@ -3842,7 +3842,7 @@
       "title": "Weight Analysis Record Alias"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "47.3",
       "evidence_notes": "Circuit Graph: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "circuit_graph",
       "implementation_files": [
@@ -3862,7 +3862,7 @@
       "title": "Circuit Graph"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "47.3",
       "evidence_notes": "Circuit Graph Record Alias: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "circuit_graph_record_alias",
       "implementation_files": [
@@ -3882,7 +3882,7 @@
       "title": "Circuit Graph Record Alias"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "47.4",
       "evidence_notes": "Cross Model Comparison: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "cross_model_comparison",
       "implementation_files": [
@@ -3902,7 +3902,7 @@
       "title": "Cross Model Comparison"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "47.4",
       "evidence_notes": "Cross Model Comparison Record Alias: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "cross_model_comparison_record_alias",
       "implementation_files": [
@@ -3922,40 +3922,52 @@
       "title": "Cross Model Comparison Record Alias"
     },
     {
-      "doc_section": "47",
-      "evidence_notes": "FeatureCorrespondenceRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "doc_section": "47. Advanced Technique Schemas (no concrete schema defined)",
+      "evidence_notes": "FeatureCorrespondenceRecord: concrete schema deferred by PRD because 0430/0431/0432 do not define a concrete schema for this record type; generic extension metadata boundary is implemented/tested in src/mechledger/records.py and tests/test_records.py::test_prd_defined_advanced_technique_record_boundary_is_explicit.",
       "id": "feature_correspondence_record_extension",
-      "implementation_files": [],
-      "remaining_gap": "FeatureCorrespondenceRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "implementation_files": [
+        "src/mechledger/records.py"
+      ],
+      "remaining_gap": "FeatureCorrespondenceRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
       "status": "deferred_by_prd",
-      "test_files": [],
+      "test_files": [
+        "tests/test_records.py"
+      ],
       "title": "Feature Correspondence Record Extension"
     },
     {
-      "doc_section": "47",
-      "evidence_notes": "TrainingDynamicsRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "doc_section": "47. Advanced Technique Schemas (no concrete schema defined)",
+      "evidence_notes": "TrainingDynamicsRecord: concrete schema deferred by PRD because 0430/0431/0432 do not define a concrete schema for this record type; generic extension metadata boundary is implemented/tested in src/mechledger/records.py and tests/test_records.py::test_prd_defined_advanced_technique_record_boundary_is_explicit.",
       "id": "training_dynamics_record_extension",
-      "implementation_files": [],
-      "remaining_gap": "TrainingDynamicsRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "implementation_files": [
+        "src/mechledger/records.py"
+      ],
+      "remaining_gap": "TrainingDynamicsRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
       "status": "deferred_by_prd",
-      "test_files": [],
+      "test_files": [
+        "tests/test_records.py"
+      ],
       "title": "Training Dynamics Record Extension"
     },
     {
-      "doc_section": "47",
-      "evidence_notes": "RemoteJobMetadataRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "doc_section": "47. Advanced Technique Schemas (no concrete schema defined)",
+      "evidence_notes": "RemoteJobMetadataRecord: concrete schema deferred by PRD because 0430/0431/0432 do not define a concrete schema for this record type; generic extension metadata boundary is implemented/tested in src/mechledger/records.py and tests/test_records.py::test_prd_defined_advanced_technique_record_boundary_is_explicit.",
       "id": "remote_job_metadata_record_extension",
-      "implementation_files": [],
-      "remaining_gap": "RemoteJobMetadataRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "implementation_files": [
+        "src/mechledger/records.py"
+      ],
+      "remaining_gap": "RemoteJobMetadataRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
       "status": "deferred_by_prd",
-      "test_files": [],
+      "test_files": [
+        "tests/test_records.py"
+      ],
       "title": "Remote Job Metadata Record Extension"
     },
     {
-      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "doc_section": "50.6",
       "evidence_notes": "Schema Status: implementation is traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Exact test names live in the completion ledger, and high-risk rows are audited in the PRD evidence review.",
       "id": "schema_status",
       "implementation_files": [

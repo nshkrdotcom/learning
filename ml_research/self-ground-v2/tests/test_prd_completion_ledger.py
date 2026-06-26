@@ -18,6 +18,24 @@ NON_IMPLEMENTED_DISPOSITIONS = {
     "partially_implemented_with_remaining_gap",
 }
 VALID_DISPOSITIONS = IMPLEMENTED_DISPOSITIONS | NON_IMPLEMENTED_DISPOSITIONS
+EXTENSION_DEFERRED_IDS = {
+    "feature_correspondence_record_extension",
+    "training_dynamics_record_extension",
+    "remote_job_metadata_record_extension",
+}
+ADVANCED_TECHNIQUE_SOURCE_SECTIONS = {
+    "activation_record": {"47.1"},
+    "activation_record_prd_schema": {"47.1"},
+    "weight_analysis_run": {"47.2"},
+    "weight_analysis_record_alias": {"47.2"},
+    "weight_analysis_run_prd_schema_and_alias": {"47.2"},
+    "circuit_graph": {"47.3"},
+    "circuit_graph_record_alias": {"47.3"},
+    "circuit_graph_prd_schema_and_alias": {"47.3"},
+    "cross_model_comparison": {"47.4"},
+    "cross_model_comparison_record_alias": {"47.4"},
+    "cross_model_comparison_prd_schema_and_alias": {"47.4"},
+}
 
 REQUIRED_BEHAVIOR_IDS = [
     "completion_ledger_schema",
@@ -256,7 +274,24 @@ def test_completion_ledger_has_closed_partial_and_ambiguous_accounting() -> None
         assert "extension" in text
         assert "do not define" in text
         assert "concrete schema" in text
-        assert not row["implementation_files"]
+        assert row["implementation_files"] == ["src/mechledger/records.py"]
+        assert row["test_files"] == ["tests/test_records.py"]
+        assert row["test_names"] == [
+            "test_prd_defined_advanced_technique_record_boundary_is_explicit"
+        ]
+
+
+def test_completion_ledger_advanced_technique_sections_are_precise() -> None:
+    rows = {row["id"]: row for row in _ledger()["rows"]}
+
+    for row_id, expected_sections in ADVANCED_TECHNIQUE_SOURCE_SECTIONS.items():
+        assert set(rows[row_id]["source_sections"]) == expected_sections, row_id
+
+    for row_id in EXTENSION_DEFERRED_IDS:
+        row = rows[row_id]
+        assert row["source_sections"] == [
+            "47. Advanced Technique Schemas (no concrete schema defined)"
+        ]
 
 
 def test_completion_ledger_and_coverage_have_product_surface_parity() -> None:

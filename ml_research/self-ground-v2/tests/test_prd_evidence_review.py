@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-BASE_COMMIT = "b71ccf19e29bbb4ce58bc534b71452469a792601"
+BASE_COMMIT = "5b21000a9f5f36f36cb1043674d6844db60f8969"
 
 SOURCE_DOCS = {
     "0430_revised_v6.md",
@@ -244,6 +244,20 @@ def test_prd_evidence_review_reflects_record_identity_and_extension_closure() ->
         row = rows[row_id]
         assert row["ledger_disposition"] == "intentionally_deferred_by_prd"
         assert row["evidence_quality"] == "disposition_is_nonimplemented_and_justified"
+        assert row["implementation_files_reviewed"] == ["src/mechledger/records.py"]
+        assert row["cited_tests"] == [
+            {
+                "file": "tests/test_records.py",
+                "test_name": "test_prd_defined_advanced_technique_record_boundary_is_explicit",
+                "why_this_test_actually_covers_the_requirement": (
+                    "Confirms this record type is extension_record metadata, not one "
+                    "of the four PRD-defined typed advanced technique schemas."
+                ),
+            }
+        ]
+        assert row["source_sections"] == [
+            "47. Advanced Technique Schemas (no concrete schema defined)"
+        ]
         text = (row["remaining_gap"] + " " + row.get("nonimplemented_justification", "")).lower()
         assert "extension" in text
         assert "do not define" in text

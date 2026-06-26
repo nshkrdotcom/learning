@@ -4,7 +4,7 @@
     "0431_selfground_refactor.md",
     "0432_selfground_refactor.md"
   ],
-  "reviewed_commit_base": "b71ccf19e29bbb4ce58bc534b71452469a792601",
+  "reviewed_commit_base": "5b21000a9f5f36f36cb1043674d6844db60f8969",
   "review_scope": {
     "method": "risk_weighted_spot_check_plus_required_high_risk_rows",
     "minimum_rows_reviewed": 40,
@@ -373,7 +373,7 @@
         "0430_revised_v6.md"
       ],
       "source_sections": [
-        "47.1, 47.2, 47.3, 47.4, 50.6"
+        "47.1"
       ],
       "changes_made": [],
       "remaining_gap": "none",
@@ -402,7 +402,7 @@
         "0430_revised_v6.md"
       ],
       "source_sections": [
-        "47.1, 47.2, 47.3, 47.4, 50.6"
+        "47.2"
       ],
       "changes_made": [],
       "remaining_gap": "none",
@@ -1369,7 +1369,7 @@
         "0430_revised_v6.md"
       ],
       "source_sections": [
-        "47.1, 47.2, 47.3, 47.4, 50.6"
+        "47.3"
       ],
       "changes_made": [],
       "remaining_gap": "none",
@@ -1398,7 +1398,7 @@
         "0430_revised_v6.md"
       ],
       "source_sections": [
-        "47.1, 47.2, 47.3, 47.4, 50.6"
+        "47.4"
       ],
       "changes_made": [],
       "remaining_gap": "none",
@@ -1768,66 +1768,90 @@
       "category": "typed_records",
       "ledger_disposition": "intentionally_deferred_by_prd",
       "evidence_quality": "disposition_is_nonimplemented_and_justified",
-      "cited_tests": [],
-      "implementation_files_reviewed": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_prd_defined_advanced_technique_record_boundary_is_explicit",
+          "why_this_test_actually_covers_the_requirement": "Confirms this record type is extension_record metadata, not one of the four PRD-defined typed advanced technique schemas."
+        }
+      ],
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py"
+      ],
       "source_documents": [
         "0430_revised_v6.md",
         "0431_selfground_refactor.md",
         "0432_selfground_refactor.md"
       ],
       "source_sections": [
-        "47. Advanced Technique Schemas"
+        "47. Advanced Technique Schemas (no concrete schema defined)"
       ],
       "review_result": "corrected",
       "changes_made": [
-        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+        "Added boundary implementation/test evidence while preserving deferred concrete-schema disposition."
       ],
-      "remaining_gap": "FeatureCorrespondenceRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
-      "nonimplemented_justification": "FeatureCorrespondenceRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
+      "remaining_gap": "FeatureCorrespondenceRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
+      "nonimplemented_justification": "FeatureCorrespondenceRecord is not called a completed concrete PRD schema because 0430/0431/0432 do not define one; the generic extension_record metadata boundary is implemented and tested separately."
     },
     {
       "id": "training_dynamics_record_extension",
       "category": "typed_records",
       "ledger_disposition": "intentionally_deferred_by_prd",
       "evidence_quality": "disposition_is_nonimplemented_and_justified",
-      "cited_tests": [],
-      "implementation_files_reviewed": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_prd_defined_advanced_technique_record_boundary_is_explicit",
+          "why_this_test_actually_covers_the_requirement": "Confirms this record type is extension_record metadata, not one of the four PRD-defined typed advanced technique schemas."
+        }
+      ],
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py"
+      ],
       "source_documents": [
         "0430_revised_v6.md",
         "0431_selfground_refactor.md",
         "0432_selfground_refactor.md"
       ],
       "source_sections": [
-        "47. Advanced Technique Schemas"
+        "47. Advanced Technique Schemas (no concrete schema defined)"
       ],
       "review_result": "corrected",
       "changes_made": [
-        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+        "Added boundary implementation/test evidence while preserving deferred concrete-schema disposition."
       ],
-      "remaining_gap": "TrainingDynamicsRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
-      "nonimplemented_justification": "TrainingDynamicsRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
+      "remaining_gap": "TrainingDynamicsRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
+      "nonimplemented_justification": "TrainingDynamicsRecord is not called a completed concrete PRD schema because 0430/0431/0432 do not define one; the generic extension_record metadata boundary is implemented and tested separately."
     },
     {
       "id": "remote_job_metadata_record_extension",
       "category": "typed_records",
       "ledger_disposition": "intentionally_deferred_by_prd",
       "evidence_quality": "disposition_is_nonimplemented_and_justified",
-      "cited_tests": [],
-      "implementation_files_reviewed": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_prd_defined_advanced_technique_record_boundary_is_explicit",
+          "why_this_test_actually_covers_the_requirement": "Confirms this record type is extension_record metadata, not one of the four PRD-defined typed advanced technique schemas."
+        }
+      ],
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py"
+      ],
       "source_documents": [
         "0430_revised_v6.md",
         "0431_selfground_refactor.md",
         "0432_selfground_refactor.md"
       ],
       "source_sections": [
-        "47. Advanced Technique Schemas"
+        "47. Advanced Technique Schemas (no concrete schema defined)"
       ],
       "review_result": "corrected",
       "changes_made": [
-        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+        "Added boundary implementation/test evidence while preserving deferred concrete-schema disposition."
       ],
-      "remaining_gap": "RemoteJobMetadataRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
-      "nonimplemented_justification": "RemoteJobMetadataRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
+      "remaining_gap": "RemoteJobMetadataRecord: concrete schema deferred by PRD; 0430/0431/0432 do not define a concrete schema. Generic extension_record metadata remains implemented and tested separately from PRD-defined typed schemas.",
+      "nonimplemented_justification": "RemoteJobMetadataRecord is not called a completed concrete PRD schema because 0430/0431/0432 do not define one; the generic extension_record metadata boundary is implemented and tested separately."
     }
   ],
   "summary": {
