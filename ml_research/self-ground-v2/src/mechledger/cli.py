@@ -16,6 +16,14 @@ from mechledger.draftguard import check_draft_files
 from mechledger.formatter import format_project
 from mechledger.hooks import install_direct_hook, install_precommit_config
 from mechledger.indexer import rebuild_index, validate_project
+from mechledger.prediction import (
+    PredictionInputError,
+    PredictionStateError,
+    find_prediction_by_id,
+    load_prediction,
+    lock_prediction,
+    score_prediction_file,
+)
 from mechledger.prerequisites import (
     evaluate_experiment_prerequisites,
     load_prerequisite_context,
@@ -63,6 +71,7 @@ calibration_app = typer.Typer(help="Check calibration and positive-control evide
 telemetry_app = typer.Typer(help="Check intervention telemetry metrics.")
 null_app = typer.Typer(help="Plan or register empirical-null evidence.")
 stats_app = typer.Typer(help="Register lightweight statistical evidence.")
+prediction_app = typer.Typer(help="Lock and score explainer predictions.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -77,6 +86,7 @@ app.add_typer(calibration_app, name="calibration")
 app.add_typer(telemetry_app, name="telemetry")
 app.add_typer(null_app, name="null")
 app.add_typer(stats_app, name="stats")
+app.add_typer(prediction_app, name="prediction")
 
 
 @app.command()
@@ -731,6 +741,69 @@ def stats_paired_test(
         _fail(str(exc), code=2)
 
 
+@prediction_app.command("lock")
+def prediction_lock(
+    prediction_path: Path,
+    force: Annotated[
+        bool, typer.Option("--force", help="Human-visible relock after semantic edits.")
+    ] = False,
+) -> None:
+    try:
+        project = find_project()
+        resolved_path = resolve_artifact_path(project, prediction_path)
+        before = load_prediction(resolved_path)
+        prediction = lock_prediction(resolved_path, force=force)
+        if before.locked_content_hash:
+            action = "force_relocked" if force else "already_locked"
+        else:
+            action = "newly_locked"
+        typer.echo(f"prediction_id: {prediction.prediction_id}")
+        typer.echo(f"prediction_path: {resolved_path}")
+        typer.echo(f"tamper_status: {prediction.tamper_status.value}")
+        typer.echo(f"lock_hash: {prediction.locked_content_hash}")
+        typer.echo(f"action: {action}")
+    except PredictionStateError as exc:
+        _fail(str(exc), code=1)
+    except (PredictionInputError, ValueError) as exc:
+        _fail(str(exc), code=2)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@prediction_app.command("score")
+def prediction_score(
+    prediction_id: str,
+    against_run: Annotated[str, typer.Option("--against-run")],
+    prediction_dir: Annotated[
+        list[Path] | None,
+        typer.Option("--prediction-dir", help="Additional prediction directory to search."),
+    ] = None,
+) -> None:
+    try:
+        project = find_project()
+        path = find_prediction_by_id(project.root, prediction_id, prediction_dir or [])
+        prediction = score_prediction_file(project, path, against_run)
+        typer.echo(f"prediction_id: {prediction.prediction_id}")
+        typer.echo(f"prediction_path: {path}")
+        typer.echo(f"resolved_run_id: {prediction.scored_against_run_id}")
+        typer.echo(f"sign_match: {_json_scalar(prediction.sign_match)}")
+        typer.echo(
+            f"relative_magnitude_match: "
+            f"{_json_scalar(prediction.relative_magnitude_match)}"
+        )
+        typer.echo(f"tamper_status: {prediction.tamper_status.value}")
+    except PredictionStateError as exc:
+        _fail(str(exc), code=1)
+    except (PredictionInputError, ValueError) as exc:
+        _fail(str(exc), code=2)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @app.command()
 def status() -> None:
     try:
@@ -887,6 +960,10 @@ def _echo_tier2_summary(name: str, report, project, run_dir: Path) -> None:
     md_path = (run_dir / f"{name}.md").relative_to(project.root)
     typer.echo(f"{name}: {json_path}")
     typer.echo(f"{name}_markdown: {md_path}")
+
+
+def _json_scalar(value: object) -> str:
+    return json.dumps(value)
 
 
 def _default_drafts(project) -> list[Path]:

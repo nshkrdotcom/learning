@@ -31,6 +31,7 @@ Implemented here:
   telemetry, compatibility, clean-candidate support, and scientific-debt reports
 - Tier 2 convenience/register commands for calibration, telemetry, empirical-null
   plans/distributions, and paired-test results
+- Explainer prediction locking/scoring for pre-intervention prediction records
 - Minimal dependency-light SDK helpers, including a pure-Python sign-test helper
 - Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
@@ -39,7 +40,7 @@ Intentionally not implemented here:
 
 - Heavy model execution or intervention abstractions
 - Hosted dashboard, copilot review queues, RO-Crate export, sync merge, garbage
-  collection, redaction, prediction locking, or Tier 3+ platform surfaces
+  collection, redaction, or Tier 3+ platform surfaces
 - Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
   `numpy`, or `scipy`
 
@@ -54,6 +55,8 @@ uv run mechledger run -- python scripts/your_experiment.py
 uv run mechledger gate check latest
 uv run mechledger calibration check latest
 uv run mechledger telemetry check latest
+uv run mechledger prediction lock research/predictions/sae_12300.json
+uv run mechledger prediction score PRED001 --against-run latest
 uv run mechledger experiment validate research/experiments/*.md
 uv run mechledger next
 uv run mechledger status

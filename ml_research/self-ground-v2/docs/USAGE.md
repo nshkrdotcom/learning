@@ -232,6 +232,82 @@ registers the JSON as required evidence, and regenerates the scientific debt
 report. Existing paired-test registration is refused unless `--force` is
 supplied.
 
+## Explainer Prediction Locking
+
+Explainer predictions are pre-intervention JSON records. Lock them before an
+intervention run, then score them against registered run outputs:
+
+```bash
+uv run mechledger prediction lock research/predictions/sae_12300.json
+uv run mechledger prediction score PRED001 --against-run latest
+```
+
+Prediction records are JSON objects with these fields:
+
+```json
+{
+  "prediction_id": "PRED001",
+  "feature_id": "sae_12300",
+  "source_examples_path": "research/examples/sae_12300.jsonl",
+  "prediction_artifact_path": "research/predictions/sae_12300.json",
+  "label_source_model": "gpt-4.1",
+  "label_prompt_path": "prompts/explainer_label.md",
+  "label_generated_at": "2026-06-25T00:00:00Z",
+  "short_label": "negation-sensitive direction feature",
+  "predicted_target_direction": "increase",
+  "predicted_control_direction": "decrease",
+  "predicted_relative_magnitude": "target_gt_control",
+  "locked_at": null,
+  "locked_content_hash": null,
+  "scored_against_run_id": null,
+  "sign_match": null,
+  "relative_magnitude_match": null,
+  "tamper_status": "not_locked"
+}
+```
+
+Supported direction values are `increase`, `decrease`, `no_change`, and
+`unknown`. Supported relative-magnitude values are `target_gt_control`,
+`target_lte_control`, and `unknown`.
+
+`prediction lock` writes `locked_at`, `locked_content_hash`, and
+`tamper_status: locked_valid`. The hash is SHA-256 over canonical semantic
+prediction content: JSON key order and formatting do not matter, and mutable
+lock/score fields are excluded. Re-locking an unchanged record is idempotent.
+If a locked prediction is edited, locking or scoring reports
+`modified_after_lock` and exits 1 unless `prediction lock --force` is used as a
+visible relock.
+
+`prediction score` discovers prediction files under
+`research/predictions/**/*.json` and `predictions/**/*.json`; add
+`--prediction-dir PATH` for another directory. Duplicate prediction IDs are
+input errors. The run ID is resolved with the normal run alias cache.
+
+Scoring reads only registered run files:
+
+```text
+.mechledger/runs/RUN_ID/run.json
+.mechledger/runs/RUN_ID/metrics.jsonl
+.mechledger/runs/RUN_ID/events.jsonl
+```
+
+Required scoring metrics are `target_delta` and `matched_control_delta`.
+Accepted variants are `top_target_delta`, `top_matched_control_delta`, and
+`top_control_delta`. If `specificity_gap` or `specificity_gap_mean` is present,
+it must agree with `target_delta - matched_control_delta`.
+
+Feature matching must come from run evidence, not filenames. The prediction
+`feature_id` must appear in `run.json` `feature_id`, metrics row metadata
+`feature_id`, events metadata `feature_id`, or events metadata
+`features_modified`.
+
+Scoring writes `scored_against_run_id`, `sign_match`,
+`relative_magnitude_match`, and keeps `tamper_status: locked_valid` on success.
+If a prediction uses `unknown` for a direction or relative magnitude, the
+corresponding match field is `null`. MechLedger does not generate labels,
+compute model outputs, or execute interventions; it scores registered run
+outputs only.
+
 ## Short Run Aliases
 
 Commands that take a run ID also accept:
