@@ -11,11 +11,39 @@ from ruamel.yaml import YAML
 from mechledger.alias import resolve_run_id
 from mechledger.artifacts import annotate_artifact, register_artifact, resolve_artifact_path
 from mechledger.core.experiment_spec import parse_experiment_spec
+from mechledger.dashboard_data import (
+    filter_rows,
+    query_rows,
+    rows_json,
+    rows_text,
+    write_dashboard_data,
+)
 from mechledger.debt_report import generate_scientific_debt_report
 from mechledger.draftguard import check_draft_files
+from mechledger.export import write_appendix, write_bundle, write_ro_crate
+from mechledger.external_labels import (
+    import_labels,
+    link_label_to_claim,
+    read_labels,
+    show_label,
+)
+from mechledger.external_labels import (
+    validate_file as validate_labels_file,
+)
 from mechledger.formatter import format_project
 from mechledger.hooks import install_direct_hook, install_precommit_config
 from mechledger.indexer import rebuild_index, validate_project
+from mechledger.language_report import (
+    claim_language_report,
+    write_claim_language_report,
+    write_draft_suggestions,
+)
+from mechledger.open_questions import (
+    add_question,
+    list_questions,
+    resolve_question,
+    show_question,
+)
 from mechledger.prediction import (
     PredictionInputError,
     PredictionStateError,
@@ -29,7 +57,18 @@ from mechledger.prerequisites import (
     load_prerequisite_context,
 )
 from mechledger.project import command_cwd, find_project, init_project
+from mechledger.records import list_records, show_record, validate_record
 from mechledger.run_auditor import capture_run
+from mechledger.sessions import (
+    add_session_note,
+    attach_session_path,
+    close_session_record,
+    list_sessions,
+    load_session,
+    review_session,
+    session_path,
+    start_session,
+)
 from mechledger.tier2 import (
     append_metric,
     evaluate_filtered_report,
@@ -59,7 +98,7 @@ RUN_EXTRA_ARGS = {
 
 app = typer.Typer(no_args_is_help=True, help="MechLedger research-integrity CLI.")
 draft_app = typer.Typer(help="Check tagged draft claims.")
-session_app = typer.Typer(help="Close and summarize research sessions.")
+session_app = typer.Typer(help="Record, close, and review research sessions.")
 artifact_app = typer.Typer(help="Annotate registered artifacts.")
 run_ledger_app = typer.Typer(help="Review and append run ledger proposals.")
 experiment_app = typer.Typer(help="Validate and crystallize ExperimentSpecs.")
@@ -72,6 +111,12 @@ telemetry_app = typer.Typer(help="Check intervention telemetry metrics.")
 null_app = typer.Typer(help="Plan or register empirical-null evidence.")
 stats_app = typer.Typer(help="Register lightweight statistical evidence.")
 prediction_app = typer.Typer(help="Lock and score explainer predictions.")
+export_app = typer.Typer(help="Export archival metadata, bundles, and appendices.")
+questions_app = typer.Typer(help="Track open research questions.")
+labels_app = typer.Typer(help="Import and inspect external label metadata.")
+dashboard_app = typer.Typer(help="Write local dashboard data.")
+query_app = typer.Typer(help="Inspect canonical MechLedger records locally.")
+records_app = typer.Typer(help="Validate optional platform metadata records.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -87,6 +132,12 @@ app.add_typer(telemetry_app, name="telemetry")
 app.add_typer(null_app, name="null")
 app.add_typer(stats_app, name="stats")
 app.add_typer(prediction_app, name="prediction")
+app.add_typer(export_app, name="export")
+app.add_typer(questions_app, name="questions")
+app.add_typer(labels_app, name="labels")
+app.add_typer(dashboard_app, name="dashboard")
+app.add_typer(query_app, name="query")
+app.add_typer(records_app, name="records")
 
 
 @app.command()
@@ -171,6 +222,19 @@ def draft_check(
         _fail(str(exc), code=2)
 
 
+@draft_app.command("suggest")
+def draft_suggest(
+    files: Annotated[list[Path], typer.Argument(help="Draft files to inspect.")],
+    out: Annotated[Path, typer.Option("--out", help="Markdown report path.")],
+) -> None:
+    try:
+        project = find_project()
+        path = write_draft_suggestions(project, files, out)
+        typer.echo(f"draft_suggestions: {path.relative_to(project.root)}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @app.command()
 def index(
     check: Annotated[
@@ -249,8 +313,58 @@ def install_hooks(
         _fail(str(exc), code=2)
 
 
+@session_app.command("start")
+def session_start_command(
+    title: Annotated[str, typer.Option("--title", help="Human-readable session title.")],
+) -> None:
+    try:
+        project = find_project()
+        record = start_session(project, title)
+        typer.echo(f"session_id: {record['session_id']}")
+        typer.echo(
+            f"session_path: {session_path(project, record['session_id']).relative_to(project.root)}"
+        )
+        typer.echo(f"status: {record['status']}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@session_app.command("note")
+def session_note_command(
+    session: Annotated[str, typer.Option("--session")],
+    text: Annotated[str, typer.Option("--text")],
+) -> None:
+    try:
+        project = find_project()
+        record = add_session_note(project, session, text)
+        typer.echo(f"session_id: {record['session_id']}")
+        typer.echo(f"notes: {len(record['notes'])}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@session_app.command("attach")
+def session_attach_command(
+    path: Path,
+    session: Annotated[str, typer.Option("--session")],
+) -> None:
+    try:
+        project = find_project()
+        record = attach_session_path(project, session, path)
+        attachment = record["attached_paths"][-1]
+        typer.echo(f"session_id: {record['session_id']}")
+        typer.echo(f"attached_path: {attachment['path']}")
+        typer.echo(f"sha256: {attachment.get('sha256') or 'missing'}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @session_app.command("close")
 def session_close_command(
+    session: Annotated[
+        str | None,
+        typer.Option("--session", help="Close a local auditable session record."),
+    ] = None,
     accept: Annotated[
         bool, typer.Option("--accept", help="Append the draft to research_log.md.")
     ] = False,
@@ -258,11 +372,60 @@ def session_close_command(
 ) -> None:
     try:
         project = find_project()
+        if session:
+            record = close_session_record(project, session)
+            typer.echo(f"session_id: {record['session_id']}")
+            typer.echo(f"status: {record['status']}")
+            summary_path = session_path(project, session).parent / "summary.md"
+            typer.echo(f"summary: {summary_path.relative_to(project.root)}")
+            return
         path = session_close(project, accept=accept, since=since)
         if accept:
             typer.echo("Accepted session close and updated research log.")
         else:
             typer.echo(f"Wrote session draft: {path.relative_to(project.root)}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@session_app.command("review")
+def session_review_command(
+    session: Annotated[str, typer.Option("--session")],
+    accept: Annotated[bool, typer.Option("--accept")] = False,
+    reject: Annotated[bool, typer.Option("--reject")] = False,
+    decision: Annotated[str | None, typer.Option("--decision")] = None,
+) -> None:
+    try:
+        project = find_project()
+        record = review_session(
+            project,
+            session,
+            accept=accept,
+            reject=reject,
+            decision_id=decision,
+        )
+        typer.echo(f"session_id: {record['session_id']}")
+        typer.echo(f"status: {record['status']}")
+        typer.echo(f"review_decision_id: {record.get('review_decision_id') or 'none'}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@session_app.command("list")
+def session_list_command() -> None:
+    try:
+        project = find_project()
+        for record in list_sessions(project):
+            typer.echo(f"{record['session_id']}\t{record['status']}\t{record['title']}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@session_app.command("show")
+def session_show_command(session_id: str) -> None:
+    try:
+        project = find_project()
+        typer.echo(json.dumps(load_session(project, session_id), indent=2, sort_keys=True))
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -273,6 +436,80 @@ def session_cleanup() -> None:
         project = find_project()
         drafts = sorted((project.mechledger_dir / "session_drafts").glob("*.md"))
         typer.echo(f"Retained {len(drafts)} abandoned session drafts.")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@export_app.command("ro-crate")
+def export_ro_crate(
+    out: Annotated[Path, typer.Option("--out", help="Output RO-Crate directory.")],
+) -> None:
+    try:
+        project = find_project()
+        path, warnings = write_ro_crate(project, out)
+        typer.echo(f"ro_crate_metadata: {path.relative_to(project.root)}")
+        for warning in warnings:
+            typer.echo(f"warning: {warning}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@export_app.command("bundle")
+def export_bundle(
+    out: Annotated[Path, typer.Option("--out", help="Output .tar.gz/.tar.zst or manifest.")],
+    run: Annotated[list[str] | None, typer.Option("--run")] = None,
+    include_local_runs: Annotated[
+        bool, typer.Option("--include-local-runs/--no-include-local-runs")
+    ] = False,
+    include_artifacts: Annotated[
+        bool, typer.Option("--include-artifacts/--no-include-artifacts")
+    ] = False,
+    redact_env: Annotated[bool, typer.Option("--redact-env/--no-redact-env")] = True,
+    manifest_only: Annotated[bool, typer.Option("--manifest-only")] = False,
+) -> None:
+    try:
+        project = find_project()
+        path, manifest = write_bundle(
+            project,
+            out,
+            run_aliases=run or [],
+            include_local_runs=include_local_runs,
+            include_artifacts=include_artifacts,
+            redact_env=redact_env,
+            manifest_only=manifest_only,
+        )
+        typer.echo(f"bundle: {path.relative_to(project.root)}")
+        typer.echo(f"included_run_ids: {', '.join(manifest['included_run_ids']) or 'none'}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@export_app.command("appendix")
+def export_appendix(
+    out: Annotated[Path, typer.Option("--out", help="Output Markdown appendix.")],
+    claim: Annotated[list[str] | None, typer.Option("--claim")] = None,
+    run: Annotated[list[str] | None, typer.Option("--run")] = None,
+    include_debt: Annotated[bool, typer.Option("--include-debt")] = False,
+    include_decisions: Annotated[bool, typer.Option("--include-decisions")] = False,
+    include_artifacts: Annotated[bool, typer.Option("--include-artifacts")] = False,
+    output_format: Annotated[str, typer.Option("--format")] = "markdown",
+) -> None:
+    try:
+        if output_format != "markdown":
+            _fail("Only --format markdown is supported.", code=2)
+        project = find_project()
+        path = write_appendix(
+            project,
+            out,
+            claims=claim or [],
+            runs=run or [],
+            include_debt=include_debt,
+            include_decisions=include_decisions,
+            include_artifacts=include_artifacts,
+        )
+        typer.echo(f"appendix: {path.relative_to(project.root)}")
+    except typer.Exit:
+        raise
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -484,6 +721,35 @@ def claim_review(
         project = find_project()
         state = review_claim(project, run_id, apply=apply, yes=yes, force_stale=force_stale)
         typer.echo(f"Claim proposal state: {state}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@claim_app.command("language-report")
+def claim_language_report_command(
+    claim: Annotated[list[str] | None, typer.Option("--claim")] = None,
+    all_claims: Annotated[bool, typer.Option("--all")] = False,
+    out: Annotated[Path | None, typer.Option("--out")] = None,
+) -> None:
+    try:
+        project = find_project()
+        if out:
+            path = write_claim_language_report(
+                project,
+                out,
+                claim_ids=claim or [],
+                all_claims=all_claims,
+            )
+            typer.echo(f"claim_language_report: {path.relative_to(project.root)}")
+            return
+        typer.echo(
+            claim_language_report(
+                project,
+                claim_ids=claim or [],
+                all_claims=all_claims,
+            ),
+            nl=False,
+        )
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -804,6 +1070,294 @@ def prediction_score(
         _fail(str(exc), code=2)
 
 
+@questions_app.command("list")
+def questions_list_command() -> None:
+    try:
+        project = find_project()
+        for question in list_questions(project):
+            typer.echo(
+                f"{question['question_id']}\t{question['status']}\t"
+                f"{question['priority']}\t{question['text']}"
+            )
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@questions_app.command("add")
+def questions_add_command(
+    text: Annotated[str, typer.Option("--text")],
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    priority: Annotated[str, typer.Option("--priority")] = "normal",
+) -> None:
+    try:
+        project = find_project()
+        record = add_question(
+            project,
+            text=text,
+            claim=claim,
+            experiment=experiment,
+            run=run,
+            priority=priority,
+        )
+        typer.echo(f"question_id: {record['question_id']}")
+        typer.echo(f"status: {record['status']}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@questions_app.command("resolve")
+def questions_resolve_command(
+    question_id: str,
+    decision: Annotated[str, typer.Option("--decision")],
+    resolution: Annotated[str, typer.Option("--resolution")],
+) -> None:
+    try:
+        project = find_project()
+        record = resolve_question(
+            project,
+            question_id,
+            decision=decision,
+            resolution=resolution,
+        )
+        typer.echo(f"question_id: {record['question_id']}")
+        typer.echo(f"status: {record['status']}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@questions_app.command("show")
+def questions_show_command(question_id: str) -> None:
+    try:
+        project = find_project()
+        typer.echo(json.dumps(show_question(project, question_id), indent=2, sort_keys=True))
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@labels_app.command("import")
+def labels_import_command(path: Path) -> None:
+    try:
+        project = find_project()
+        labels = import_labels(project, path)
+        typer.echo(f"imported_labels: {len(labels)}")
+        for label in labels:
+            typer.echo(f"label_id: {label.label_id}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@labels_app.command("validate")
+def labels_validate_command(path: Path) -> None:
+    try:
+        labels = validate_labels_file(path)
+        typer.echo(f"valid_labels: {len(labels)}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@labels_app.command("list")
+def labels_list_command() -> None:
+    try:
+        project = find_project()
+        for label in read_labels(project):
+            typer.echo(f"{label.label_id}\t{label.source}\t{label.label_text}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@labels_app.command("show")
+def labels_show_command(label_id: str) -> None:
+    try:
+        project = find_project()
+        typer.echo(show_label(project, label_id).model_dump_json(indent=2))
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@labels_app.command("link")
+def labels_link_command(
+    label_id: str,
+    claim: Annotated[str, typer.Option("--claim")],
+) -> None:
+    try:
+        project = find_project()
+        label = link_label_to_claim(project, label_id, claim)
+        typer.echo(f"label_id: {label.label_id}")
+        typer.echo(f"linked_claims: {', '.join(label.linked_claims)}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@dashboard_app.command("data")
+def dashboard_data_command(
+    out: Annotated[Path, typer.Option("--out")],
+) -> None:
+    try:
+        project = find_project()
+        write_dashboard_data(project, out)
+        typer.echo(f"dashboard_data: {out.relative_to(project.root)}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+def _query_command(
+    kind: str,
+    *,
+    as_json: bool,
+    status_filter: str | None,
+    claim: str | None,
+    experiment: str | None,
+    run: str | None,
+    severity: str | None,
+    limit: int | None,
+) -> None:
+    project = find_project()
+    rows = filter_rows(
+        query_rows(project, kind),
+        status=status_filter,
+        claim=claim,
+        experiment=experiment,
+        run=run,
+        severity=severity,
+        limit=limit,
+    )
+    typer.echo(rows_json(rows) if as_json else rows_text(rows), nl=False)
+
+
+def _query_options(
+    kind: str,
+    as_json: bool,
+    status_filter: str | None,
+    claim: str | None,
+    experiment: str | None,
+    run: str | None,
+    severity: str | None,
+    limit: int | None,
+) -> None:
+    try:
+        _query_command(
+            kind,
+            as_json=as_json,
+            status_filter=status_filter,
+            claim=claim,
+            experiment=experiment,
+            run=run,
+            severity=severity,
+            limit=limit,
+        )
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@query_app.command("claims")
+def query_claims_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("claims", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("runs")
+def query_runs_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("runs", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("debt")
+def query_debt_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("debt", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("artifacts")
+def query_artifacts_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("artifacts", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("decisions")
+def query_decisions_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("decisions", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("experiments")
+def query_experiments_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("experiments", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@records_app.command("validate")
+def records_validate_command(path: Path) -> None:
+    try:
+        record = validate_record(path)
+        typer.echo(f"record_id: {record.record_id}")
+        typer.echo(f"record_type: {record.record_type}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@records_app.command("list")
+def records_list_command() -> None:
+    try:
+        project = find_project()
+        for record in list_records(project):
+            typer.echo(f"{record['record_id']}\t{record['record_type']}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@records_app.command("show")
+def records_show_command(record_id: str) -> None:
+    try:
+        project = find_project()
+        typer.echo(json.dumps(show_record(project, record_id), indent=2, sort_keys=True))
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @app.command()
 def status() -> None:
     try:
@@ -874,6 +1428,21 @@ def next_command() -> None:
             typer.echo("DEBT/WARNING GATED")
             for item in gated:
                 typer.echo(f"  {item}")
+        open_questions = [
+            question for question in list_questions(project) if question.get("status") == "open"
+        ]
+        if open_questions:
+            typer.echo("OPEN QUESTIONS")
+            for question in open_questions:
+                links = []
+                if question.get("linked_claims"):
+                    links.append("claims=" + ",".join(question["linked_claims"]))
+                if question.get("linked_experiments"):
+                    links.append("experiments=" + ",".join(question["linked_experiments"]))
+                typer.echo(
+                    f"  {question['question_id']} - {question['text']}"
+                    + (f" ({'; '.join(links)})" if links else "")
+                )
         raise typer.Exit(0 if ready or not blocked else 1)
     except typer.Exit:
         raise

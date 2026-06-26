@@ -6,8 +6,9 @@ ledger entries, decisions, run records, artifacts, and visible scientific debt.
 
 This `self-ground-v2/` repo now contains the Milestone 0 product surface, a
 Milestone 1 run-auditor foundation, the Milestone 2 experiment/claim workflow
-surface, and Milestone 3 deterministic evidence assessment workflows built on
-the Milestone -1 SELF-GROUND extraction kernel.
+surface, Milestone 3 deterministic evidence assessment workflows, and the next
+flat-file product surfaces for archival export, local audit records, question
+tracking, external label metadata, local inspection, and paper-safe reports.
 
 ## Scope
 
@@ -32,6 +33,16 @@ Implemented here:
 - Tier 2 convenience/register commands for calibration, telemetry, empirical-null
   plans/distributions, and paired-test results
 - Explainer prediction locking/scoring for pre-intervention prediction records
+- Deterministic RO-Crate metadata, reproducibility bundle, and paper appendix
+  exports over canonical flat files and registered run/artifact metadata
+- Local session/copilot audit records with accepted-decision review metadata
+- Open-question tracking surfaced by `next`
+- External label registry import/link commands; labels remain metadata, not
+  evidence by default
+- Local dashboard JSON and query commands over canonical flat files
+- Deterministic Draft Guard suggestion and claim-language reports
+- Optional platform record schemas/validators for future activation, circuit,
+  weight, comparison, correspondence, training-dynamics, and remote-job metadata
 - Minimal dependency-light SDK helpers, including a pure-Python sign-test helper
 - Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
@@ -39,8 +50,9 @@ Implemented here:
 Intentionally not implemented here:
 
 - Heavy model execution or intervention abstractions
-- Hosted dashboard, copilot review queues, RO-Crate export, sync merge, garbage
-  collection, redaction, or Tier 3+ platform surfaces
+- Hosted dashboard/server, LLM copilot review queues, sync merge, garbage
+  collection, broad redaction, RDF/JSON-LD as canonical storage, or Tier 3+
+  platform surfaces
 - Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
   `numpy`, or `scipy`
 
@@ -57,14 +69,19 @@ uv run mechledger calibration check latest
 uv run mechledger telemetry check latest
 uv run mechledger prediction lock research/predictions/sae_12300.json
 uv run mechledger prediction score PRED001 --against-run latest
+uv run mechledger export appendix --out research/paper/mechledger_appendix.md
+uv run mechledger dashboard data --out .mechledger/dashboard/data.json
+uv run mechledger questions list
 uv run mechledger experiment validate research/experiments/*.md
 uv run mechledger next
 uv run mechledger status
 ```
 
 See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
-usage, artifacts, aliases, Tier 2 evidence registration, crystallization, claim
-review, decisions, debt waivers, and assessment examples.
+usage, artifacts, aliases, Tier 2 evidence registration, prediction locking,
+exports, sessions, questions, labels, query commands, language reports,
+optional records, crystallization, claim review, decisions, debt waivers, and
+assessment examples.
 
 ## Layout
 
@@ -95,6 +112,9 @@ MechLedger does not execute interventions, discover artifacts outside registered
 paths or run-local artifact directories, merge SQLite, enforce untagged paper
 claims, detect constants hidden in Python source, make scientific truth
 decisions, import heavy ML libraries in core, compute p-values/null statistics,
-or verify citations/recompute reported statistics. Users register metrics and
-artifacts from their own research environment. MechLedger may allow work to
-continue with unresolved scientific debt, but it surfaces that debt.
+verify citations/recompute reported statistics, or use RO-Crate/RDF/SQLite as
+canonical storage. Users register metrics and artifacts from their own research
+environment. MechLedger may allow work to continue with unresolved scientific
+debt, but it surfaces that debt. External labels are metadata by default, and
+session/copilot records require human review before becoming canonical
+interpretation.

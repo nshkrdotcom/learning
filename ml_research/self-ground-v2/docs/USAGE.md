@@ -18,11 +18,17 @@ Run:
 
 ```bash
 uv run mechledger draft check research/paper/draft.md
+uv run mechledger draft suggest research/paper/draft.md --out research/paper/draft_suggestions.md
 ```
 
 Draft Guard supports `[CLAIM:C003]`, `\claim{C003}`, and
 `<!-- CLAIM:C003 -->`. It enforces forbidden phrases, required caveats,
 unresolved debt flags, and visible same-paragraph overrides.
+
+`draft suggest` is deterministic reviewer support. It reports Draft Guard
+diagnostics, allowed phrases, forbidden phrases, required caveats, and
+unresolved debt. It does not rewrite prose with AI and does not suppress hard
+Draft Guard violations.
 
 ## Wrapping An Existing Script
 
@@ -308,6 +314,153 @@ corresponding match field is `null`. MechLedger does not generate labels,
 compute model outputs, or execute interventions; it scores registered run
 outputs only.
 
+## Export, Bundles, And Appendices
+
+Export deterministic RO-Crate-compatible metadata:
+
+```bash
+uv run mechledger export ro-crate --out bundles/ro-crate/
+```
+
+This writes `bundles/ro-crate/ro-crate-metadata.json` from canonical flat files,
+local run directories, artifact manifests, debt reports, external labels, and
+optional platform records. The JSON is deterministic and uses simple
+JSON-LD-compatible fields without importing RDF tooling. Missing optional files
+are warnings; malformed canonical ledgers fail.
+
+Create a reproducibility bundle:
+
+```bash
+uv run mechledger export bundle --out bundles/mechledger_bundle.tar.gz --run latest
+uv run mechledger export bundle --out bundles/manifest.json --manifest-only
+```
+
+Bundles include canonical files and selected run metadata. Artifact metadata is
+always recorded in `manifest.json`; artifact bytes are included only with
+`--include-artifacts` and only for registered local paths inside the project.
+Environment redaction is recorded and enabled by default. `.mechledger` caches,
+SQLite indexes, tmp files, session/copilot scratch records, and unregistered
+large files are not swept into bundles. `.tar.zst` requires the local `zstd`
+tool; MechLedger does not silently write a different archive format.
+
+Generate a paper-safe appendix:
+
+```bash
+uv run mechledger export appendix --out research/paper/mechledger_appendix.md \
+  --include-debt --include-decisions --include-artifacts
+```
+
+The appendix includes project ID, claim status/scope, linked runs and decisions,
+unresolved scientific debt, artifact summaries, and claim language policy. It
+does not generate new claims, promote claims, phrase negative evidence as
+support, verify citations, or prove scientific truth.
+
+## Session Audit Records
+
+Local session records are opt-in audit trails for human or assistant outputs:
+
+```bash
+uv run mechledger session start --title "Review feature label evidence"
+uv run mechledger session note --session SESSION_ID --text "Checked C001 wording."
+uv run mechledger session attach --session SESSION_ID research/paper/draft.md
+uv run mechledger session close --session SESSION_ID
+uv run mechledger session review --session SESSION_ID --accept --decision D012
+uv run mechledger session list
+uv run mechledger session show SESSION_ID
+```
+
+Records live under `.mechledger/copilot/SESSION_ID/` and remain local. Notes are
+append-only, attachments record path/hash/size when bytes exist, and close writes
+JSON plus Markdown summary. Accepting a session requires an accepted decision;
+rejected sessions remain visible. Session records are not canonical evidence and
+do not auto-edit claim, research, or decision logs.
+
+## Open Questions
+
+Existing `research_log.md` `open_questions` entries are surfaced by:
+
+```bash
+uv run mechledger questions list
+uv run mechledger questions add --text "Need another control family?" --claim C003 --experiment E004 --priority high
+uv run mechledger questions show Q001
+uv run mechledger questions resolve Q001 --decision D012 --resolution "Accepted added control requirement."
+uv run mechledger next
+```
+
+New questions are stored in `research/logs/open_questions.md`. Resolving a
+question requires an accepted decision. `next` prints open questions linked to
+claims or experiments, but questions do not become blockers unless another
+configured prerequisite/debt policy already makes the work gated.
+
+## External Label Registry
+
+Import external labels as metadata:
+
+```bash
+uv run mechledger labels validate labels.jsonl
+uv run mechledger labels import labels.jsonl
+uv run mechledger labels list
+uv run mechledger labels show L001
+uv run mechledger labels link L001 --claim C003
+```
+
+The canonical registry is `research/literature/external_labels.jsonl`. Records
+include source attribution, source URL/model, label text, feature ID, model/hook
+metadata, confidence/license/notes, linked claims, and a semantic hash. External
+labels are not causal or mechanistic evidence by default; linked claims still
+follow their claim status, evidence, caveat, and debt policy.
+
+## Local Dashboard Data And Queries
+
+Generate deterministic JSON suitable for a future dashboard:
+
+```bash
+uv run mechledger dashboard data --out .mechledger/dashboard/data.json
+```
+
+Inspect canonical records without a server:
+
+```bash
+uv run mechledger query claims --json --status candidate_claim
+uv run mechledger query runs --json --experiment E001
+uv run mechledger query debt --json --severity serious
+uv run mechledger query artifacts --json --run RUN_E001
+uv run mechledger query decisions --json
+uv run mechledger query experiments --json
+```
+
+Query commands read flat files as source of truth. SQLite remains disposable
+cache state and is not required.
+
+## Claim Language Reports
+
+```bash
+uv run mechledger claim language-report --claim C003
+uv run mechledger claim language-report --all --out research/paper/claim_language_report.md
+```
+
+Language reports use claim YAML `status`, `allowed`, `forbidden`,
+`required_caveats`, and `debt_flags`. They are deterministic checklists, not LLM
+writing, and do not claim semantic correctness.
+
+## Optional Platform Records
+
+Optional future-work metadata can be validated without adding ML dependencies:
+
+```bash
+uv run mechledger records validate research/records/activation_REC001.json
+uv run mechledger records list
+uv run mechledger records show REC001
+```
+
+Supported record types are `ActivationRecord`, `CircuitGraphRecord`,
+`WeightAnalysisRecord`, `CrossModelComparisonRecord`,
+`FeatureCorrespondenceRecord`, `TrainingDynamicsRecord`, and
+`RemoteJobMetadataRecord`. Validation checks structure, IDs, source paths,
+linked runs/claims/decisions, and artifact pointers only; MechLedger does not
+compute activations, circuits, weights, correspondences, training dynamics, or
+remote jobs.
+
 ## Short Run Aliases
 
 Commands that take a run ID also accept:
@@ -477,7 +630,18 @@ Use sciwrite-lint, statcheck, or citation-specific tools as separate
 pre-commit hooks. MechLedger does not verify citations, bibliography state,
 reported-statistic arithmetic, or scientific truth.
 
-## Deferred Export
+## Storage And Export Boundaries
 
-RO-Crate export remains future work. Core canonical state remains Markdown,
-YAML, CSV, JSON, and JSONL; SQLite is disposable and never merged.
+Core canonical state remains Markdown, YAML, CSV, JSON, and JSONL; SQLite is
+disposable and never merged. RO-Crate JSON is an export target, not canonical
+storage. MechLedger does not use RDF/JSON-LD as the internal data model, does
+not run a dashboard server, does not sync/merge remote state, and does not
+discover hidden methods from notebooks or Python constants.
+
+MechLedger also does not execute interventions, generate labels, enforce
+untagged claims, verify citations, recompute reported statistics, make
+scientific truth decisions, or discover arbitrary artifacts outside registered
+paths/run-local artifact directories. It may allow progress with unresolved
+scientific debt, but it surfaces that debt. External labels are metadata by
+default. Session/copilot records require human review and accepted decision
+linkage before they can support canonical interpretation.
