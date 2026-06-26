@@ -89,6 +89,59 @@ MechLedger records path, hash, size, storage backend, relevance, and review
 status. It does not discover arbitrary artifacts outside registered paths or
 run-local artifact directories.
 
+## Evidence Gate Check
+
+```bash
+uv run mechledger gate check latest
+```
+
+`gate check` resolves the run alias, reads `run.json`, `metrics.jsonl`,
+`artifacts.jsonl`, `artifact_manifest.json`, and existing debt reports, then
+writes:
+
+```text
+.mechledger/runs/RUN_ID/evidence_assessment.json
+.mechledger/runs/RUN_ID/evidence_assessment.md
+.mechledger/runs/RUN_ID/scientific_debt_report.json
+.mechledger/runs/RUN_ID/scientific_debt_report.md
+```
+
+The assessment is deterministic policy logic over registered metadata. Core
+does not compute p-values, empirical-null percentiles, or other statistics, and
+it does not import heavy ML libraries. Register those values from your own
+research environment through the SDK, run-local JSONL files, or artifact
+registration.
+
+Clean candidate support requires an allowed run class plus passing or accepted
+waiver coverage for baseline calibration, positive control, empirical-null seed
+count, paired statistic metadata, matched controls/specificity, compatibility
+when present, and telemetry. Missing or failed required evidence emits visible
+scientific debt and prevents clean candidate support unless waived by an
+accepted decision record.
+
+Useful metric names include:
+
+```text
+random_null_seed_count
+null_distribution_path
+percentile_rank
+paired_test_name
+paired_by
+paired_test_n_pairs
+paired_test_p_value
+effect_direction
+sign_consistency
+target_delta
+matched_control_delta
+specificity_gap
+top_control_ratio
+multi_control_min_gap
+family_min_gap
+relative_norm_drift
+nonfinite_rate
+skip_rate
+```
+
 ## Short Run Aliases
 
 Commands that take a run ID also accept:
@@ -243,7 +296,8 @@ ml.log_metric("paired_test_n_pairs", 69)
 ```
 
 The current CLI records and surfaces debt from available metadata. It does not
-compute SciPy/NumPy statistics in the core.
+compute SciPy/NumPy statistics in the core. `gate check` assesses registered
+values and artifacts and reports whether they meet the default evidence policy.
 
 ## Large Artifacts
 

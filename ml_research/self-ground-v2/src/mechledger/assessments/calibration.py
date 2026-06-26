@@ -117,12 +117,20 @@ def apply_task_calibration(
 def evaluate_baseline_calibration(metrics: dict[str, Any]) -> AssessmentConditionResult:
     rate = metrics.get("intended_direction_pass_rate")
     recorded = rate is not None or metrics.get("baseline_contrast") is not None
-    passed = recorded and float(rate if rate is not None else 0.0) >= 0.5
+    passed = recorded and (
+        bool(metrics.get("intended_direction_pass"))
+        if metrics.get("intended_direction_pass") is not None
+        else float(rate if rate is not None else 0.0) >= 0.5
+    )
     return AssessmentConditionResult(
         condition_id="baseline_calibration_recorded",
         condition_type="baseline_calibration_recorded",
         passed=bool(passed),
-        parameters={"intended_direction_pass_rate": rate, "min_pass_rate": 0.5},
+        parameters={
+            "intended_direction_pass_rate": rate,
+            "min_pass_rate": 0.5,
+            "threshold": 0.5,
+        },
         failure_message="Baseline calibration is missing or below the default pass-rate floor.",
         default_consequence="scientific_debt",
         debt_type="missing_baseline_calibration",
@@ -133,14 +141,19 @@ def evaluate_baseline_calibration(metrics: dict[str, Any]) -> AssessmentConditio
 def evaluate_positive_control(metrics: dict[str, Any]) -> AssessmentConditionResult:
     rate = metrics.get("positive_control_pass_rate")
     passed = rate is not None and float(rate) >= 0.9
+    missing = rate is None
     return AssessmentConditionResult(
         condition_id="positive_control_pass_rate",
         condition_type="positive_control_passed",
         passed=bool(passed),
-        parameters={"positive_control_pass_rate": rate, "min_pass_rate": 0.9},
+        parameters={
+            "positive_control_pass_rate": rate,
+            "min_pass_rate": 0.9,
+            "threshold": 0.9,
+        },
         failure_message="Positive-control pass rate is missing or below 0.9.",
         default_consequence="blocker",
-        debt_type="failed_positive_control",
+        debt_type="missing_positive_control" if missing else "failed_positive_control",
         severity=DebtSeverity.BLOCKING,
     )
 

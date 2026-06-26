@@ -49,7 +49,7 @@ experiment_app = typer.Typer(help="Validate and crystallize ExperimentSpecs.")
 claim_app = typer.Typer(help="Generate and review claim proposals.")
 debt_app = typer.Typer(help="Waive visible scientific debt.")
 decision_app = typer.Typer(help="Create decision records.")
-gate_app = typer.Typer(help="Generate scientific-debt reports.")
+gate_app = typer.Typer(help="Assess evidence and generate scientific-debt reports.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -500,8 +500,39 @@ def gate_check(run_id: str) -> None:
         project = find_project()
         canonical = resolve_run_id(project, run_id)
         report = generate_scientific_debt_report(project, canonical)
-        typer.echo(report.summary)
-        raise typer.Exit(1 if report.blockers else 0)
+        run_dir = project.runs_dir / canonical
+        evidence_path = run_dir / "evidence_assessment.json"
+        evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+        open_debts = [
+            debt for debt in report.debts if getattr(debt, "status", None) == "open"
+        ]
+        blocking = [debt for debt in open_debts if getattr(debt, "severity", None) == "blocking"]
+        typer.echo(f"run_id: {canonical}")
+        typer.echo(f"recommended_claim_status: {evidence['recommended_claim_status']}")
+        typer.echo(f"clean_candidate_support: {str(report.clean_candidate_support).lower()}")
+        typer.echo(
+            "open_debt: "
+            + (
+                ", ".join(f"{debt.debt_id}/{debt.debt_type}" for debt in open_debts)
+                if open_debts
+                else "none"
+            )
+        )
+        typer.echo(
+            "blocking_findings: "
+            + (
+                ", ".join(f"{debt.debt_id}/{debt.debt_type}" for debt in blocking)
+                if blocking
+                else "none"
+            )
+        )
+        evidence_rel = (run_dir / "evidence_assessment.json").relative_to(project.root)
+        typer.echo(f"evidence_assessment: {evidence_rel}")
+        typer.echo(
+            f"scientific_debt_report: "
+            f"{(run_dir / 'scientific_debt_report.json').relative_to(project.root)}"
+        )
+        raise typer.Exit(1 if report.blockers or not report.clean_candidate_support else 0)
     except typer.Exit:
         raise
     except Exception as exc:  # noqa: BLE001
