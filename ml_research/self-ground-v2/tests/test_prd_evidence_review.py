@@ -4,7 +4,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-BASE_COMMIT = "221052c729b55828b82ab13b7116ffcf6feac9b8"
+BASE_COMMIT = "b71ccf19e29bbb4ce58bc534b71452469a792601"
 
 SOURCE_DOCS = {
     "0430_revised_v6.md",
@@ -219,6 +219,35 @@ def test_prd_evidence_review_quality_results_are_consistent_and_counted() -> Non
     assert review["summary"]["corrected"] == counts["corrected"]
     assert review["summary"]["downgraded_disposition"] == counts["downgraded_disposition"]
     assert review["summary"]["requires_followup"] == counts["requires_followup"]
+
+
+def test_prd_evidence_review_reflects_record_identity_and_extension_closure() -> None:
+    rows = {row["id"]: row for row in _review()["rows"]}
+
+    record_specific = rows["record_specific_id"]
+    assert record_specific["ledger_disposition"] in IMPLEMENTED_DISPOSITIONS
+    assert record_specific["evidence_quality"] == "specific_test_asserts_behavior"
+    assert record_specific["remaining_gap"] == "none"
+    assert any(
+        "record_id" in cited["why_this_test_actually_covers_the_requirement"].lower()
+        and "weightanalysisrun" in cited[
+            "why_this_test_actually_covers_the_requirement"
+        ].lower()
+        for cited in record_specific["cited_tests"]
+    )
+
+    for row_id in {
+        "feature_correspondence_record_extension",
+        "training_dynamics_record_extension",
+        "remote_job_metadata_record_extension",
+    }:
+        row = rows[row_id]
+        assert row["ledger_disposition"] == "intentionally_deferred_by_prd"
+        assert row["evidence_quality"] == "disposition_is_nonimplemented_and_justified"
+        text = (row["remaining_gap"] + " " + row.get("nonimplemented_justification", "")).lower()
+        assert "extension" in text
+        assert "do not define" in text
+        assert "concrete schema" in text
 
 
 def test_prd_evidence_review_markdown_summarizes_review_and_mentions_every_row() -> None:

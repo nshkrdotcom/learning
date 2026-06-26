@@ -654,14 +654,15 @@ suggested fix when obvious.
 `ActivationRecord`, `CircuitGraph`, and `CrossModelComparison` have PRD-specific
 identifiers (`activation_id`, `graph_id`, and `comparison_id`). The 0430 text
 does not define a separate weight-analysis identifier for `WeightAnalysisRun`,
-so MechLedger validates the PRD fields and uses wrapper `record_id` as the
-stable record-specific ID for export/inspection; the coverage and completion
-ledgers keep that gap explicit rather than calling it fully resolved.
+so MechLedger intentionally uses wrapper `record_id` as the stable
+record-specific ID for `WeightAnalysisRun`. That is the PRD-faithful identity
+rule, not a missing invented field.
 
 `FeatureCorrespondenceRecord`, `TrainingDynamicsRecord`, and
-`RemoteJobMetadataRecord` remain supported as extension records because the
-available 0430-0432 text does not define full concrete schemas for them. They
-must still provide the stricter shared metadata contract:
+`RemoteJobMetadataRecord` are extension-only metadata records. The available
+0430-0432 text does not define full concrete schemas for them, so MechLedger
+does not count them as completed PRD-defined typed schemas or infer concrete
+fields. They must still provide the stricter shared metadata contract:
 
 ```text
 record_id

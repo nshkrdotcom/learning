@@ -7,6 +7,13 @@ from typing import Any
 from helpers_project import populate_project, runner
 
 from mechledger.cli import app
+from mechledger.records import (
+    EXTENSION_RECORD_TYPES,
+    PRD_RECORD_TYPES,
+    SCHEMA_STATUS_EXTENSION,
+    SCHEMA_STATUS_PRD,
+    canonical_record_type,
+)
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> Path:
@@ -188,6 +195,107 @@ def test_records_validate_prd_typed_records_and_extension_records(tmp_path: Path
     assert shown_payload["record_type"] == "ActivationRecord"
     assert shown_payload["activation_id"] == "ACT001"
     assert shown_payload["schema_status"] == "prd_defined_typed"
+
+
+def test_weight_analysis_run_uses_record_id_as_prd_faithful_specific_id(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+    payload = weight_analysis_record("WeightAnalysisRun", "REC-WGT-CANON")
+    path = _write_json(tmp_path / "research/records/weight.json", payload)
+
+    validated = _validate_record(tmp_path, path)
+    listed = runner.invoke(
+        app,
+        ["records", "list"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    shown = runner.invoke(
+        app,
+        ["records", "show", "REC-WGT-CANON"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert validated.exit_code == 0, validated.output
+    assert listed.exit_code == 0, listed.output
+    assert shown.exit_code == 0, shown.output
+    shown_payload = json.loads(shown.output)
+    list_columns = listed.output.strip().split("\t")
+    assert list_columns[:4] == [
+        "REC-WGT-CANON",
+        "WeightAnalysisRun",
+        SCHEMA_STATUS_PRD,
+        "REC-WGT-CANON",
+    ]
+    assert shown_payload["record_type"] == "WeightAnalysisRun"
+    assert shown_payload["canonical_record_type"] == "WeightAnalysisRun"
+    assert shown_payload["schema_status"] == SCHEMA_STATUS_PRD
+    assert shown_payload["record_specific_id"] == "REC-WGT-CANON"
+
+    for invented_field in ("weight_analysis_id", "analysis_id"):
+        invalid = weight_analysis_record("WeightAnalysisRun", f"REC-WGT-{invented_field}")
+        invalid[invented_field] = "INVENTED"
+        result = _validate_record(
+            tmp_path,
+            _write_json(tmp_path / "research/records" / f"{invented_field}.json", invalid),
+        )
+        assert result.exit_code == 2
+        assert invented_field in result.output
+        assert "remove unsupported" in result.output
+
+
+def test_prd_defined_advanced_technique_record_boundary_is_explicit(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+
+    prd_canonical_types = {canonical_record_type(record_type) for record_type in PRD_RECORD_TYPES}
+    assert prd_canonical_types == {
+        "ActivationRecord",
+        "WeightAnalysisRun",
+        "CircuitGraph",
+        "CrossModelComparison",
+    }
+    assert EXTENSION_RECORD_TYPES == {
+        "FeatureCorrespondenceRecord",
+        "TrainingDynamicsRecord",
+        "RemoteJobMetadataRecord",
+    }
+    assert PRD_RECORD_TYPES.isdisjoint(EXTENSION_RECORD_TYPES)
+
+    for index, record_type in enumerate(sorted(EXTENSION_RECORD_TYPES), start=1):
+        _write_json(
+            tmp_path / "research/records" / f"extension_{index}.json",
+            extension_record(record_type, f"REC-EXT-{index:03d}"),
+        )
+
+    listed = runner.invoke(
+        app,
+        ["records", "list"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert listed.exit_code == 0, listed.output
+    listed_rows = [line.split("\t") for line in listed.output.strip().splitlines()]
+    assert {row[1] for row in listed_rows} == EXTENSION_RECORD_TYPES
+    assert {row[2] for row in listed_rows} == {SCHEMA_STATUS_EXTENSION}
+    assert all(row[3] == row[0] for row in listed_rows)
+
+    for index, record_type in enumerate(sorted(EXTENSION_RECORD_TYPES), start=1):
+        shown = runner.invoke(
+            app,
+            ["records", "show", f"REC-EXT-{index:03d}"],
+            catch_exceptions=False,
+            env={"PWD": str(tmp_path)},
+        )
+        assert shown.exit_code == 0, shown.output
+        payload = json.loads(shown.output)
+        assert payload["canonical_record_type"] == record_type
+        assert payload["schema_status"] == SCHEMA_STATUS_EXTENSION
+        assert payload["record_specific_id"] == payload["record_id"]
 
 
 def test_prd_typed_records_reject_missing_specific_ids_and_invalid_fields(

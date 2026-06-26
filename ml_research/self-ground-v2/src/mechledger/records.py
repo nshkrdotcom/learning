@@ -62,23 +62,35 @@ ExtensionRecordType: TypeAlias = Literal[
     "RemoteJobMetadataRecord",
 ]
 
-PRD_RECORD_TYPES = {
+CANONICAL_PRD_RECORD_TYPES = {
     "ActivationRecord",
     "WeightAnalysisRun",
-    "WeightAnalysisRecord",
     "CircuitGraph",
-    "CircuitGraphRecord",
     "CrossModelComparison",
-    "CrossModelComparisonRecord",
+}
+PRD_RECORD_TYPE_ALIASES = {
+    "WeightAnalysisRecord": "WeightAnalysisRun",
+    "CircuitGraphRecord": "CircuitGraph",
+    "CrossModelComparisonRecord": "CrossModelComparison",
 }
 EXTENSION_RECORD_TYPES = {
     "FeatureCorrespondenceRecord",
     "TrainingDynamicsRecord",
     "RemoteJobMetadataRecord",
 }
+PRD_RECORD_TYPES = CANONICAL_PRD_RECORD_TYPES | set(PRD_RECORD_TYPE_ALIASES)
 RECORD_TYPES = PRD_RECORD_TYPES | EXTENSION_RECORD_TYPES
 SCHEMA_STATUS_PRD = "prd_defined_typed"
 SCHEMA_STATUS_EXTENSION = "extension_record"
+# 0430 section 47.2 defines WeightAnalysisRun with run_id but no separate
+# weight_analysis_id or analysis_id. For that record type, wrapper record_id is
+# the PRD-faithful stable record-specific identity.
+PRD_RECORD_SPECIFIC_ID_FIELDS = {
+    "ActivationRecord": "activation_id",
+    "WeightAnalysisRun": "record_id",
+    "CircuitGraph": "graph_id",
+    "CrossModelComparison": "comparison_id",
+}
 
 
 class StrictRecord(BaseModel):
@@ -286,19 +298,14 @@ def record_export_payload(
 
 
 def canonical_record_type(record_type: str) -> str:
-    if record_type == "WeightAnalysisRecord":
-        return "WeightAnalysisRun"
-    if record_type == "CircuitGraphRecord":
-        return "CircuitGraph"
-    if record_type == "CrossModelComparisonRecord":
-        return "CrossModelComparison"
-    return record_type
+    return PRD_RECORD_TYPE_ALIASES.get(record_type, record_type)
 
 
 def record_specific_id(record: PlatformRecord) -> str:
     if isinstance(record, ActivationRecord):
         return record.activation_id
     if isinstance(record, WeightAnalysisRecord):
+        # 0430 section 47.2 has no separate WeightAnalysisRun-specific ID field.
         return record.record_id
     if isinstance(record, CircuitGraphRecord):
         return record.graph_id

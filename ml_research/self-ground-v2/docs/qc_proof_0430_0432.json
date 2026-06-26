@@ -1,6 +1,6 @@
 {
-  "commit_base_before_pass": "221052c729b55828b82ab13b7116ffcf6feac9b8",
-  "verification_started_at_local": "2026-06-26T12:18:32",
+  "commit_base_before_pass": "b71ccf19e29bbb4ce58bc534b71452469a792601",
+  "verification_started_at_local": "2026-06-26T12:47:04",
   "commands": [
     {
       "command": "uv sync",
@@ -18,19 +18,19 @@
       "command": "uv run pytest tests/test_prd_coverage.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Coverage proof tests passed with stricter implemented-row evidence and Markdown parity checks."
+      "notes": "Coverage proof tests passed, including zero partial/ambiguous accounting and extension-only deferral checks."
     },
     {
       "command": "uv run pytest tests/test_prd_completion_ledger.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Completion-ledger proof tests passed with no broad-test-only implemented rows."
+      "notes": "Completion-ledger proof tests passed, including WeightAnalysisRun record_id identity closure and zero ambiguous rows."
     },
     {
       "command": "uv run pytest tests/test_prd_evidence_review.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Current-pass evidence-review artifact tests passed."
+      "notes": "Evidence-review tests passed with the current closure-pass base and record-boundary reviewed rows."
     },
     {
       "command": "uv run pytest tests/test_qc_proof.py",
@@ -42,7 +42,7 @@
       "command": "uv run pytest tests/test_records.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Typed platform record metadata validation/export tests passed."
+      "notes": "Record schema tests passed, including WeightAnalysisRun record_id identity and extension_record boundary checks."
     },
     {
       "command": "uv run pytest tests/test_diagnostics_contract.py",
@@ -54,7 +54,7 @@
       "command": "uv run pytest tests/test_architecture_boundaries.py",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Architecture boundary tests passed, including forbidden dependency/import/schema checks."
+      "notes": "Architecture boundary tests passed, preserving no heavy ML dependencies and no execution-framework schemas."
     },
     {
       "command": "uv run pytest tests/test_dashboard_query.py",
@@ -90,7 +90,7 @@
       "command": "uv run pytest",
       "exit_code": 0,
       "result": "passed",
-      "notes": "Full test suite passed in the final current-pass verification run: 205 tests."
+      "notes": "Full test suite passed in the final current-pass verification run: 210 tests."
     }
   ],
   "push": {
@@ -98,6 +98,6 @@
     "result": "passed",
     "remote": "origin",
     "branch": "main",
-    "notes": "Final git push for the current-pass proof commit was attempted to the recorded remote/branch; final response reports the observed push result."
+    "notes": "Final git push for the closure-pass proof commit was attempted to origin/main; final response reports the observed push result."
   }
 }

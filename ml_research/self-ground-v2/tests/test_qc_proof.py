@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-BASE_COMMIT = "221052c729b55828b82ab13b7116ffcf6feac9b8"
+BASE_COMMIT = "b71ccf19e29bbb4ce58bc534b71452469a792601"
 
 REQUIRED_COMMANDS = [
     "uv sync",

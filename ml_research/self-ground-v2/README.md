@@ -165,6 +165,10 @@ to continue with unresolved scientific debt, but it surfaces that debt. External
 labels are metadata by default, and session/copilot records require human review
 before becoming canonical interpretation. Copilot review records provenance
 only; it does not call an LLM, verify scientific truth, promote claims, invent
-run results, or waive debt. Failed, cancelled, or interrupted runs cannot be
-promoted into evidence-supporting run classes; rerun them or record them as
-negative evidence.
+run results, or waive debt. For optional platform records, WeightAnalysisRun
+uses `record_id` as its record-specific identity because 0430 defines no
+separate weight-analysis ID; FeatureCorrespondenceRecord,
+TrainingDynamicsRecord, and RemoteJobMetadataRecord are extension-only metadata
+records, not completed concrete PRD schemas. Failed, cancelled, or interrupted
+runs cannot be promoted into evidence-supporting run classes; rerun them or
+record them as negative evidence.

@@ -229,6 +229,36 @@ def test_completion_ledger_nonimplemented_rows_are_explicitly_justified() -> Non
             assert "non-goal" in out_of_scope_text or "out of scope" in out_of_scope_text
 
 
+def test_completion_ledger_has_closed_partial_and_ambiguous_accounting() -> None:
+    rows = {row["id"]: row for row in _ledger()["rows"]}
+    dispositions = {row["disposition"] for row in rows.values()}
+
+    assert "partially_implemented_with_remaining_gap" not in dispositions
+    assert "ambiguous_or_requires_decision" not in dispositions
+
+    for row_id in {"weight_analysis_run", "record_specific_id"}:
+        row = rows[row_id]
+        assert row["disposition"] in IMPLEMENTED_DISPOSITIONS
+        assert row["remaining_gap"] == "none"
+        text = (row["notes"] + " " + row["requirement"]).lower()
+        assert "record_id" in text
+        assert "no separate prd-native" in text
+        assert "weightanalysisrun" in text
+
+    for row_id in {
+        "feature_correspondence_record_extension",
+        "training_dynamics_record_extension",
+        "remote_job_metadata_record_extension",
+    }:
+        row = rows[row_id]
+        assert row["disposition"] == "intentionally_deferred_by_prd"
+        text = (row["notes"] + " " + row["remaining_gap"]).lower()
+        assert "extension" in text
+        assert "do not define" in text
+        assert "concrete schema" in text
+        assert not row["implementation_files"]
+
+
 def test_completion_ledger_and_coverage_have_product_surface_parity() -> None:
     ledger_ids = {row["id"] for row in _ledger()["rows"]}
     coverage_ids = set(_coverage_by_id())

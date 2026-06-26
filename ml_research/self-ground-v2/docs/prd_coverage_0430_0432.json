@@ -3804,7 +3804,7 @@
     },
     {
       "doc_section": "47.2",
-      "evidence_notes": "Weight Analysis Run: implemented portions are traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Remaining gap kept explicit: 0430 defines WeightAnalysisRun fields but no PRD-specific weight-analysis identifier separate from record_id/run_id; this pass validates the schema and uses wrapper record_id as the stable record-specific ID.",
+      "evidence_notes": "WeightAnalysisRun validates as a PRD-defined typed record. 0430 section 47.2 defines WeightAnalysisRun with run_id but no separate PRD-native weight_analysis_id or analysis_id; MechLedger therefore uses record_id as the stable record-specific identity for WeightAnalysisRun. tests/test_records.py verifies schema_status prd_defined_typed, canonical_record_type WeightAnalysisRun, record_specific_id equal to record_id, and rejection of invented weight_analysis_id/analysis_id fields.",
       "id": "weight_analysis_run",
       "implementation_files": [
         "src/mechledger/records.py",
@@ -3813,12 +3813,11 @@
         "src/mechledger/inspection.py",
         "src/mechledger/cli.py"
       ],
-      "remaining_gap": "0430 defines WeightAnalysisRun fields but no PRD-specific weight-analysis identifier separate from record_id/run_id; this pass validates the schema and uses wrapper record_id as the stable record-specific ID.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
-      "status": "partially_implemented",
+      "status": "implemented",
       "test_files": [
-        "tests/test_records.py",
-        "tests/test_diagnostics_contract.py"
+        "tests/test_records.py"
       ],
       "title": "Weight Analysis Run"
     },
@@ -3924,34 +3923,34 @@
     },
     {
       "doc_section": "47",
-      "evidence_notes": "0430-0432 do not define a full concrete FeatureCorrespondenceRecord schema.",
+      "evidence_notes": "FeatureCorrespondenceRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "id": "feature_correspondence_record_extension",
       "implementation_files": [],
-      "remaining_gap": "0430-0432 do not define a full concrete FeatureCorrespondenceRecord schema.",
+      "remaining_gap": "FeatureCorrespondenceRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
-      "status": "ambiguous_or_requires_decision",
+      "status": "deferred_by_prd",
       "test_files": [],
       "title": "Feature Correspondence Record Extension"
     },
     {
       "doc_section": "47",
-      "evidence_notes": "0430-0432 do not define a full concrete TrainingDynamicsRecord schema.",
+      "evidence_notes": "TrainingDynamicsRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "id": "training_dynamics_record_extension",
       "implementation_files": [],
-      "remaining_gap": "0430-0432 do not define a full concrete TrainingDynamicsRecord schema.",
+      "remaining_gap": "TrainingDynamicsRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
-      "status": "ambiguous_or_requires_decision",
+      "status": "deferred_by_prd",
       "test_files": [],
       "title": "Training Dynamics Record Extension"
     },
     {
       "doc_section": "47",
-      "evidence_notes": "0430-0432 do not define a full concrete RemoteJobMetadataRecord schema.",
+      "evidence_notes": "RemoteJobMetadataRecord remains extension-only metadata. 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "id": "remote_job_metadata_record_extension",
       "implementation_files": [],
-      "remaining_gap": "0430-0432 do not define a full concrete RemoteJobMetadataRecord schema.",
+      "remaining_gap": "RemoteJobMetadataRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
       "source_document": "0430_revised_v6.md",
-      "status": "ambiguous_or_requires_decision",
+      "status": "deferred_by_prd",
       "test_files": [],
       "title": "Remote Job Metadata Record Extension"
     },
@@ -3977,7 +3976,7 @@
     },
     {
       "doc_section": "47.2",
-      "evidence_notes": "Record Specific Id: implemented portions are traced to src/mechledger/records.py, src/mechledger/export.py, src/mechledger/dashboard_data.py, src/mechledger/inspection.py, src/mechledger/cli.py; tests are traced to tests/test_records.py, tests/test_diagnostics_contract.py. Remaining gap kept explicit: ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.",
+      "evidence_notes": "record_specific_id follows PRD-native IDs where defined and uses record_id for WeightAnalysisRun. PRD-native IDs are used where 0430 defines them: activation_id, graph_id, and comparison_id. Because 0430 defines no separate PRD-native WeightAnalysisRun-specific identifier, record_id is intentionally used for WeightAnalysisRun. tests/test_records.py checks list/show payloads and extension boundaries.",
       "id": "record_specific_id",
       "implementation_files": [
         "src/mechledger/records.py",
@@ -3986,12 +3985,11 @@
         "src/mechledger/inspection.py",
         "src/mechledger/cli.py"
       ],
-      "remaining_gap": "ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
-      "status": "partially_implemented",
+      "status": "implemented",
       "test_files": [
-        "tests/test_records.py",
-        "tests/test_diagnostics_contract.py"
+        "tests/test_records.py"
       ],
       "title": "Record Specific Id"
     },

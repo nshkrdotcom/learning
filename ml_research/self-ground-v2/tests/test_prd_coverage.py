@@ -387,6 +387,36 @@ def test_prd_coverage_evidence_notes_are_not_generic_boilerplate() -> None:
             assert entry["remaining_gap"] and entry["remaining_gap"] != "none", entry["id"]
 
 
+def test_prd_coverage_has_closed_partial_and_ambiguous_accounting() -> None:
+    entries = {entry["id"]: entry for entry in _coverage()["entries"]}
+    statuses = {entry["status"] for entry in entries.values()}
+
+    assert "partially_implemented" not in statuses
+    assert "ambiguous_or_requires_decision" not in statuses
+
+    for entry_id in {"weight_analysis_run", "record_specific_id"}:
+        entry = entries[entry_id]
+        assert entry["status"] == "implemented"
+        assert entry["remaining_gap"] == "none"
+        text = entry["evidence_notes"].lower()
+        assert "record_id" in text
+        assert "no separate prd-native" in text
+        assert "weightanalysisrun" in text
+
+    for entry_id in {
+        "feature_correspondence_record_extension",
+        "training_dynamics_record_extension",
+        "remote_job_metadata_record_extension",
+    }:
+        entry = entries[entry_id]
+        assert entry["status"] == "deferred_by_prd"
+        text = (entry["evidence_notes"] + " " + entry["remaining_gap"]).lower()
+        assert "extension" in text
+        assert "do not define" in text
+        assert "concrete schema" in text
+        assert not entry["implementation_files"]
+
+
 def test_prd_coverage_markdown_has_no_legacy_milestone_acceptance_rows() -> None:
     markdown = Path("docs/PRD_COVERAGE_0430_0432.md").read_text(encoding="utf-8")
 

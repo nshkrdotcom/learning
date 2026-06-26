@@ -4,7 +4,7 @@
     "0431_selfground_refactor.md",
     "0432_selfground_refactor.md"
   ],
-  "reviewed_commit_base": "221052c729b55828b82ab13b7116ffcf6feac9b8",
+  "reviewed_commit_base": "b71ccf19e29bbb4ce58bc534b71452469a792601",
   "review_scope": {
     "method": "risk_weighted_spot_check_plus_required_high_risk_rows",
     "minimum_rows_reviewed": 40,
@@ -419,7 +419,20 @@
     {
       "id": "record_specific_id",
       "category": "typed_records",
-      "ledger_disposition": "partially_implemented_with_remaining_gap",
+      "ledger_disposition": "implemented_with_test",
+      "evidence_quality": "specific_test_asserts_behavior",
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_weight_analysis_run_uses_record_id_as_prd_faithful_specific_id",
+          "why_this_test_actually_covers_the_requirement": "Builds a WeightAnalysisRun fixture and verifies record_specific_id equals record_id on list and show output while extra weight_analysis_id and analysis_id fields fail strict validation."
+        },
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_prd_defined_advanced_technique_record_boundary_is_explicit",
+          "why_this_test_actually_covers_the_requirement": "Compares the canonical PRD-defined typed record set against extension record types and verifies extension records report schema_status extension_record with record_specific_id equal to record_id."
+        }
+      ],
       "implementation_files_reviewed": [
         "src/mechledger/records.py",
         "src/mechledger/export.py",
@@ -431,14 +444,16 @@
         "0430_revised_v6.md"
       ],
       "source_sections": [
-        "47.2"
+        "47.1",
+        "47.2",
+        "47.3",
+        "47.4"
       ],
-      "changes_made": [],
-      "remaining_gap": "ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.",
-      "evidence_quality": "disposition_is_nonimplemented_and_justified",
-      "cited_tests": [],
-      "review_result": "accepted",
-      "nonimplemented_justification": "The cited source sections do not require core completion in this pass, and the row is not called complete because ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.."
+      "review_result": "corrected",
+      "changes_made": [
+        "Reclassified record_specific_id from partial to implemented because the source PRD defines no additional WeightAnalysisRun ID to add."
+      ],
+      "remaining_gap": "none"
     },
     {
       "id": "extension_records_strict_shared_metadata",
@@ -1716,12 +1731,109 @@
         "Added evidence-review row because the implementation test names are intentionally cross-surface and require explicit behavior explanation."
       ],
       "remaining_gap": "none"
+    },
+    {
+      "id": "weight_analysis_run",
+      "category": "typed_records",
+      "ledger_disposition": "implemented_with_test",
+      "evidence_quality": "specific_test_asserts_behavior",
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_weight_analysis_run_uses_record_id_as_prd_faithful_specific_id",
+          "why_this_test_actually_covers_the_requirement": "Builds a WeightAnalysisRun, validates it, checks records list TSV and show JSON expose schema_status prd_defined_typed and record_specific_id equal to record_id, and verifies invented weight_analysis_id and analysis_id fields are rejected."
+        }
+      ],
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "47.2"
+      ],
+      "review_result": "corrected",
+      "changes_made": [
+        "Closed the previous partial accounting row by documenting and testing the PRD-faithful record_id identity policy."
+      ],
+      "remaining_gap": "none"
+    },
+    {
+      "id": "feature_correspondence_record_extension",
+      "category": "typed_records",
+      "ledger_disposition": "intentionally_deferred_by_prd",
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "cited_tests": [],
+      "implementation_files_reviewed": [],
+      "source_documents": [
+        "0430_revised_v6.md",
+        "0431_selfground_refactor.md",
+        "0432_selfground_refactor.md"
+      ],
+      "source_sections": [
+        "47. Advanced Technique Schemas"
+      ],
+      "review_result": "corrected",
+      "changes_made": [
+        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+      ],
+      "remaining_gap": "FeatureCorrespondenceRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "nonimplemented_justification": "FeatureCorrespondenceRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
+    },
+    {
+      "id": "training_dynamics_record_extension",
+      "category": "typed_records",
+      "ledger_disposition": "intentionally_deferred_by_prd",
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "cited_tests": [],
+      "implementation_files_reviewed": [],
+      "source_documents": [
+        "0430_revised_v6.md",
+        "0431_selfground_refactor.md",
+        "0432_selfground_refactor.md"
+      ],
+      "source_sections": [
+        "47. Advanced Technique Schemas"
+      ],
+      "review_result": "corrected",
+      "changes_made": [
+        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+      ],
+      "remaining_gap": "TrainingDynamicsRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "nonimplemented_justification": "TrainingDynamicsRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
+    },
+    {
+      "id": "remote_job_metadata_record_extension",
+      "category": "typed_records",
+      "ledger_disposition": "intentionally_deferred_by_prd",
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "cited_tests": [],
+      "implementation_files_reviewed": [],
+      "source_documents": [
+        "0430_revised_v6.md",
+        "0431_selfground_refactor.md",
+        "0432_selfground_refactor.md"
+      ],
+      "source_sections": [
+        "47. Advanced Technique Schemas"
+      ],
+      "review_result": "corrected",
+      "changes_made": [
+        "Reclassified the row from ambiguous to intentionally deferred extension-only metadata because 0430/0431/0432 define no concrete schema."
+      ],
+      "remaining_gap": "RemoteJobMetadataRecord: 0430/0431/0432 do not define a concrete schema for this extension-only record type; concrete schema work is deferred to a future PRD/spec update and generic extension_record metadata remains separate from PRD-defined typed schemas.",
+      "nonimplemented_justification": "RemoteJobMetadataRecord is not called complete because 0430/0431/0432 do not define a concrete schema for it; MechLedger keeps only generic extension_record metadata until a future PRD/spec update."
     }
   ],
   "summary": {
-    "reviewed_rows": 60,
-    "accepted": 51,
-    "corrected": 9,
+    "reviewed_rows": 64,
+    "accepted": 50,
+    "corrected": 14,
     "downgraded_disposition": 0,
     "requires_followup": 0
   }
