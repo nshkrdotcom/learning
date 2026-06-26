@@ -30,6 +30,35 @@ diagnostics, allowed phrases, forbidden phrases, required caveats, and
 unresolved debt. It does not rewrite prose with AI and does not suppress hard
 Draft Guard violations.
 
+## Staged Mode
+
+Pre-commit hooks use staged filenames but read working-tree contents:
+
+```bash
+uv run mechledger draft check --staged
+uv run mechledger index --check --staged
+```
+
+`draft check --staged` runs `git diff --cached --name-only`, filters for
+`*.md`, `*.markdown`, `*.tex`, `research/logs/claim_ledger.md`, and
+`.mechledger/project.json`, then evaluates the working-tree draft and claim
+ledger. If no relevant files are staged it exits 0 with:
+
+```text
+MechLedger: no staged draft or claim files changed; skipping.
+```
+
+`index --check --staged` filters staged paths to `research/**` and
+`.mechledger/project.json`. If no relevant files are staged it exits 0 with:
+
+```text
+MechLedger: no staged research/indexed files changed; skipping.
+```
+
+Staged mode does not stash or isolate staged blobs. A staged draft and staged
+claim ledger can pass together as long as the working tree contains the matching
+claim definitions.
+
 ## Wrapping An Existing Script
 
 ```bash
@@ -47,6 +76,60 @@ proposal, a claim proposal, and a scientific-debt report.
 
 MechLedger does not execute interventions for you. Your script remains native
 TransformerLens/PyTorch/SAELens code if that is what the research needs.
+
+Minimal no-ML loop for checking the ledger plumbing:
+
+```python
+# small_script.py
+from pathlib import Path
+import os
+import mechledger as ml
+
+for name, value in {
+    "intended_direction_pass_rate": 1.0,
+    "baseline_contrast": 0.5,
+    "positive_control_pass_rate": 0.95,
+    "random_null_seed_count": 30,
+    "percentile_rank": 0.99,
+    "paired_test_name": "sign",
+    "paired_by": "task_id",
+    "paired_test_n_pairs": 40,
+    "paired_test_p_value": 0.01,
+    "effect_direction": "positive",
+    "sign_consistency": 0.9,
+    "target_delta": 0.4,
+    "matched_control_delta": 0.05,
+    "specificity_gap": 0.35,
+    "top_control_ratio": 0.2,
+    "multi_control_min_gap": 0.1,
+    "family_min_gap": 0.1,
+    "relative_norm_drift": 0.1,
+    "nonfinite_rate": 0.0,
+    "skip_rate": 0.0,
+    "metadata_compatible": True,
+}.items():
+    ml.log_metric(name, value)
+
+ml.log_intervention_metadata(feature_id="sae_123", features_modified=["sae_123"])
+Path(os.environ["MECHLEDGER_RUN_DIR"], "artifacts", "result.json").write_text("{}\n")
+```
+
+Then:
+
+```bash
+uv run mechledger index --check
+uv run mechledger run --experiment E001 --class serious_evidence_run -- python small_script.py
+uv run mechledger artifact annotate latest A001 --claim-relevance required
+uv run mechledger gate check latest
+uv run mechledger claim propose --run latest --regenerate
+uv run mechledger claim review latest
+uv run mechledger draft check research/paper/draft.md
+uv run mechledger export appendix --out research/paper/mechledger_appendix.md
+uv run mechledger export bundle --out bundles/manifest_bundle.tar.gz --manifest-only
+```
+
+This exercises real CLI/files/SDK plumbing without torch, TransformerLens,
+SAELens, NumPy, SciPy, CUDA, network, or external services.
 
 ## SDK In A Notebook Or Script
 
@@ -651,7 +734,13 @@ unique experiment/slug prefix
 ```
 
 Alias resolution reads `.mechledger/alias_cache.txt`, not a routine directory
-sweep.
+sweep. If the cache is missing, `latest`, `latest:N`, `#N`, and short aliases
+fail until `mechledger index` rebuilds the disposable cache from local
+`run.json` files. A full canonical run ID still resolves directly. Malformed
+alias lines are ignored and mark the cache for rebuild. If `.mechledger/` is
+read-only, disposable SQLite/alias cache state may fall back under
+`/tmp/mechledger_cache_<project_hash>/`; canonical research files and run
+capture outputs are never redirected there.
 
 ## Reclassifying A Run
 
@@ -667,9 +756,15 @@ The decision must exist in `research/logs/decision_log.md` with
 `run.json`, `events.jsonl`, `run_class_transition.json`, and the generated
 scientific-debt report. It does not edit `research/logs/run_ledger.csv`.
 
-Supported classes are `scratch`, `notebook_exploration`, `diagnostic`,
+Supported classes are `scratch`, `notebook_exploration`, `path_validation`,
+`smoke_test`, `diagnostic`, `calibration`, `benchmark`,
 `serious_evidence_run`, `paper_candidate`, `replication`, and
 `published_result`.
+
+Runs with terminal `status: failed` or `status: cancelled` cannot be promoted
+into `serious_evidence_run`, `paper_candidate`, `replication`, or
+`published_result`, even with an accepted decision. Re-run them or record the
+failed/cancelled result as negative evidence.
 
 ## Experiment Prerequisites And Next
 
@@ -721,10 +816,14 @@ uv run mechledger claim review latest
 ```
 
 Proposals include expected claim-ledger hashes. Freeform prose edits do not make
-a proposal stale; semantic YAML changes do. `claim review --apply` refuses stale
-proposals unless explicitly run with `--force-stale --yes`, which records the
-forced stale review in the proposal and still does not silently mutate the claim
-ledger.
+a proposal stale. Non-semantic YAML formatting changes, key reordering, and
+reordering order-insensitive scalar lists such as `allowed`, `forbidden`,
+`required_caveats`, `debt_flags`, `linked_runs`, `linked_experiments`, and
+`linked_decisions` also do not stale a proposal. Semantic YAML changes such as
+status changes, linked-run changes, and claim-language policy changes do stale
+it. `claim review --apply` refuses stale proposals unless explicitly run with
+`--force-stale --yes`, which records the forced stale review in the proposal and
+still does not silently mutate the claim ledger.
 
 ## Writing A Decision Record
 

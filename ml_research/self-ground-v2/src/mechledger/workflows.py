@@ -13,6 +13,13 @@ from mechledger.debt_report import generate_scientific_debt_report, write_scient
 from mechledger.project import Project, now_utc
 from mechledger.run_auditor import ALLOWED_RUN_CLASSES, append_event, write_run_json
 
+EVIDENCE_SUPPORTING_RUN_CLASSES = {
+    "serious_evidence_run",
+    "paper_candidate",
+    "replication",
+    "published_result",
+}
+
 
 def append_run_ledger(project: Project, alias: str, *, yes: bool = False) -> str:
     run_id = resolve_run_id(project, alias)
@@ -250,6 +257,12 @@ def reclassify_run(
         raise FileNotFoundError(f"Run directory is missing run.json: {run_json_path}")
     run_data = json.loads(run_json_path.read_text(encoding="utf-8"))
     from_class = run_data.get("run_class")
+    run_status = str(run_data.get("status") or "")
+    if run_status in {"failed", "cancelled"} and to_class in EVIDENCE_SUPPORTING_RUN_CLASSES:
+        raise ValueError(
+            "Run status failed/cancelled cannot be promoted into an evidence-supporting "
+            "run class. Re-run or record the failed/cancelled result as negative evidence."
+        )
     if from_class == to_class:
         raise ValueError(f"Run {run_id} is already classified as {to_class}.")
     transition = {

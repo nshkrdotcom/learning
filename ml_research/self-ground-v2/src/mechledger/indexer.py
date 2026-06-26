@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from mechledger.alias import rebuild_alias_cache
 from mechledger.core.claim_ledger import parse_claim_ledger
 from mechledger.core.decision_log import parse_decision_log
 from mechledger.core.experiment_spec import parse_experiment_spec
@@ -238,6 +239,7 @@ def rebuild_index(project: Project) -> tuple[Path, list[str]]:
             )
             _index_artifacts_and_debt(conn, project, run["run_id"])
         conn.commit()
+    rebuild_alias_cache(project)
     return db_path, []
 
 

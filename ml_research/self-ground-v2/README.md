@@ -74,7 +74,9 @@ Intentionally not implemented here:
 uv run mechledger --help
 uv run mechledger init
 uv run mechledger draft check research/paper/draft.md
+uv run mechledger draft check --staged
 uv run mechledger index --check
+uv run mechledger index --check --staged
 uv run mechledger run -- python scripts/your_experiment.py
 uv run mechledger gate check latest
 uv run mechledger calibration check latest
@@ -97,9 +99,11 @@ uv run mechledger status
 See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
 usage, artifacts, aliases, Tier 2 evidence registration, prediction locking,
 exports, sessions, copilot provenance review, questions, labels, query commands,
-language reports,
-optional records, sync reporting, redaction, integrity records, run lifecycle,
-crystallization, claim review, decisions, debt waivers, and assessment examples.
+language reports, optional records, sync reporting, redaction, integrity records,
+run lifecycle,
+crystallization, claim review, staged-mode contracts, read-only cache fallback,
+run reclassification safety, decisions, debt waivers, and no-ML end-to-end
+assessment examples.
 
 ## Layout
 
@@ -138,3 +142,5 @@ debt, but it surfaces that debt. External labels are metadata by default, and
 session/copilot records require human review before becoming canonical
 interpretation. Copilot review records provenance only; it does not call an LLM,
 verify scientific truth, promote claims, invent run results, or waive debt.
+Failed or cancelled runs cannot be promoted into evidence-supporting run
+classes; rerun them or record them as negative evidence.
