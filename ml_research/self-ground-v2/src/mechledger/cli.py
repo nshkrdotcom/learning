@@ -68,7 +68,7 @@ from mechledger.prerequisites import (
     evaluate_experiment_prerequisites,
     load_prerequisite_context,
 )
-from mechledger.project import command_cwd, find_project, init_project
+from mechledger.project import Project, command_cwd, find_project, init_project
 from mechledger.records import list_records, show_record, validate_record
 from mechledger.redaction import redact_artifact, redact_run
 from mechledger.run_auditor import capture_run
@@ -163,6 +163,10 @@ app.add_typer(records_app, name="records")
 app.add_typer(sync_app, name="sync")
 app.add_typer(integrity_app, name="integrity")
 app.add_typer(copilot_app, name="copilot")
+
+
+def _project_output_path(project: Project, path: Path) -> Path:
+    return path if path.is_absolute() else project.root / path
 
 
 @app.command()
@@ -471,7 +475,7 @@ def export_ro_crate(
 ) -> None:
     try:
         project = find_project()
-        path, warnings = write_ro_crate(project, out)
+        path, warnings = write_ro_crate(project, _project_output_path(project, out))
         typer.echo(f"ro_crate_metadata: {path.relative_to(project.root)}")
         for warning in warnings:
             typer.echo(f"warning: {warning}")
@@ -496,7 +500,7 @@ def export_bundle(
         project = find_project()
         path, manifest = write_bundle(
             project,
-            out,
+            _project_output_path(project, out),
             run_aliases=run or [],
             include_local_runs=include_local_runs,
             include_artifacts=include_artifacts,
@@ -1491,8 +1495,9 @@ def dashboard_data_command(
 ) -> None:
     try:
         project = find_project()
-        write_dashboard_data(project, out)
-        typer.echo(f"dashboard_data: {out.relative_to(project.root)}")
+        output_path = _project_output_path(project, out)
+        write_dashboard_data(project, output_path)
+        typer.echo(f"dashboard_data: {output_path.relative_to(project.root)}")
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
@@ -1639,7 +1644,20 @@ def records_list_command() -> None:
     try:
         project = find_project()
         for record in list_records(project):
-            typer.echo(f"{record['record_id']}\t{record['record_type']}")
+            typer.echo(
+                "\t".join(
+                    [
+                        str(record["record_id"]),
+                        str(record["canonical_record_type"]),
+                        str(record["schema_status"]),
+                        str(record["record_specific_id"]),
+                        ",".join(record["linked_runs"]),
+                        ",".join(record["linked_claims"]),
+                        ",".join(record["linked_decisions"]),
+                        ",".join(record["artifact_paths"]),
+                    ]
+                )
+            )
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 

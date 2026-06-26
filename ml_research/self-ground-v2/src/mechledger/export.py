@@ -556,10 +556,18 @@ def _artifact_bundle_entries(
     return metadata, bytes_to_include, omitted
 
 
-def _platform_record_manifest_entries(snapshot: ProjectSnapshot) -> list[dict[str, str]]:
+def _platform_record_manifest_entries(snapshot: ProjectSnapshot) -> list[dict[str, Any]]:
     return [
         {
+            "artifact_paths": sorted(str(path) for path in record.get("artifact_paths") or []),
+            "canonical_record_type": str(record.get("canonical_record_type") or ""),
+            "evidence_role": "platform-record-metadata",
             "file": str(record.get("file") or ""),
+            "linked_claims": sorted(str(item) for item in record.get("linked_claims") or []),
+            "linked_decisions": sorted(
+                str(item) for item in record.get("linked_decisions") or []
+            ),
+            "linked_runs": sorted(str(item) for item in record.get("linked_runs") or []),
             "record_id": str(record.get("record_id") or ""),
             "record_specific_id": str(
                 record.get("record_specific_id") or record.get("record_id") or ""

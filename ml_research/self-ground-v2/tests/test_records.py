@@ -279,7 +279,13 @@ def test_ro_crate_bundle_and_dashboard_surface_typed_record_metadata(
     manifest_payload = json.loads(manifest.read_text(encoding="utf-8"))
     assert manifest_payload["platform_records"] == [
         {
+            "artifact_paths": ["artifacts/activation.pt"],
+            "canonical_record_type": "ActivationRecord",
+            "evidence_role": "platform-record-metadata",
             "file": "research/records/activation.json",
+            "linked_claims": ["C001"],
+            "linked_decisions": ["D001"],
+            "linked_runs": ["RUN_E001"],
             "record_id": "REC-ACT-001",
             "record_specific_id": "ACT001",
             "record_type": "ActivationRecord",
@@ -297,4 +303,179 @@ def test_ro_crate_bundle_and_dashboard_surface_typed_record_metadata(
     assert dashboard.exit_code == 0, dashboard.output
     dashboard_payload = json.loads(dashboard_out.read_text(encoding="utf-8"))
     assert dashboard_payload["platform_records_by_type"] == {"ActivationRecord": 1}
+    assert dashboard_payload["platform_records_by_schema_status"] == {"prd_defined_typed": 1}
     assert dashboard_payload["platform_records_are_evidence"] is False
+
+
+def test_ro_crate_surfaces_all_platform_record_types_and_aliases(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+    fixtures = [
+        activation_record("REC-ACT-001"),
+        weight_analysis_record("WeightAnalysisRecord", "REC-WGT-ALIAS"),
+        circuit_graph_record("CircuitGraphRecord", "REC-CIR-ALIAS"),
+        cross_model_record("CrossModelComparisonRecord", "REC-XMC-ALIAS"),
+        extension_record("RemoteJobMetadataRecord", "REC-EXT-REMOTE"),
+    ]
+    for payload in fixtures:
+        _write_json(tmp_path / "research/records" / f"{payload['record_id']}.json", payload)
+
+    out = tmp_path / "bundles/ro-crate"
+    result = runner.invoke(
+        app,
+        ["export", "ro-crate", "--out", str(out)],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    crate = json.loads((out / "ro-crate-metadata.json").read_text(encoding="utf-8"))
+    records = {
+        entity["recordId"]: entity
+        for entity in crate["@graph"]
+        if entity.get("evidenceRole") == "platform-record-metadata"
+    }
+    assert records["REC-ACT-001"]["recordSpecificId"] == "ACT001"
+    assert records["REC-WGT-ALIAS"]["canonicalRecordType"] == "WeightAnalysisRun"
+    assert records["REC-WGT-ALIAS"]["recordSpecificId"] == "REC-WGT-ALIAS"
+    assert records["REC-CIR-ALIAS"]["canonicalRecordType"] == "CircuitGraph"
+    assert records["REC-XMC-ALIAS"]["canonicalRecordType"] == "CrossModelComparison"
+    assert records["REC-EXT-REMOTE"]["schemaStatus"] == "extension_record"
+    assert records["REC-EXT-REMOTE"]["artifactPaths"] == ["artifacts/result.json"]
+
+
+def test_records_list_show_include_normalized_platform_metadata(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+    _write_json(
+        tmp_path / "research/records/weight_alias.json",
+        weight_analysis_record("WeightAnalysisRecord", "REC-WGT-ALIAS"),
+    )
+
+    listed = runner.invoke(
+        app,
+        ["records", "list"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    shown = runner.invoke(
+        app,
+        ["records", "show", "REC-WGT-ALIAS"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert listed.exit_code == 0, listed.output
+    assert "WeightAnalysisRun" in listed.output
+    assert "extension_record" not in listed.output
+    shown_payload = json.loads(shown.output)
+    assert shown_payload["record_type"] == "WeightAnalysisRecord"
+    assert shown_payload["canonical_record_type"] == "WeightAnalysisRun"
+    assert shown_payload["schema_status"] == "prd_defined_typed"
+    assert shown_payload["record_specific_id"] == "REC-WGT-ALIAS"
+    assert shown_payload["linked_runs"] == ["RUN_E001"]
+    assert shown_payload["linked_claims"] == ["C001"]
+    assert shown_payload["linked_decisions"] == ["D001"]
+    assert shown_payload["artifact_paths"] == [
+        "artifacts/weight_result.json",
+        "artifacts/weights.pt",
+        "research/records/weight_config.yaml",
+    ]
+
+
+def test_platform_records_validate_prd_edge_cases(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+
+    valid_string_position = activation_record("REC-ACT-STRING-POS")
+    valid_string_position["token_position"] = "final"
+    ok = _validate_record(
+        tmp_path,
+        _write_json(tmp_path / "research/records/string_pos.json", valid_string_position),
+    )
+    assert ok.exit_code == 0, ok.output
+
+    bads: list[tuple[str, dict[str, Any], list[str]]] = []
+    missing_record_id = activation_record("REC-IGNORED")
+    missing_record_id.pop("record_id")
+    bads.append(("missing_record_id", missing_record_id, ["record_id", "Suggested fix"]))
+    missing_record_type = activation_record("REC-MISSING-TYPE")
+    missing_record_type.pop("record_type")
+    bads.append(("missing_record_type", missing_record_type, ["record_type", "Rule:"]))
+    invalid_record_type = activation_record("REC-BAD-TYPE")
+    invalid_record_type["record_type"] = "ActivationSource"
+    bads.append(("invalid_record_type", invalid_record_type, ["Unknown", "record_type"]))
+    invalid_content_hash = activation_record("REC-BAD-HASH")
+    invalid_content_hash["content_hash_status"] = "unchecked"
+    bads.append(("invalid_content_hash", invalid_content_hash, ["content_hash_status"]))
+    invalid_analysis = weight_analysis_record(record_id="REC-BAD-ANALYSIS")
+    invalid_analysis["analysis_type"] = "pca"
+    bads.append(("invalid_analysis", invalid_analysis, ["analysis_type"]))
+    invalid_graph = circuit_graph_record(record_id="REC-BAD-GRAPH")
+    invalid_graph["graph_type"] = "networkx_graph"
+    bads.append(("invalid_graph", invalid_graph, ["graph_type"]))
+    invalid_comparison = cross_model_record(record_id="REC-BAD-COMP")
+    invalid_comparison["comparison_type"] = "alignment"
+    bads.append(("invalid_comparison", invalid_comparison, ["comparison_type"]))
+    empty_weights = weight_analysis_record(record_id="REC-EMPTY-WEIGHTS")
+    empty_weights["target_weights"] = []
+    bads.append(("empty_weights", empty_weights, ["target_weights"]))
+    empty_model_ids = cross_model_record(record_id="REC-EMPTY-MODELS")
+    empty_model_ids["model_ids"] = []
+    bads.append(("empty_model_ids", empty_model_ids, ["model_ids"]))
+    empty_source_runs = cross_model_record(record_id="REC-EMPTY-SOURCE")
+    empty_source_runs["source_run_ids"] = []
+    bads.append(("empty_source_runs", empty_source_runs, ["source_run_ids"]))
+    extra_prd = activation_record("REC-EXTRA")
+    extra_prd["activation_source"] = "not allowed"
+    bads.append(("extra_prd", extra_prd, ["activation_source", "remove unsupported"]))
+    extra_extension = extension_record(record_id="REC-EXT-EXTRA")
+    extra_extension["computed_result"] = {"not": "allowed"}
+    bads.append(("extra_extension", extra_extension, ["computed_result", "remove unsupported"]))
+
+    for name, payload, expected in bads:
+        result = _validate_record(
+            tmp_path,
+            _write_json(tmp_path / "research/records" / f"{name}.json", payload),
+        )
+        assert result.exit_code == 2, result.output
+        for text in expected:
+            assert text in result.output
+
+
+def test_platform_record_bundle_metadata_is_full_and_metadata_only(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+    _write_json(tmp_path / "research/records/activation.json", activation_record())
+    tensor_path = tmp_path / "artifacts/activation.pt"
+    tensor_path.parent.mkdir(exist_ok=True)
+    tensor_path.write_bytes(b"tensor bytes should not be swept")
+
+    manifest = tmp_path / "bundles/manifest.json"
+    result = runner.invoke(
+        app,
+        ["export", "bundle", "--out", str(manifest), "--manifest-only", "--include-artifacts"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    payload = json.loads(manifest.read_text(encoding="utf-8"))
+    assert payload["platform_records"] == [
+        {
+            "artifact_paths": ["artifacts/activation.pt"],
+            "canonical_record_type": "ActivationRecord",
+            "evidence_role": "platform-record-metadata",
+            "file": "research/records/activation.json",
+            "linked_claims": ["C001"],
+            "linked_decisions": ["D001"],
+            "linked_runs": ["RUN_E001"],
+            "record_id": "REC-ACT-001",
+            "record_specific_id": "ACT001",
+            "record_type": "ActivationRecord",
+            "schema_status": "prd_defined_typed",
+        }
+    ]
+    assert "artifacts/activation.pt" not in {
+        file_entry["path"] for file_entry in payload["files"]
+    }

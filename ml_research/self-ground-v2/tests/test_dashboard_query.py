@@ -36,6 +36,21 @@ def test_dashboard_data_generates_deterministic_project_summary(tmp_path: Path) 
     assert payload["open_questions"]
 
 
+def test_dashboard_data_accepts_project_relative_output_path(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["dashboard", "data", "--out", ".mechledger/dashboard/data.json"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "dashboard_data: .mechledger/dashboard/data.json" in result.output
+    assert (tmp_path / ".mechledger/dashboard/data.json").exists()
+
+
 def test_query_commands_return_filtered_json_rows(tmp_path: Path) -> None:
     populate_project(tmp_path)
     claims = runner.invoke(

@@ -99,3 +99,18 @@ def test_bundle_manifest_only_and_zst_guidance(tmp_path: Path) -> None:
     if zst.exit_code != 0:
         assert zst.exit_code == 2
         assert "zstd" in zst.output
+
+
+def test_bundle_manifest_only_accepts_project_relative_output_path(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["export", "bundle", "--out", "bundles/manifest.json", "--manifest-only"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "bundle: bundles/manifest.json" in result.output
+    assert (tmp_path / "bundles/manifest.json").exists()

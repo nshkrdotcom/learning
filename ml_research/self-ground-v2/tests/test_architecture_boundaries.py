@@ -39,6 +39,9 @@ def test_core_cli_sdk_and_assessments_have_no_heavy_ml_or_network_imports() -> N
         "urllib3",
         "rdflib",
         "networkx",
+        "sklearn",
+        "tensorflow",
+        "jax",
     }
     for path in Path("src/mechledger").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -65,8 +68,12 @@ def test_core_dependencies_do_not_add_heavy_execution_or_graph_stacks() -> None:
         "requests",
         "httpx",
         "aiohttp",
+        "urllib3",
         "rdflib",
         "networkx",
+        "sklearn",
+        "tensorflow",
+        "jax",
     }
     pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
     dependencies = {
@@ -85,14 +92,22 @@ def test_mechledger_does_not_define_execution_framework_schemas() -> None:
         "InterventionSpec",
         "ModelExecutor",
         "ExecutionBackend",
+        "ModelBackend",
+        "TransformerLensBackend",
+        "SAEBackend",
+        "NNsightBackend",
+        "PyveneBackend",
     }
     banned_function_names = {
         "execute_intervention",
         "run_model",
-        "load_transformer",
+        "load_model",
         "compute_activations",
         "compute_circuit_graph",
         "compute_weight_analysis",
+        "apply_patch",
+        "compute_feature_correspondence",
+        "compute_training_dynamics",
     }
     for path in Path("src/mechledger").rglob("*.py"):
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -113,5 +128,24 @@ def test_docs_state_core_execution_non_goals() -> None:
     docs = readme + "\n" + usage
 
     assert "does not execute" in docs
+    assert "does not compute activations" in docs
+    assert "metadata validation/export records only" in docs
     assert "heavy ml dependencies" in docs or "heavy machine-learning dependencies" in docs
     assert "ro-crate" in docs and "not canonical" in docs
+    assert "dashboard server" in docs
+    assert "remote sync merge" in docs or "sync/merge remote state" in docs
+
+
+def test_no_hosted_dashboard_server_or_web_framework_is_added() -> None:
+    banned_imports = {"fastapi", "flask", "django", "uvicorn", "starlette"}
+    for path in Path("src/mechledger").rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                assert not ({alias.name.split(".")[0] for alias in node.names} & banned_imports)
+            if isinstance(node, ast.ImportFrom) and node.module:
+                assert node.module.split(".")[0] not in banned_imports
+
+    cli = Path("src/mechledger/cli.py").read_text(encoding="utf-8")
+    assert '@dashboard_app.command("serve")' not in cli
+    assert '@dashboard_app.command("server")' not in cli

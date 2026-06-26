@@ -616,6 +616,13 @@ Missing required fields and invalid enum values fail with diagnostics that name
 the file, record type, object ID when available, failed field/rule, and a
 suggested fix when obvious.
 
+`ActivationRecord`, `CircuitGraph`, and `CrossModelComparison` have PRD-specific
+identifiers (`activation_id`, `graph_id`, and `comparison_id`). The 0430 text
+does not define a separate weight-analysis identifier for `WeightAnalysisRun`,
+so MechLedger validates the PRD fields and uses wrapper `record_id` as the
+stable record-specific ID for export/inspection; the coverage and completion
+ledgers keep that gap explicit rather than calling it fully resolved.
+
 `FeatureCorrespondenceRecord`, `TrainingDynamicsRecord`, and
 `RemoteJobMetadataRecord` remain supported as extension records because the
 available 0430-0432 text does not define full concrete schemas for them. They
@@ -635,6 +642,13 @@ All optional platform records are metadata validation/export records only.
 MechLedger does not compute activations, circuits, weights, correspondences,
 training dynamics, or remote jobs, and it does not add torch, TransformerLens,
 SAELens, NumPy, SciPy, nnsight, pyvene, or execution backends to core.
+
+The granular PRD coverage map is `docs/PRD_COVERAGE_0430_0432.md` /
+`docs/prd_coverage_0430_0432.json`. The completion ledger is
+`docs/PRD_COMPLETION_LEDGER_0430_0432.md` /
+`docs/prd_completion_ledger_0430_0432.json`; it names deferred, intentionally
+out-of-scope, ambiguous, and partially implemented gaps separately from tested
+implementation rows.
 
 ## Local Sync And Integrity
 

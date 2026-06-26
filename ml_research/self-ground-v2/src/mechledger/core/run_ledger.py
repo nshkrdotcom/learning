@@ -9,6 +9,27 @@ from mechledger.core.diagnostics import raise_diagnostic
 from mechledger.project import run_ledger_header
 
 DEFAULT_RUN_LEDGER_COLUMNS = run_ledger_header().split(",")
+RUN_LEDGER_STATUSES = {
+    "created",
+    "running",
+    "completed",
+    "interrupted",
+    "interrupted_indexed",
+    "blocked",
+    "failed",
+    "cancelled",
+    "draft",
+    "planned",
+    "candidate_claim",
+    "single_run_evidence",
+    "multi_run_evidence",
+    "insufficient_evidence",
+    "candidate_evidence",
+    "strong_candidate_evidence",
+    "failed_or_weakened",
+    "contradicted",
+    "retired",
+}
 
 
 class RunLedger(BaseModel):
@@ -55,4 +76,18 @@ def parse_run_ledger(path: str | Path) -> RunLedger:
                 suggested_fix="remove the duplicate row or correct the run_id.",
             )
         seen.add(run_id)
+        status = row.get("status") or ""
+        if status and status not in RUN_LEDGER_STATUSES:
+            raise_diagnostic(
+                file=str(path),
+                line=line_number,
+                object_id=run_id,
+                code="run_ledger.status.invalid",
+                message=f"Run ledger row has invalid status: {status}",
+                suggested_fix=(
+                    "use one of "
+                    + ", ".join(sorted(RUN_LEDGER_STATUSES))
+                    + " in the status column."
+                ),
+            )
     return RunLedger(path=str(path), rows=rows)

@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from mechledger.alias import resolve_run_id
+from mechledger.core.diagnostics import Diagnostic, DiagnosticSeverity
 from mechledger.project import Project, now_utc
 
 MUTABLE_PREDICTION_FIELDS = {
@@ -75,10 +76,7 @@ class ExplainerPrediction(BaseModel):
 
 def load_prediction(path: Path) -> ExplainerPrediction:
     payload = _load_prediction_payload(path)
-    try:
-        return ExplainerPrediction.model_validate(payload)
-    except ValidationError as exc:
-        raise PredictionInputError(f"Invalid prediction file {path}: {exc}") from exc
+    return _validate_payload(path, payload)
 
 
 def write_prediction(path: Path, prediction: ExplainerPrediction) -> None:
@@ -119,7 +117,13 @@ def lock_prediction(path: Path, *, force: bool = False) -> ExplainerPrediction:
             )
             write_prediction(path, prediction)
             raise PredictionStateError(
-                f"Prediction {prediction.prediction_id} modified_after_lock: {path}"
+                _prediction_state_message(
+                    path,
+                    prediction.prediction_id,
+                    "prediction.modified_after_lock",
+                    "Prediction semantic content changed after it was locked.",
+                    "review the edit and run `mechledger prediction lock --force PATH` to relock.",
+                )
             )
     prediction = prediction.model_copy(
         update={
@@ -176,12 +180,26 @@ def score_prediction_file(
     prediction = load_prediction(prediction_path)
     if not prediction.locked_content_hash or not prediction.locked_at:
         raise PredictionStateError(
-            f"Prediction {prediction.prediction_id} is not locked: {prediction_path}"
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.lock.required",
+                f"Prediction {prediction.prediction_id} is not locked.",
+                "run `mechledger prediction lock PATH` before scoring.",
+            )
         )
     if prediction.tamper_status != TamperStatus.LOCKED_VALID:
         raise PredictionStateError(
-            f"Prediction {prediction.prediction_id} is not locked_valid "
-            f"({prediction.tamper_status}): {prediction_path}"
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.lock_state.invalid",
+                (
+                    f"Prediction {prediction.prediction_id} is not locked_valid "
+                    f"({prediction.tamper_status})."
+                ),
+                "inspect tamper_status and relock only after human review.",
+            )
         )
     current_hash = canonical_prediction_hash(prediction)
     if current_hash != prediction.locked_content_hash:
@@ -190,7 +208,13 @@ def score_prediction_file(
         )
         write_prediction(prediction_path, prediction)
         raise PredictionStateError(
-            f"Prediction {prediction.prediction_id} modified_after_lock: {prediction_path}"
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.modified_after_lock",
+                "Prediction semantic content changed after it was locked.",
+                "review the edit and run `mechledger prediction lock --force PATH` to relock.",
+            )
         )
     canonical_run_id = _resolve_existing_run(project, run_id_or_alias)
     run_dir = project.runs_dir / canonical_run_id
@@ -200,14 +224,30 @@ def score_prediction_file(
     observed_features = _observed_feature_ids(run_data, metric_rows, event_rows)
     if not observed_features:
         raise PredictionStateError(
-            f"Target run {canonical_run_id} does not contain intervention evidence "
-            "with feature_id or features_modified metadata."
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.score.feature_evidence_missing",
+                (
+                    f"Target run {canonical_run_id} does not contain intervention evidence "
+                    "with feature_id or features_modified metadata."
+                ),
+                "log feature_id or features_modified metadata in run.json, metrics, or events.",
+            )
         )
     if prediction.feature_id not in observed_features:
         raise PredictionStateError(
-            f"Prediction {prediction.prediction_id} feature ID mismatch: "
-            f"{prediction.feature_id} not in run {canonical_run_id} evidence "
-            f"{sorted(observed_features)}"
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.score.feature_mismatch",
+                (
+                    f"Prediction {prediction.prediction_id} feature ID mismatch: "
+                    f"{prediction.feature_id} not in run {canonical_run_id} evidence "
+                    f"{sorted(observed_features)}"
+                ),
+                "score against a run that declares the predicted feature in registered evidence.",
+            )
         )
     metrics = _metrics_by_name(metric_rows)
     target_delta = _metric_value(metrics, ("target_delta", "top_target_delta"))
@@ -217,9 +257,17 @@ def score_prediction_file(
     )
     if target_delta is None or control_delta is None:
         raise PredictionStateError(
-            f"Run {canonical_run_id} is missing a required scoring metric: "
-            "target_delta/top_target_delta and matched_control_delta/"
-            "top_matched_control_delta/top_control_delta are required."
+            _prediction_state_message(
+                prediction_path,
+                prediction.prediction_id,
+                "prediction.score.metric_missing",
+                (
+                    f"Run {canonical_run_id} is missing a required scoring metric: "
+                    "target_delta/top_target_delta and matched_control_delta/"
+                    "top_matched_control_delta/top_control_delta are required."
+                ),
+                "register the required run metrics before scoring this prediction.",
+            )
         )
     specificity_gap = _metric_value(metrics, ("specificity_gap", "specificity_gap_mean"))
     if specificity_gap is not None and not math.isclose(
@@ -267,19 +315,85 @@ def _validate_payload(path: Path, payload: dict[str, Any]) -> ExplainerPredictio
     try:
         return ExplainerPrediction.model_validate(payload)
     except ValidationError as exc:
-        raise PredictionInputError(f"Invalid prediction file {path}: {exc}") from exc
+        raise PredictionInputError(_prediction_validation_message(path, payload, exc)) from exc
 
 
 def _load_prediction_payload(path: Path) -> dict[str, Any]:
     if not path.exists():
-        raise PredictionInputError(f"Prediction file does not exist: {path}")
+        raise PredictionInputError(
+            _prediction_state_message(
+                path,
+                None,
+                "prediction.file.missing",
+                "Prediction file does not exist.",
+                "check the path or create the prediction JSON file.",
+            )
+        )
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise PredictionInputError(f"Prediction file has malformed JSON: {path}") from exc
+        raise PredictionInputError(
+            _prediction_state_message(
+                path,
+                None,
+                "prediction.json.invalid",
+                f"Prediction file has malformed JSON: {exc.msg}",
+                "fix the JSON syntax.",
+            )
+        ) from exc
     if not isinstance(payload, dict):
-        raise PredictionInputError(f"Prediction file must contain a JSON object: {path}")
+        raise PredictionInputError(
+            _prediction_state_message(
+                path,
+                None,
+                "prediction.json.type",
+                "Prediction file must contain a JSON object.",
+                "replace the JSON root with an object containing prediction_id and fields.",
+            )
+        )
     return payload
+
+
+def _prediction_validation_message(
+    path: Path,
+    payload: dict[str, Any],
+    exc: ValidationError,
+) -> str:
+    object_id = str(payload.get("prediction_id") or "<unknown>")
+    failed_fields = [
+        ".".join(str(item) for item in error.get("loc", ())) or "<root>"
+        for error in exc.errors()
+    ]
+    details = "\n".join(
+        f"- {field}: {error.get('msg')}"
+        for field, error in zip(failed_fields, exc.errors(), strict=False)
+    )
+    diagnostic = Diagnostic(
+        severity=DiagnosticSeverity.ERROR,
+        code="prediction.validation",
+        message=f"Invalid prediction record.\nFailed fields: {', '.join(failed_fields)}\n{details}",
+        file=str(path),
+        object_id=object_id,
+        suggested_fix="make the prediction JSON match the ExplainerPrediction schema.",
+    )
+    return diagnostic.format()
+
+
+def _prediction_state_message(
+    path: Path,
+    prediction_id: str | None,
+    rule: str,
+    message: str,
+    suggested_fix: str,
+) -> str:
+    return Diagnostic(
+        severity=DiagnosticSeverity.ERROR,
+        code=rule,
+        message=message,
+        file=str(path),
+        object_id=prediction_id,
+        suggested_fix=suggested_fix,
+    ).format()
 
 
 def _canonicalize_prediction_payload(payload: dict[str, Any]) -> dict[str, Any]:

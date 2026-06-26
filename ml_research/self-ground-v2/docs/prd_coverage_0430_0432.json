@@ -1,270 +1,4172 @@
 {
   "entries": [
     {
-      "doc_section": "product-boundary",
-      "evidence": [
-        "tests/test_architecture_boundaries.py",
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Execution Framework is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_execution_framework",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
         "README.md",
         "docs/USAGE.md"
       ],
-      "id": "non_goals_execution_framework",
-      "notes": "Core records metadata, metrics, artifacts, claims, decisions, and debt. It does not execute mechinterp interventions or load model stacks.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "No execution framework, generic ML tracker, hosted dashboard, or AI reviewer"
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Execution Framework"
     },
     {
-      "doc_section": "52",
-      "evidence": [
-        "src/mechledger/project.py",
-        "src/mechledger/core/*.py"
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Universal Abstraction Layer is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_universal_abstraction_layer",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
       ],
-      "id": "flat_file_canonical_storage",
-      "notes": "Canonical project state remains flat files under research/ plus .mechledger/project.json; SQLite/cache files are disposable.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Flat-file canonical storage"
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Universal Abstraction Layer"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Generic ML Experiment Tracker is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_generic_ml_experiment_tracker",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Generic ML Experiment Tracker"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Hosted Dashboard is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_hosted_dashboard",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Hosted Dashboard"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No AI Reviewer is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_ai_reviewer",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No AI Reviewer"
+    },
+    {
+      "doc_section": "2.A Decoupling the Core CLI from ML Dependencies",
+      "evidence_notes": "Dependency Light Core is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "dependency_light_core",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0431_selfground_refactor.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "Dependency Light Core"
+    },
+    {
+      "doc_section": "2.A Decoupling the Core CLI from ML Dependencies",
+      "evidence_notes": "Heavy ML Dependencies Outside Core is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "heavy_ml_dependencies_outside_core",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0431_selfground_refactor.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "Heavy ML Dependencies Outside Core"
     },
     {
       "doc_section": "50.0",
-      "evidence": [
-        "src/mechledger/core/claim_status.py",
-        "src/mechledger/draftguard.py",
-        "tests/test_architecture_boundaries.py"
+      "evidence_notes": "No Self Ground Execution Revival is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_self_ground_execution_revival",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
       ],
-      "id": "milestone_50_0",
-      "notes": "SELF-GROUND-style claim status, debt, compatibility, and dogfood boundaries are extracted into dependency-light core behavior.",
+      "remaining_gap": "none",
+      "source_document": "0432_selfground_refactor.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Self Ground Execution Revival"
+    },
+    {
+      "doc_section": "Conclusion and migration recommendation",
+      "evidence_notes": "No Deleted Mechanismlab Abstraction Revival is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_deleted_mechanismlab_abstraction_revival",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0432_selfground_refactor.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Deleted Mechanismlab Abstraction Revival"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Flat File Canonical State is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "flat_file_canonical_state",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Milestone -1 extraction and dogfood"
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Flat File Canonical State"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Mechledger Project JSON is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "mechledger_project_json",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Mechledger Project JSON"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Committed Research Audit Trail is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "committed_research_audit_trail",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Committed Research Audit Trail"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Ignored Local Mechledger Runs is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "ignored_local_mechledger_runs",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Ignored Local Mechledger Runs"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Disposable SQLite Cache is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "disposable_sqlite_cache",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Disposable SQLite Cache"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "Read Only Cache Fallback Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "read_only_cache_fallback_behavior",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Read Only Cache Fallback Behavior"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "No SQLite As Canonical State is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_sqlite_as_canonical_state",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "No SQLite As Canonical State"
+    },
+    {
+      "doc_section": "4.1, 4.2, 5, 41.5, 52",
+      "evidence_notes": "No Remote Merge Sync Canonical State is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_remote_merge_sync_canonical_state",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/indexer.py",
+        "src/mechledger/alias.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "No Remote Merge Sync Canonical State"
     },
     {
       "doc_section": "50.1",
-      "evidence": [
+      "evidence_notes": "Mechledger Init is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "mechledger_init",
+      "implementation_files": [
+        "src/mechledger/project.py",
         "src/mechledger/cli.py",
-        "src/mechledger/scaffold.py",
-        "src/mechledger/draftguard.py",
-        "src/mechledger/hooks.py"
+        ".gitignore"
       ],
-      "id": "milestone_50_1",
-      "notes": "Initialization, scaffold, parsers, Draft Guard, staged checks, hooks, format, and session close surfaces exist.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Milestone 0 Draft Guard MVP"
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Mechledger Init"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Research Scaffold Generation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "research_scaffold_generation",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Research Scaffold Generation"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Gitignore Block is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "gitignore_block",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Gitignore Block"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Claim Ledger Template is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_ledger_template",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Claim Ledger Template"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Decision Log Template is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_log_template",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Decision Log Template"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Research Log Template is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "research_log_template",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Research Log Template"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Run Ledger CSV Template is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_ledger_csv_template",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Run Ledger CSV Template"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Experiment Spec Template is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_spec_template",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Experiment Spec Template"
+    },
+    {
+      "doc_section": "5, 8.1, 50.1",
+      "evidence_notes": "Literature Paper Portfolio Scaffold is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "literature_paper_portfolio_scaffold",
+      "implementation_files": [
+        "src/mechledger/project.py",
+        "src/mechledger/cli.py",
+        ".gitignore"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Literature Paper Portfolio Scaffold"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Claim Ledger Parser is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_ledger_parser",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Claim Ledger Parser"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Decision Log Parser is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_log_parser",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Decision Log Parser"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Research Log Parser is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "research_log_parser",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Research Log Parser"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Experiment Spec Parser is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_spec_parser",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Experiment Spec Parser"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Run Ledger Parser is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_ledger_parser",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Run Ledger Parser"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "External Label Parser Validator is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "external_label_parser_validator",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "External Label Parser Validator"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Prediction Record Parser Validator is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_record_parser_validator",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Prediction Record Parser Validator"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Optional Platform Record Parser Validator is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "optional_platform_record_parser_validator",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Optional Platform Record Parser Validator"
+    },
+    {
+      "doc_section": "10, 14.5, 16, 17, 18, 20, 37, 46.3, 47",
+      "evidence_notes": "Parser Diagnostic Contract is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "parser_diagnostic_contract",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_diagnostics_contract.py",
+        "tests/test_records.py",
+        "tests/test_prediction_locking.py",
+        "tests/test_external_labels.py"
+      ],
+      "title": "Parser Diagnostic Contract"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Heading Grammar is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_heading_grammar",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Heading Grammar"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Yaml Required Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_yaml_required_fields",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Yaml Required Fields"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Yaml Optional Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_yaml_optional_fields",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Yaml Optional Fields"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Status Dag is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_status_dag",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Status Dag"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Terminal Negative Statuses is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "terminal_negative_statuses",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Terminal Negative Statuses"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Block Hash Canonicalization is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_block_hash_canonicalization",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Block Hash Canonicalization"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Proposal Generation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_proposal_generation",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Proposal Generation"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Review is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_review",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Review"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Stale Claim Proposal Detection is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "stale_claim_proposal_detection",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Stale Claim Proposal Detection"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Forced Stale Review Handling is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "forced_stale_review_handling",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Forced Stale Review Handling"
+    },
+    {
+      "doc_section": "10, 11, 32, 50.3",
+      "evidence_notes": "Claim Language Report is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_language_report",
+      "implementation_files": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/language_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_claim_block_hash.py",
+        "tests/test_claim_status_dag.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone2_workflow.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Claim Language Report"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Markdown Claim Tags is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "markdown_claim_tags",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Markdown Claim Tags"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Latex Claim Tags is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "latex_claim_tags",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Latex Claim Tags"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "HTML Comment Claim Tags is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "html_comment_claim_tags",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "HTML Comment Claim Tags"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Unknown Claim Ids is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "unknown_claim_ids",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Unknown Claim Ids"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Malformed Tags is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "malformed_tags",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Malformed Tags"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Forbidden Language is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "forbidden_language",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Forbidden Language"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Required Caveats is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "required_caveats",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Required Caveats"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Unresolved Scientific Debt Surfacing is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "unresolved_scientific_debt_surfacing",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Unresolved Scientific Debt Surfacing"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Inline Override Handling is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "inline_override_handling",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Inline Override Handling"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Staged Mode Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "staged_mode_behavior",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Staged Mode Behavior"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Deterministic Draft Suggestions is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "deterministic_draft_suggestions",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Deterministic Draft Suggestions"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "Pre Commit Config Install is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "pre_commit_config_install",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Pre Commit Config Install"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "Direct Git Hook Fallback is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "direct_git_hook_fallback",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Direct Git Hook Fallback"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "No Mechledger Hooks Pre Commit Dependency is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_mechledger_hooks_pre_commit_dependency",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "No Mechledger Hooks Pre Commit Dependency"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "Draft Check Staged is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "draft_check_staged",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Draft Check Staged"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "Index Check Staged is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "index_check_staged",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Index Check Staged"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "No Stash Based Staged Isolation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_stash_based_staged_isolation",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "No Stash Based Staged Isolation"
+    },
+    {
+      "doc_section": "6, 7, 50.1",
+      "evidence_notes": "Skip Messages No Relevant Staged Files is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "skip_messages_no_relevant_staged_files",
+      "implementation_files": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_milestone0_cli.py"
+      ],
+      "title": "Skip Messages No Relevant Staged Files"
     },
     {
       "doc_section": "50.2",
-      "evidence": [
+      "evidence_notes": "Mechledger Run Command is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "mechledger_run_command",
+      "implementation_files": [
         "src/mechledger/run_auditor.py",
-        "src/mechledger/alias.py",
-        "src/mechledger/artifacts.py",
-        "src/mechledger/indexer.py"
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
       ],
-      "id": "milestone_50_2",
-      "notes": "Run wrapper, aliases, run-local files, SDK logging, artifact registration, run-ledger proposal, status/next, and disposable indexes are implemented.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Milestone 1 Flat-File Run Auditor"
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Mechledger Run Command"
     },
     {
-      "doc_section": "50.3",
-      "evidence": [
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Generated Run Ids is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "generated_run_ids",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
         "src/mechledger/workflows.py",
-        "src/mechledger/core/experiment_spec.py",
-        "src/mechledger/debt.py"
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
       ],
-      "id": "milestone_50_3",
-      "notes": "ExperimentSpec validation, prerequisite-aware next, claim proposal/review/staleness, reclassification, and debt waiver workflows are present.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Milestone 2 Experiment and Claim Workflow"
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Generated Run Ids"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "User Supplied Run Id Collision Failure is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "user_supplied_run_id_collision_failure",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "User Supplied Run Id Collision Failure"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Run Directory Creation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_directory_creation",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Run Directory Creation"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Heartbeat File is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "heartbeat_file",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Heartbeat File"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Command Capture is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "command_capture",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Command Capture"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Stdout Stderr Capture is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "stdout_stderr_capture",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Stdout Stderr Capture"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Git State Capture is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "git_state_capture",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Git State Capture"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Environment Allowlist Redaction is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "environment_allowlist_redaction",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Environment Allowlist Redaction"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Resource Usage Capture is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "resource_usage_capture",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Resource Usage Capture"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Run Local Artifact Auto Collection is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_local_artifact_auto_collection",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Run Local Artifact Auto Collection"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Run Ledger Row Proposal is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_ledger_row_proposal",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Run Ledger Row Proposal"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Claim Update Proposal is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_update_proposal",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Claim Update Proposal"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Run Class Handling is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_class_handling",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Run Class Handling"
+    },
+    {
+      "doc_section": "22, 23, 24, 25, 26, 27, 28, 31, 50.2",
+      "evidence_notes": "Failed Cancelled Promotion Safety is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "failed_cancelled_promotion_safety",
+      "implementation_files": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_run_environment_redaction.py",
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Failed Cancelled Promotion Safety"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Alias Cache File is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "alias_cache_file",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Alias Cache File"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Unique Prefix Aliases is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "unique_prefix_aliases",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Unique Prefix Aliases"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Experiment Slug Aliases is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_slug_aliases",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Experiment Slug Aliases"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Latest Alias is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "latest_alias",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Latest Alias"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Latest N Alias is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "latest_n_alias",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Latest N Alias"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Local Sequence Aliases is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "local_sequence_aliases",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Local Sequence Aliases"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Alias Ambiguity Handling is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "alias_ambiguity_handling",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Alias Ambiguity Handling"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Malformed Alias Cache Handling is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "malformed_alias_cache_handling",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Malformed Alias Cache Handling"
+    },
+    {
+      "doc_section": "9, 43.1, 50.2",
+      "evidence_notes": "Missing Alias Cache Fallback Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "missing_alias_cache_fallback_behavior",
+      "implementation_files": [
+        "src/mechledger/alias.py",
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_sync_status.py"
+      ],
+      "title": "Missing Alias Cache Fallback Behavior"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Explicit Artifact Registration is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "explicit_artifact_registration",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Explicit Artifact Registration"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Artifact Run Local Auto Collection is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_run_local_auto_collection",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Artifact Run Local Auto Collection"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Artifact Annotation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_annotation",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Artifact Annotation"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Artifact Manifest Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_manifest_fields",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Artifact Manifest Fields"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Claim Relevance States is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_relevance_states",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Claim Relevance States"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Review Status is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "review_status",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Review Status"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "No Arbitrary Artifact Sweeping is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_arbitrary_artifact_sweeping",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "No Arbitrary Artifact Sweeping"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Large Artifact Backend Delegation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "large_artifact_backend_delegation",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Large Artifact Backend Delegation"
+    },
+    {
+      "doc_section": "4.4.2, 4.5, 26.3, 30, 42.2",
+      "evidence_notes": "Redacted Artifact Placeholders is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "redacted_artifact_placeholders",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_parsers_and_run_auditor.py",
+        "tests/test_export_bundle.py",
+        "tests/test_redaction.py"
+      ],
+      "title": "Redacted Artifact Placeholders"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Baseline Calibration Assessment is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "baseline_calibration_assessment",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Baseline Calibration Assessment"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Positive Control Assessment is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "positive_control_assessment",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Positive Control Assessment"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Empirical Null Assessment is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "empirical_null_assessment",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Empirical Null Assessment"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Paired Statistic Assessment is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "paired_statistic_assessment",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Paired Statistic Assessment"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Typed Control Conditions is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "typed_control_conditions",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Typed Control Conditions"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Seed Sensitivity is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "seed_sensitivity",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Seed Sensitivity"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Telemetry is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "telemetry",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Telemetry"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Norm Drift is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "norm_drift",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Norm Drift"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Nonfinite Rows is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "nonfinite_rows",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Nonfinite Rows"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Skipped Rows is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "skipped_rows",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Skipped Rows"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Candidate Claim Assessment is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "candidate_claim_assessment",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Candidate Claim Assessment"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Debt Report Generation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "debt_report_generation",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Debt Report Generation"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Debt Waiver is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "debt_waiver",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Debt Waiver"
+    },
+    {
+      "doc_section": "12, 34, 36, 50.4",
+      "evidence_notes": "Blocking Vs Non Blocking Debt is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "blocking_vs_non_blocking_debt",
+      "implementation_files": [
+        "src/mechledger/assessments/",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/debt.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_assessments.py",
+        "tests/test_milestone3_evidence.py",
+        "tests/test_debt.py"
+      ],
+      "title": "Blocking Vs Non Blocking Debt"
+    },
+    {
+      "doc_section": "13, 50.1",
+      "evidence_notes": "Draft Guard Debt Awareness is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "draft_guard_debt_awareness",
+      "implementation_files": [
+        "src/mechledger/draftguard.py",
+        "src/mechledger/language_report.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone0_cli.py",
+        "tests/test_spec_conformance_hardening.py",
+        "tests/test_draft_suggestions.py"
+      ],
+      "title": "Draft Guard Debt Awareness"
     },
     {
       "doc_section": "50.4",
-      "evidence": [
-        "src/mechledger/assessments.py",
+      "evidence_notes": "Gate Check is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "gate_check",
+      "implementation_files": [
         "src/mechledger/tier2.py",
-        "tests/test_milestone3_tier2_commands.py"
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
       ],
-      "id": "milestone_50_4",
-      "notes": "Gate, calibration, telemetry, null, and paired-stat registration surfaces assess registered evidence and produce debt reports.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Milestone 3 MechInterp Evidence Assessment"
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Gate Check"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Calibration Check is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "calibration_check",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Calibration Check"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Telemetry Check is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "telemetry_check",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Telemetry Check"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Null Run Plan is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "null_run_plan",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Null Run Plan"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Null Run Register is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "null_run_register",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Null Run Register"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Stats Paired Test Register is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "stats_paired_test_register",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Stats Paired Test Register"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Threshold Source Reporting is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "threshold_source_reporting",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Threshold Source Reporting"
+    },
+    {
+      "doc_section": "35, 36, 50.4",
+      "evidence_notes": "Scientific Debt Regeneration is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "scientific_debt_regeneration",
+      "implementation_files": [
+        "src/mechledger/tier2.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/debt_report.py",
+        "src/mechledger/sdk/stats.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone3_tier2_commands.py",
+        "tests/test_milestone3_evidence.py"
+      ],
+      "title": "Scientific Debt Regeneration"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Lock is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_lock",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Lock"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Score is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_score",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Score"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Canonical Hash Excludes Mutable Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_canonical_hash_excludes_mutable_fields",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Canonical Hash Excludes Mutable Fields"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Modified After Lock Detection is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_modified_after_lock_detection",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Modified After Lock Detection"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Force Relock Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_force_relock_behavior",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Force Relock Behavior"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Feature Matching From Run Evidence is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_feature_matching_from_run_evidence",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Feature Matching From Run Evidence"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Score Output Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_score_output_fields",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Score Output Fields"
+    },
+    {
+      "doc_section": "50.3",
+      "evidence_notes": "Experiment Spec Validation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_spec_validation",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Experiment Spec Validation"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Experiment Prerequisites is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_prerequisites",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Experiment Prerequisites"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Mechledger Next is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "mechledger_next",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Mechledger Next"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Ready Blocked Debt Warning Classification is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "ready_blocked_debt_warning_classification",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Ready Blocked Debt Warning Classification"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Experiment Crystallize is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "experiment_crystallize",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Experiment Crystallize"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Source Runs Preserved is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "source_runs_preserved",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Source Runs Preserved"
+    },
+    {
+      "doc_section": "16, 40, 50.3",
+      "evidence_notes": "Formal Spec After Exploration Honesty is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "formal_spec_after_exploration_honesty",
+      "implementation_files": [
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/prerequisites.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py"
+      ],
+      "title": "Formal Spec After Exploration Honesty"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_records",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision Records"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision Statuses is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_statuses",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision Statuses"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision Required For Debt Waiver is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_required_for_debt_waiver",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision Required For Debt Waiver"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision Required For Reclassification is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_required_for_reclassification",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision Required For Reclassification"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision New From Diff is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_new_from_diff",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision New From Diff"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision New From Declared Surfaces is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_new_from_declared_surfaces",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision New From Declared Surfaces"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Implicit Surfaces Refused is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "implicit_surfaces_refused",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Implicit Surfaces Refused"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Debt Waiver Remains Visible is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "debt_waiver_remains_visible",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Debt Waiver Remains Visible"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "Appendix Export is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "appendix_export",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "Appendix Export"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "Bundle Export is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "bundle_export",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "Bundle Export"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "Manifest Only Bundle is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "manifest_only_bundle",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "Manifest Only Bundle"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "Artifact Byte Inclusion Rules is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_byte_inclusion_rules",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "Artifact Byte Inclusion Rules"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "RO-Crate Export is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "ro_crate_export",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "RO-Crate Export"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "Deterministic Export Output is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "deterministic_export_output",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "Deterministic Export Output"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "RO-Crate Export Only Boundary is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "ro_crate_export_only_boundary",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "RO-Crate Export Only Boundary"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "No RDF Internal Model is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_rdf_internal_model",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "No RDF Internal Model"
+    },
+    {
+      "doc_section": "43.5, 47.0, 50.6",
+      "evidence_notes": "No Hidden Artifact Sweeping is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_hidden_artifact_sweeping",
+      "implementation_files": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_export_appendix.py",
+        "tests/test_export_bundle.py",
+        "tests/test_export_rocrate.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Hidden Artifact Sweeping"
     },
     {
       "doc_section": "50.5",
-      "evidence": [
+      "evidence_notes": "Session Start Note Attach Close List Show is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "session_start_note_attach_close_list_show",
+      "implementation_files": [
         "src/mechledger/sessions.py",
         "src/mechledger/copilot.py",
-        "src/mechledger/open_questions.py",
-        "src/mechledger/dashboard_data.py"
+        "src/mechledger/cli.py"
       ],
-      "id": "milestone_50_5_local_surfaces",
-      "notes": "Local session/copilot provenance, open questions, external labels, wording reports, dashboard data, and query surfaces exist without a hosted dashboard.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
-      "status": "partially_implemented",
-      "title": "Milestone 4 Assistant and local dashboard-adjacent surfaces"
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "Session Start Note Attach Close List Show"
     },
     {
-      "doc_section": "50.5",
-      "evidence": [
+      "doc_section": "44, 50.5",
+      "evidence_notes": "Session Review Accept Reject is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "session_review_accept_reject",
+      "implementation_files": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "Session Review Accept Reject"
+    },
+    {
+      "doc_section": "44, 50.5",
+      "evidence_notes": "Copilot List Show Review is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "copilot_list_show_review",
+      "implementation_files": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "Copilot List Show Review"
+    },
+    {
+      "doc_section": "44, 50.5",
+      "evidence_notes": "Sidecar Provenance File is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "sidecar_provenance_file",
+      "implementation_files": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "Sidecar Provenance File"
+    },
+    {
+      "doc_section": "44, 50.5",
+      "evidence_notes": "No Automatic Canonical Mutation Without Review is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_automatic_canonical_mutation_without_review",
+      "implementation_files": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "No Automatic Canonical Mutation Without Review"
+    },
+    {
+      "doc_section": "44, 50.5",
+      "evidence_notes": "No AI Review Truth Verification is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_ai_review_truth_verification",
+      "implementation_files": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sessions.py",
+        "tests/test_copilot.py"
+      ],
+      "title": "No AI Review Truth Verification"
+    },
+    {
+      "doc_section": "45, 50.5",
+      "evidence_notes": "Questions List Add Show Resolve is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "questions_list_add_show_resolve",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/prerequisites.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "title": "Questions List Add Show Resolve"
+    },
+    {
+      "doc_section": "45, 50.5",
+      "evidence_notes": "Accepted Decision Required For Resolution is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "accepted_decision_required_for_resolution",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/prerequisites.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "title": "Accepted Decision Required For Resolution"
+    },
+    {
+      "doc_section": "45, 50.5",
+      "evidence_notes": "Next Surfaces Open Questions is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "next_surfaces_open_questions",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/prerequisites.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "title": "Next Surfaces Open Questions"
+    },
+    {
+      "doc_section": "45, 50.5",
+      "evidence_notes": "Questions Not Blockers Unless Policy Gated is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "questions_not_blockers_unless_policy_gated",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/prerequisites.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "title": "Questions Not Blockers Unless Policy Gated"
+    },
+    {
+      "doc_section": "46.3, 50.5",
+      "evidence_notes": "Labels Validate Import List Show Link is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "labels_validate_import_list_show_link",
+      "implementation_files": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_external_labels.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Labels Validate Import List Show Link"
+    },
+    {
+      "doc_section": "46.3, 50.5",
+      "evidence_notes": "External Labels Metadata By Default is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "external_labels_metadata_by_default",
+      "implementation_files": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_external_labels.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "External Labels Metadata By Default"
+    },
+    {
+      "doc_section": "46.3, 50.5",
+      "evidence_notes": "Source Attribution Fields is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "source_attribution_fields",
+      "implementation_files": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_external_labels.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Source Attribution Fields"
+    },
+    {
+      "doc_section": "46.3, 50.5",
+      "evidence_notes": "Linked Claims Do Not Become Supported Automatically is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "linked_claims_do_not_become_supported_automatically",
+      "implementation_files": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_external_labels.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Linked Claims Do Not Become Supported Automatically"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Dashboard JSON is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "dashboard_json",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Dashboard JSON"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Claims is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_claims",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Claims"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Runs is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_runs",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Runs"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Debt is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_debt",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Debt"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Artifacts is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_artifacts",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Artifacts"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Decisions is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_decisions",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Decisions"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Query Experiments is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "query_experiments",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Query Experiments"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Typed Platform Record Counts is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "typed_platform_record_counts",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Typed Platform Record Counts"
+    },
+    {
+      "doc_section": "41.4, 48, 50.5",
+      "evidence_notes": "Records List Show Inspection Path is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "records_list_show_inspection_path",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py",
+        "tests/test_records.py"
+      ],
+      "title": "Records List Show Inspection Path"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Hosted Dashboard Server is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_hosted_dashboard_server",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
         "README.md",
         "docs/USAGE.md"
       ],
-      "id": "milestone_50_5_dashboard_server",
-      "notes": "The PRD defers the dashboard server until the core loop proves useful. This repo exports deterministic local JSON instead.",
-      "source_document": "0430_revised_v6.md",
-      "status": "deferred_by_prd",
-      "title": "Dashboard server"
-    },
-    {
-      "doc_section": "50.6",
-      "evidence": [
-        "src/mechledger/records.py",
-        "src/mechledger/export.py",
-        "tests/test_records.py"
-      ],
-      "id": "milestone_50_6",
-      "notes": "Typed PRD record validators, reproducibility bundles, appendix export, and RO-Crate export are implemented as metadata/export surfaces only.",
-      "source_document": "0430_revised_v6.md",
-      "status": "partially_implemented",
-      "title": "Milestone 5 Long-Term MechInterp Platform metadata"
-    },
-    {
-      "doc_section": "47.1",
-      "evidence": [
-        "src/mechledger/records.py",
-        "tests/test_records.py"
-      ],
-      "id": "activation_record_schema",
-      "notes": "ActivationRecord validates the PRD-required fields, enums, tensor shape, and summary stats but does not compute activations.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "ActivationRecord typed metadata schema"
-    },
-    {
-      "doc_section": "47.2",
-      "evidence": [
-        "src/mechledger/records.py",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
         "tests/test_records.py"
       ],
-      "id": "weight_analysis_run_schema",
-      "notes": "WeightAnalysisRun is validated; WeightAnalysisRecord remains a documented backwards-compatible alias.",
-      "source_document": "0430_revised_v6.md",
-      "status": "implemented",
-      "title": "WeightAnalysisRun typed metadata schema"
+      "title": "No Hosted Dashboard Server"
     },
     {
-      "doc_section": "47.3",
-      "evidence": [
-        "src/mechledger/records.py",
-        "tests/test_records.py"
-      ],
-      "id": "circuit_graph_schema",
-      "notes": "CircuitGraph is validated; CircuitGraphRecord remains a documented backwards-compatible alias.",
-      "source_document": "0430_revised_v6.md",
-      "status": "implemented",
-      "title": "CircuitGraph typed metadata schema"
-    },
-    {
-      "doc_section": "47.4",
-      "evidence": [
-        "src/mechledger/records.py",
-        "tests/test_records.py"
-      ],
-      "id": "cross_model_comparison_schema",
-      "notes": "CrossModelComparison is validated; CrossModelComparisonRecord remains a documented backwards-compatible alias.",
-      "source_document": "0430_revised_v6.md",
-      "status": "implemented",
-      "title": "CrossModelComparison typed metadata schema"
-    },
-    {
-      "doc_section": "47",
-      "evidence": [
-        "src/mechledger/records.py",
-        "docs/USAGE.md"
-      ],
-      "id": "extension_platform_records",
-      "notes": "FeatureCorrespondenceRecord, TrainingDynamicsRecord, and RemoteJobMetadataRecord are supported as stricter extension records because the available PRD text does not provide concrete field schemas.",
-      "source_document": "0430_revised_v6.md",
-      "status": "ambiguous_or_requires_decision",
-      "title": "Extension optional platform records"
-    },
-    {
-      "doc_section": "43-44",
-      "evidence": [
-        "src/mechledger/copilot.py",
-        "src/mechledger/sessions.py"
-      ],
-      "id": "session_copilot_provenance",
-      "notes": "Local session/copilot review records are non-authoritative and require human review/provenance before accepted artifacts enter research/.",
-      "source_document": "0430_revised_v6.md",
-      "status": "implemented",
-      "title": "Session and copilot provenance"
-    },
-    {
-      "doc_section": "42",
-      "evidence": [
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Sync Status is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "sync_status",
+      "implementation_files": [
         "src/mechledger/sync_status.py",
         "src/mechledger/integrity.py",
         "src/mechledger/redaction.py",
-        "src/mechledger/lifecycle.py"
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
       ],
-      "id": "local_integrity_sync_redaction_lifecycle",
-      "notes": "Local conflict reports, tamper records, explicit redaction, pin/gc, and run bundles exist without remote merge.",
+      "remaining_gap": "none",
       "source_document": "0430_revised_v6.md",
       "status": "implemented",
-      "title": "Sync, integrity, redaction, and lifecycle"
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Sync Status"
     },
     {
-      "doc_section": "51",
-      "evidence": [
-        "README.md",
-        "docs/USAGE.md",
-        "tests/test_architecture_boundaries.py"
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Sync Diff is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "sync_diff",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
       ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Sync Diff"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "No Merge Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_merge_behavior",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "No Merge Behavior"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Integrity Check is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "integrity_check",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Integrity Check"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Integrity Resolve is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "integrity_resolve",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Integrity Resolve"
+    },
+    {
+      "doc_section": "37, 42.4, 42.5",
+      "evidence_notes": "Prediction Edit Tamper Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "prediction_edit_tamper_records",
+      "implementation_files": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_prediction_locking.py",
+        "tests/test_integrity_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Prediction Edit Tamper Records"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Claim Proposal Staleness Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "claim_proposal_staleness_records",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Claim Proposal Staleness Records"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Artifact Modification Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_modification_records",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Artifact Modification Records"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Decision Status Staleness Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "decision_status_staleness_records",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Decision Status Staleness Records"
+    },
+    {
+      "doc_section": "17, 31, 32, 42.4, 42.5, 50.3",
+      "evidence_notes": "Run Ledger Proposal Records is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "run_ledger_proposal_records",
+      "implementation_files": [
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_milestone2_workflow.py",
+        "tests/test_integrity_records.py"
+      ],
+      "title": "Run Ledger Proposal Records"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Redact Run is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "redact_run",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Redact Run"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Redact Artifact is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "redact_artifact",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Redact Artifact"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Redaction Debt is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "redaction_debt",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Redaction Debt"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Pin Run is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "pin_run",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Pin Run"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "GC Dry Run is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "gc_dry_run",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "GC Dry Run"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "GC Archive Behavior is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "gc_archive_behavior",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "GC Archive Behavior"
+    },
+    {
+      "doc_section": "41.5, 42, 43, 50.2, 50.5",
+      "evidence_notes": "Per Run Bundle is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "per_run_bundle",
+      "implementation_files": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_sync_status.py",
+        "tests/test_integrity_records.py",
+        "tests/test_redaction.py",
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Per Run Bundle"
+    },
+    {
+      "doc_section": "50.6",
+      "evidence_notes": "Activation Record is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "activation_record",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Activation Record"
+    },
+    {
+      "doc_section": "47.2",
+      "evidence_notes": "Weight Analysis Run is validated and surfaced, with an explicit remaining PRD gap documented.",
+      "id": "weight_analysis_run",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "0430 defines WeightAnalysisRun fields but no PRD-specific weight-analysis identifier separate from record_id/run_id; this pass validates the schema and uses wrapper record_id as the stable record-specific ID.",
+      "source_document": "0430_revised_v6.md",
+      "status": "partially_implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Weight Analysis Run"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Weight Analysis Record Alias is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "weight_analysis_record_alias",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Weight Analysis Record Alias"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Circuit Graph is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "circuit_graph",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Circuit Graph"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Circuit Graph Record Alias is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "circuit_graph_record_alias",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Circuit Graph Record Alias"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Cross Model Comparison is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "cross_model_comparison",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Cross Model Comparison"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Cross Model Comparison Record Alias is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "cross_model_comparison_record_alias",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Cross Model Comparison Record Alias"
+    },
+    {
+      "doc_section": "47",
+      "evidence_notes": "0430-0432 do not define a full concrete FeatureCorrespondenceRecord schema.",
+      "id": "feature_correspondence_record_extension",
+      "implementation_files": [],
+      "remaining_gap": "0430-0432 do not define a full concrete FeatureCorrespondenceRecord schema.",
+      "source_document": "0430_revised_v6.md",
+      "status": "ambiguous_or_requires_decision",
+      "test_files": [],
+      "title": "Feature Correspondence Record Extension"
+    },
+    {
+      "doc_section": "47",
+      "evidence_notes": "0430-0432 do not define a full concrete TrainingDynamicsRecord schema.",
+      "id": "training_dynamics_record_extension",
+      "implementation_files": [],
+      "remaining_gap": "0430-0432 do not define a full concrete TrainingDynamicsRecord schema.",
+      "source_document": "0430_revised_v6.md",
+      "status": "ambiguous_or_requires_decision",
+      "test_files": [],
+      "title": "Training Dynamics Record Extension"
+    },
+    {
+      "doc_section": "47",
+      "evidence_notes": "0430-0432 do not define a full concrete RemoteJobMetadataRecord schema.",
+      "id": "remote_job_metadata_record_extension",
+      "implementation_files": [],
+      "remaining_gap": "0430-0432 do not define a full concrete RemoteJobMetadataRecord schema.",
+      "source_document": "0430_revised_v6.md",
+      "status": "ambiguous_or_requires_decision",
+      "test_files": [],
+      "title": "Remote Job Metadata Record Extension"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Schema Status is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "schema_status",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Schema Status"
+    },
+    {
+      "doc_section": "47.2",
+      "evidence_notes": "Record Specific Id is validated and surfaced, with an explicit remaining PRD gap documented.",
+      "id": "record_specific_id",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.",
+      "source_document": "0430_revised_v6.md",
+      "status": "partially_implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Record Specific Id"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Linked Runs Claims Decisions is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "linked_runs_claims_decisions",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Linked Runs Claims Decisions"
+    },
+    {
+      "doc_section": "47.1, 47.2, 47.3, 47.4, 50.6",
+      "evidence_notes": "Artifact Paths is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "artifact_paths",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_records.py",
+        "tests/test_diagnostics_contract.py"
+      ],
+      "title": "Artifact Paths"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "Metadata Only Boundary is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "metadata_only_boundary",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "Metadata Only Boundary"
+    },
+    {
+      "doc_section": "1, 4.4, 4.4.1, 49, 52",
+      "evidence_notes": "No Platform Record Computation is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "id": "no_platform_record_computation",
+      "implementation_files": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_architecture_boundaries.py",
+        "tests/test_records.py"
+      ],
+      "title": "No Platform Record Computation"
+    },
+    {
+      "doc_section": "8.4, 48, 50.5",
+      "evidence_notes": "Dashboard server is deferred until Milestones 0-2 survive real use.",
+      "id": "deferred_hosted_dashboard_server",
+      "implementation_files": [],
+      "remaining_gap": "Dashboard server is deferred until Milestones 0-2 survive real use.",
+      "source_document": "0430_revised_v6.md",
+      "status": "deferred_by_prd",
+      "test_files": [],
+      "title": "Deferred Hosted Dashboard Server"
+    },
+    {
+      "doc_section": "8.4, 50.5",
+      "evidence_notes": "Team review queues are speculative later platform layers and deferred by the PRD.",
+      "id": "deferred_team_review_queues",
+      "implementation_files": [],
+      "remaining_gap": "Team review queues are speculative later platform layers and deferred by the PRD.",
+      "source_document": "0430_revised_v6.md",
+      "status": "deferred_by_prd",
+      "test_files": [],
+      "title": "Deferred Team Review Queues"
+    },
+    {
+      "doc_section": "41.5, 49",
+      "evidence_notes": "Remote sync merge is outside the local conflict-reporting commands.",
       "id": "deferred_remote_sync_merge",
-      "notes": "Remote sync and merge are outside this local-first implementation; sync commands report drift only.",
+      "implementation_files": [],
+      "remaining_gap": "Remote sync merge is outside the local conflict-reporting commands.",
+      "source_document": "0430_revised_v6.md",
+      "status": "deferred_by_prd",
+      "test_files": [],
+      "title": "Deferred Remote Sync Merge"
+    },
+    {
+      "doc_section": "44, 49, 50.5",
+      "evidence_notes": "LLM reviewer/generator behavior is deferred; copilot records are non-authoritative provenance only.",
+      "id": "deferred_llm_reviewer_generator",
+      "implementation_files": [],
+      "remaining_gap": "LLM reviewer/generator behavior is deferred; copilot records are non-authoritative provenance only.",
+      "source_document": "0430_revised_v6.md",
+      "status": "deferred_by_prd",
+      "test_files": [],
+      "title": "Deferred LLM Reviewer Generator"
+    },
+    {
+      "doc_section": "4.4, 49",
+      "evidence_notes": "General model execution and intervention frameworks are non-goals.",
+      "id": "out_of_scope_general_model_execution_framework",
+      "implementation_files": [],
+      "remaining_gap": "General model execution and intervention frameworks are non-goals.",
       "source_document": "0430_revised_v6.md",
       "status": "intentionally_out_of_scope",
-      "title": "Remote sync and merge"
+      "test_files": [],
+      "title": "Out Of Scope General Model Execution Framework"
     },
     {
-      "doc_section": "0431",
-      "evidence": [
-        "pyproject.toml",
-        "tests/test_architecture_boundaries.py"
-      ],
-      "id": "dependency_light_boundary",
-      "notes": "0431 keeps torch, TransformerLens, SAELens, and other model stacks outside core; tests enforce this.",
-      "source_document": "0431_selfground_refactor.md",
-      "status": "implemented",
-      "title": "Dependency-light core boundary"
+      "doc_section": "8.5, 50.6",
+      "evidence_notes": "Long-term platform computation is not part of the flat-file core hardening pass.",
+      "id": "out_of_scope_long_term_platform_computation",
+      "implementation_files": [],
+      "remaining_gap": "Long-term platform computation is not part of the flat-file core hardening pass.",
+      "source_document": "0430_revised_v6.md",
+      "status": "intentionally_out_of_scope",
+      "test_files": [],
+      "title": "Out Of Scope Long Term Platform Computation"
     },
     {
-      "doc_section": "0432",
-      "evidence": [
-        "tests/test_architecture_boundaries.py"
-      ],
-      "id": "no_self_ground_execution_revival",
-      "notes": "0432 reuses audit/evidence logic but does not revive SELF-GROUND execution code or mechanism-lab abstractions.",
-      "source_document": "0432_selfground_refactor.md",
-      "status": "implemented",
-      "title": "No SELF-GROUND execution framework revival"
+      "doc_section": "4.4.2, 49",
+      "evidence_notes": "Large-file versioning is delegated to DVC/git-annex/Git LFS/external storage.",
+      "id": "out_of_scope_large_file_versioning_implementation",
+      "implementation_files": [],
+      "remaining_gap": "Large-file versioning is delegated to DVC/git-annex/Git LFS/external storage.",
+      "source_document": "0430_revised_v6.md",
+      "status": "intentionally_out_of_scope",
+      "test_files": [],
+      "title": "Out Of Scope Large File Versioning Implementation"
+    },
+    {
+      "doc_section": "4.7, 49",
+      "evidence_notes": "Citation verification and statistic recomputation belong to separate tools.",
+      "id": "out_of_scope_citation_verification_statcheck",
+      "implementation_files": [],
+      "remaining_gap": "Citation verification and statistic recomputation belong to separate tools.",
+      "source_document": "0430_revised_v6.md",
+      "status": "intentionally_out_of_scope",
+      "test_files": [],
+      "title": "Out Of Scope Citation Verification Statcheck"
     }
   ],
   "source_documents": [
     "0430_revised_v6.md",
     "0431_selfground_refactor.md",
     "0432_selfground_refactor.md"
-  ],
-  "status_values": [
-    "implemented",
-    "partially_implemented",
-    "deferred_by_prd",
-    "intentionally_out_of_scope",
-    "missing",
-    "ambiguous_or_requires_decision"
   ]
 }

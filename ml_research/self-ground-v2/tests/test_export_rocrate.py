@@ -45,6 +45,21 @@ def test_rocrate_export_entities_relationships_and_determinism(tmp_path: Path) -
     assert run["artifacts"] == [".mechledger/runs/RUN_E001/artifact_manifest.json#A001"]
 
 
+def test_rocrate_export_accepts_project_relative_output_path(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["export", "ro-crate", "--out", "bundles/ro-crate"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "ro_crate_metadata: bundles/ro-crate/ro-crate-metadata.json" in result.output
+    assert (tmp_path / "bundles/ro-crate/ro-crate-metadata.json").exists()
+
+
 def test_rocrate_missing_optional_files_warns_and_malformed_claim_fails(tmp_path: Path) -> None:
     populate_project(tmp_path)
     (tmp_path / "research/logs/research_log.md").unlink()

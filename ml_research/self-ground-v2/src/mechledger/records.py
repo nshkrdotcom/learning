@@ -299,7 +299,7 @@ def record_specific_id(record: PlatformRecord) -> str:
     if isinstance(record, ActivationRecord):
         return record.activation_id
     if isinstance(record, WeightAnalysisRecord):
-        return record.run_id
+        return record.record_id
     if isinstance(record, CircuitGraphRecord):
         return record.graph_id
     if isinstance(record, CrossModelComparisonRecord):

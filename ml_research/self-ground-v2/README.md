@@ -108,7 +108,12 @@ run reclassification safety, decisions, debt waivers, and no-ML end-to-end
 assessment examples. The PRD coverage map lives in
 [docs/PRD_COVERAGE_0430_0432.md](docs/PRD_COVERAGE_0430_0432.md) with the
 machine-readable backing file
-[docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json).
+[docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json). The
+prompt-completion ledger lives in
+[docs/PRD_COMPLETION_LEDGER_0430_0432.md](docs/PRD_COMPLETION_LEDGER_0430_0432.md)
+and [docs/prd_completion_ledger_0430_0432.json](docs/prd_completion_ledger_0430_0432.json);
+it records implemented, partial, deferred, ambiguous, and out-of-scope
+dispositions per required surface.
 
 ## Layout
 

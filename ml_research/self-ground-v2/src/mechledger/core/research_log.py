@@ -53,6 +53,14 @@ def parse_research_log(path: str | Path) -> ResearchLog:
     for index, line in enumerate(lines):
         match = ENTRY_HEADING.match(line)
         if match is None:
+            if line.startswith("## "):
+                raise_diagnostic(
+                    file=str(path),
+                    line=index + 1,
+                    code="research_log.heading.malformed",
+                    message="Malformed research log entry heading.",
+                    suggested_fix="use `## YYYY-MM-DD` for each research log entry.",
+                )
             continue
         date = match.group(1)
         data, yaml_line, _ = load_yaml_block(
