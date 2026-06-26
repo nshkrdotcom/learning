@@ -345,3 +345,40 @@ def test_prd_coverage_has_out_of_scope_feature() -> None:
     assert any(
         entry["status"] == "intentionally_out_of_scope" for entry in coverage["entries"]
     )
+
+
+def test_prd_coverage_evidence_notes_are_not_generic_boilerplate() -> None:
+    coverage = _coverage()
+    banned_phrases = {
+        "backed by deterministic flat-file implementation and tests",
+    }
+
+    for entry in coverage["entries"]:
+        evidence = entry["evidence_notes"].lower()
+        assert not any(phrase in evidence for phrase in banned_phrases), entry["id"]
+        if entry["status"] == "implemented":
+            assert entry["remaining_gap"] == "none", entry["id"]
+            assert entry["test_files"], entry["id"]
+            assert any(not path.startswith("docs/") for path in entry["implementation_files"]), (
+                entry["id"]
+            )
+        if entry["status"] == "partially_implemented":
+            assert entry["remaining_gap"] and entry["remaining_gap"] != "none", entry["id"]
+        if entry["status"] in {
+            "ambiguous_or_requires_decision",
+            "deferred_by_prd",
+            "intentionally_out_of_scope",
+        }:
+            assert not entry["implementation_files"], entry["id"]
+
+
+def test_prd_coverage_markdown_has_no_legacy_milestone_acceptance_rows() -> None:
+    markdown = Path("docs/PRD_COVERAGE_0430_0432.md").read_text(encoding="utf-8")
+
+    for legacy_id in {
+        "milestone_50_1",
+        "milestone_50_2",
+        "milestone_50_3",
+        "milestone_50_4",
+    }:
+        assert legacy_id not in markdown

@@ -1198,7 +1198,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Parser Diagnostic Contract is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "notes": "Parser Diagnostic Contract is backed by deterministic flat-file implementation and tests; no execution backend is introduced. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 1",
       "remaining_gap": "none",
       "requirement": "Parser Diagnostic Contract",
@@ -1216,15 +1216,16 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
+        "test_malformed_claim_heading_reports_path_line_rule_and_fix",
+        "test_duplicate_decision_reports_object_id_and_rule",
+        "test_experiment_missing_required_field_reports_object_id_rule_and_fix",
         "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
         "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
         "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py"
       ]
     },
     {
@@ -2278,7 +2279,7 @@
         "src/mechledger/redaction_policy.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "User Supplied Run Id Collision Failure is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "notes": "User Supplied Run Id Collision Failure is backed by deterministic flat-file implementation and tests; no execution backend is introduced. Evidence tightened by a specific run ID collision regression test.",
       "prompt_section": "Tier 1",
       "remaining_gap": "none",
       "requirement": "User Supplied Run Id Collision Failure",
@@ -2294,12 +2295,10 @@
         "tests/test_spec_conformance_hardening.py"
       ],
       "test_names": [
-        "test_run_capture_alias_artifacts_append_status_and_sdk",
-        "test_run_capture_writes_redacted_environment",
-        "test_failed_or_cancelled_runs_cannot_promote_to_evidence_classes"
+        "test_run_capture_user_supplied_run_id_collision_fails"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_run_capture_alias_artifacts_append_status_and_sdk tests/test_run_environment_redaction.py tests/test_spec_conformance_hardening.py::test_failed_or_cancelled_runs_cannot_promote_to_evidence_classes"
+        "uv run pytest tests/test_parsers_and_run_auditor.py::test_run_capture_user_supplied_run_id_collision_fails"
       ]
     },
     {
@@ -5507,7 +5506,7 @@
         "src/mechledger/export.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "External Labels Metadata By Default is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "notes": "External Labels Metadata By Default is backed by deterministic flat-file implementation and tests; no execution backend is introduced. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 1",
       "remaining_gap": "none",
       "requirement": "External Labels Metadata By Default",
@@ -5522,12 +5521,10 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_labels_import_list_show_link_and_export_metadata",
-        "test_labels_invalid_import_and_unknown_claim_link_fail",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "test_labels_import_list_show_link_and_export_metadata"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_external_labels.py tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_external_labels.py::test_labels_import_list_show_link_and_export_metadata"
       ]
     },
     {
@@ -5569,7 +5566,7 @@
         "src/mechledger/export.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Linked Claims Do Not Become Supported Automatically is backed by deterministic flat-file implementation and tests; no execution backend is introduced.",
+      "notes": "Linked Claims Do Not Become Supported Automatically is backed by deterministic flat-file implementation and tests; no execution backend is introduced. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 1",
       "remaining_gap": "none",
       "requirement": "Linked Claims Do Not Become Supported Automatically",
@@ -5584,12 +5581,10 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_labels_import_list_show_link_and_export_metadata",
-        "test_labels_invalid_import_and_unknown_claim_link_fail",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "test_labels_import_list_show_link_and_export_metadata"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_external_labels.py tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_external_labels.py::test_labels_import_list_show_link_and_export_metadata"
       ]
     },
     {
@@ -7144,9 +7139,9 @@
       "disposition": "intentionally_deferred_by_prd",
       "id": "deferred_remote_sync_merge",
       "implementation_files": [],
-      "notes": "Not silently called done: Remote sync merge is outside the local conflict-reporting commands.",
+      "notes": "Not silently called done: remote sync merge is deferred/outside the local conflict-reporting commands.",
       "prompt_section": "Tier 1",
-      "remaining_gap": "Remote sync merge is outside the local conflict-reporting commands.",
+      "remaining_gap": "Remote sync merge is deferred/outside the local conflict-reporting commands.",
       "requirement": "Deferred Remote Sync Merge",
       "source_documents": [
         "0430_revised_v6.md"
@@ -7180,9 +7175,9 @@
       "disposition": "intentionally_out_of_scope",
       "id": "out_of_scope_general_model_execution_framework",
       "implementation_files": [],
-      "notes": "Not silently called done: General model execution and intervention frameworks are non-goals.",
+      "notes": "Not silently called done: this row is intentionally out of scope under the PRD non-goals.",
       "prompt_section": "Tier 1",
-      "remaining_gap": "General model execution and intervention frameworks are non-goals.",
+      "remaining_gap": "General model execution and intervention frameworks are non-goals; this is intentionally out of scope under the PRD non-goals.",
       "requirement": "Out Of Scope General Model Execution Framework",
       "source_documents": [
         "0430_revised_v6.md"
@@ -7198,9 +7193,9 @@
       "disposition": "intentionally_out_of_scope",
       "id": "out_of_scope_long_term_platform_computation",
       "implementation_files": [],
-      "notes": "Not silently called done: Long-term platform computation is not part of the flat-file core hardening pass.",
+      "notes": "Not silently called done: this row is intentionally out of scope under the PRD non-goals.",
       "prompt_section": "Tier 1",
-      "remaining_gap": "Long-term platform computation is not part of the flat-file core hardening pass.",
+      "remaining_gap": "Long-term platform computation is not part of the flat-file core hardening pass; this is intentionally out of scope under the PRD non-goals.",
       "requirement": "Out Of Scope Long Term Platform Computation",
       "source_documents": [
         "0430_revised_v6.md"
@@ -7216,9 +7211,9 @@
       "disposition": "intentionally_out_of_scope",
       "id": "out_of_scope_large_file_versioning_implementation",
       "implementation_files": [],
-      "notes": "Not silently called done: Large-file versioning is delegated to DVC/git-annex/Git LFS/external storage.",
+      "notes": "Not silently called done: this row is intentionally out of scope under the PRD non-goals.",
       "prompt_section": "Tier 1",
-      "remaining_gap": "Large-file versioning is delegated to DVC/git-annex/Git LFS/external storage.",
+      "remaining_gap": "Large-file versioning is delegated to DVC/git-annex/Git LFS/external storage; this is intentionally out of scope under the PRD non-goals.",
       "requirement": "Out Of Scope Large File Versioning Implementation",
       "source_documents": [
         "0430_revised_v6.md"
@@ -7234,9 +7229,9 @@
       "disposition": "intentionally_out_of_scope",
       "id": "out_of_scope_citation_verification_statcheck",
       "implementation_files": [],
-      "notes": "Not silently called done: Citation verification and statistic recomputation belong to separate tools.",
+      "notes": "Not silently called done: this row is intentionally out of scope under the PRD non-goals.",
       "prompt_section": "Tier 1",
-      "remaining_gap": "Citation verification and statistic recomputation belong to separate tools.",
+      "remaining_gap": "Citation verification and statistic recomputation belong to separate tools; this is intentionally out of scope under the PRD non-goals.",
       "requirement": "Out Of Scope Citation Verification Statcheck",
       "source_documents": [
         "0430_revised_v6.md"
@@ -7255,9 +7250,10 @@
         "docs/prd_coverage_0430_0432.json",
         "docs/PRD_COVERAGE_0430_0432.md",
         "docs/prd_completion_ledger_0430_0432.json",
-        "docs/PRD_COMPLETION_LEDGER_0430_0432.md"
+        "docs/PRD_COMPLETION_LEDGER_0430_0432.md",
+        "tests/test_prd_completion_ledger.py"
       ],
-      "notes": "Handled in this hardening pass for Completion Ledger Schema.",
+      "notes": "Completion-ledger schema is enforced by tests/test_prd_completion_ledger.py and backed by the JSON/Markdown ledger artifacts.",
       "prompt_section": "Tier 1",
       "remaining_gap": "none",
       "requirement": "Completion Ledger Schema",
@@ -7820,7 +7816,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Handled in this hardening pass for Claim Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Claim Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Claim Diagnostics Contract",
@@ -7838,15 +7834,12 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
-        "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_malformed_claim_heading_reports_path_line_rule_and_fix",
+        "test_duplicate_claim_reports_object_id_and_rule",
+        "test_claim_yaml_mismatch_reports_line_object_and_rule"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py::test_malformed_claim_heading_reports_path_line_rule_and_fix tests/test_diagnostics_contract.py::test_duplicate_claim_reports_object_id_and_rule tests/test_diagnostics_contract.py::test_claim_yaml_mismatch_reports_line_object_and_rule"
       ]
     },
     {
@@ -7863,7 +7856,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Handled in this hardening pass for Decision Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Decision Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Decision Diagnostics Contract",
@@ -7881,15 +7874,10 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
-        "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_duplicate_decision_reports_object_id_and_rule"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py::test_duplicate_decision_reports_object_id_and_rule"
       ]
     },
     {
@@ -7906,7 +7894,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Handled in this hardening pass for Research Log Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Research Log Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Research Log Diagnostics Contract",
@@ -7924,15 +7912,10 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
-        "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py::test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix"
       ]
     },
     {
@@ -7949,7 +7932,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Handled in this hardening pass for Experiment Spec Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Experiment Spec Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Experiment Spec Diagnostics Contract",
@@ -7967,15 +7950,10 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
-        "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_experiment_missing_required_field_reports_object_id_rule_and_fix"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py::test_experiment_missing_required_field_reports_object_id_rule_and_fix"
       ]
     },
     {
@@ -7992,7 +7970,7 @@
         "src/mechledger/records.py",
         "src/mechledger/core/diagnostics.py"
       ],
-      "notes": "Handled in this hardening pass for Run Ledger Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Run Ledger Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Run Ledger Diagnostics Contract",
@@ -8010,15 +7988,10 @@
         "tests/test_external_labels.py"
       ],
       "test_names": [
-        "test_flat_file_parsers_success_and_failures",
-        "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
-        "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
-        "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
-        "test_records_validate_prd_typed_records_and_extension_records"
+        "test_run_ledger_invalid_values_report_row_object_rule_and_fix"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_parsers_and_run_auditor.py::test_flat_file_parsers_success_and_failures tests/test_diagnostics_contract.py tests/test_records.py tests/test_prediction_locking.py tests/test_external_labels.py"
+        "uv run pytest tests/test_diagnostics_contract.py::test_run_ledger_invalid_values_report_row_object_rule_and_fix"
       ]
     },
     {
@@ -8029,7 +8002,7 @@
         "src/mechledger/integrity.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Handled in this hardening pass for Prediction Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for Prediction Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Prediction Diagnostics Contract",
@@ -8045,16 +8018,10 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_prediction_lock_writes_hash_status_and_preserves_fields",
-        "test_prediction_lock_hash_is_semantic_and_excludes_mutable_fields",
-        "test_prediction_lock_idempotent_and_blocks_modified_after_lock",
-        "test_prediction_score_success_uses_alias_and_writes_score_fields",
-        "test_prediction_score_supports_metric_variants_and_feature_sources",
-        "test_integrity_check_detects_prediction_changed_after_lock",
         "test_prediction_lock_invalid_record_surfaces_structured_diagnostic"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_prediction_locking.py tests/test_integrity_records.py::test_integrity_check_detects_prediction_changed_after_lock tests/test_diagnostics_contract.py::test_prediction_lock_invalid_record_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_diagnostics_contract.py::test_prediction_lock_invalid_record_surfaces_structured_diagnostic"
       ]
     },
     {
@@ -8065,7 +8032,7 @@
         "src/mechledger/export.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Handled in this hardening pass for External Label Diagnostics Contract.",
+      "notes": "Handled in this hardening pass for External Label Diagnostics Contract. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "External Label Diagnostics Contract",
@@ -8080,12 +8047,10 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_labels_import_list_show_link_and_export_metadata",
-        "test_labels_invalid_import_and_unknown_claim_link_fail",
         "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_external_labels.py tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
       ]
     },
     {
@@ -8141,7 +8106,7 @@
         "src/mechledger/inspection.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Handled in this hardening pass for Records Validate Surfaces Record Diagnostics.",
+      "notes": "Handled in this hardening pass for Records Validate Surfaces Record Diagnostics. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Records Validate Surfaces Record Diagnostics",
@@ -8156,14 +8121,11 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_records_validate_prd_typed_records_and_extension_records",
-        "test_prd_typed_records_reject_missing_specific_ids_and_invalid_fields",
-        "test_platform_records_validate_prd_edge_cases",
-        "test_records_list_show_include_normalized_platform_metadata",
-        "test_ro_crate_surfaces_all_platform_record_types_and_aliases"
+        "test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix",
+        "test_platform_records_validate_prd_edge_cases"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_records.py tests/test_diagnostics_contract.py::test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix"
+        "uv run pytest tests/test_diagnostics_contract.py::test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix tests/test_records.py::test_platform_records_validate_prd_edge_cases"
       ]
     },
     {
@@ -8174,7 +8136,7 @@
         "src/mechledger/export.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Handled in this hardening pass for Labels Validate Surfaces External Label Diagnostics.",
+      "notes": "Handled in this hardening pass for Labels Validate Surfaces External Label Diagnostics. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Labels Validate Surfaces External Label Diagnostics",
@@ -8189,12 +8151,10 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_labels_import_list_show_link_and_export_metadata",
-        "test_labels_invalid_import_and_unknown_claim_link_fail",
         "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_external_labels.py tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_diagnostics_contract.py::test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic"
       ]
     },
     {
@@ -8205,7 +8165,7 @@
         "src/mechledger/integrity.py",
         "src/mechledger/cli.py"
       ],
-      "notes": "Handled in this hardening pass for Prediction Lock Score Surface Diagnostics.",
+      "notes": "Handled in this hardening pass for Prediction Lock Score Surface Diagnostics. Evidence tightened by the PRD evidence review pass.",
       "prompt_section": "Tier 3",
       "remaining_gap": "none",
       "requirement": "Prediction Lock Score Surface Diagnostics",
@@ -8221,16 +8181,11 @@
         "tests/test_diagnostics_contract.py"
       ],
       "test_names": [
-        "test_prediction_lock_writes_hash_status_and_preserves_fields",
-        "test_prediction_lock_hash_is_semantic_and_excludes_mutable_fields",
-        "test_prediction_lock_idempotent_and_blocks_modified_after_lock",
-        "test_prediction_score_success_uses_alias_and_writes_score_fields",
-        "test_prediction_score_supports_metric_variants_and_feature_sources",
-        "test_integrity_check_detects_prediction_changed_after_lock",
-        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic"
+        "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
+        "test_prediction_score_blocks_state_and_run_evidence_failures"
       ],
       "verification_commands": [
-        "uv run pytest tests/test_prediction_locking.py tests/test_integrity_records.py::test_integrity_check_detects_prediction_changed_after_lock tests/test_diagnostics_contract.py::test_prediction_lock_invalid_record_surfaces_structured_diagnostic"
+        "uv run pytest tests/test_diagnostics_contract.py::test_prediction_lock_invalid_record_surfaces_structured_diagnostic tests/test_prediction_locking.py::test_prediction_score_blocks_state_and_run_evidence_failures"
       ]
     },
     {

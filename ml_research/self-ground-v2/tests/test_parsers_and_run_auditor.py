@@ -212,6 +212,31 @@ def test_run_capture_alias_artifacts_append_status_and_sdk(tmp_path: Path) -> No
     assert "Scientific Debt" in status.output
 
 
+def test_run_capture_user_supplied_run_id_collision_fails(tmp_path: Path) -> None:
+    runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+    existing_run = tmp_path / ".mechledger/runs/RUN_DUPLICATE"
+    existing_run.mkdir(parents=True)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "--run-id",
+            "RUN_DUPLICATE",
+            "--",
+            "python",
+            "-c",
+            "print('should not run')",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 2
+    assert "already exists" in result.output
+    assert "RUN_DUPLICATE" in result.output
+
+
 def test_session_experiment_claim_decision_and_debt_workflows(tmp_path: Path) -> None:
     runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
     run = runner.invoke(

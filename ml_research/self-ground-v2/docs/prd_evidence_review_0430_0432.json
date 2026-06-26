@@ -1,0 +1,1277 @@
+{
+  "review_scope": {
+    "method": "risk_weighted_spot_check_plus_required_high_risk_rows",
+    "minimum_rows_reviewed": 40,
+    "required_categories": [
+      "diagnostics",
+      "typed_records",
+      "coverage_completion_schema",
+      "export_bundle_dashboard",
+      "architecture_boundaries",
+      "staged_hooks",
+      "predictions",
+      "external_labels",
+      "run_auditor",
+      "artifact_sweeping"
+    ]
+  },
+  "reviewed_commit_base": "4b7001cf96fd5da107a5e26afbceba033c0a74ad",
+  "rows": [
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_index_check_surfaces_parser_diagnostics",
+          "why_this_test_actually_covers_the_requirement": "Constructs a malformed claim ledger, runs index --check, and asserts the CLI output preserves file path, line number, failed rule, and suggested fix."
+        },
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Writes an invalid ActivationRecord and asserts records validate surfaces the record type, object ID, failed field, rule marker, path, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "parser_diagnostic_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [
+        "Added duplicate-claim suggested fix in src/mechledger/core/claim_ledger.py and tightened diagnostics assertions."
+      ],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_malformed_claim_heading_reports_path_line_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Creates a malformed claim heading and asserts the diagnostic includes the claim ledger path, line number, claim heading rule, and suggested fix."
+        },
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_duplicate_claim_reports_object_id_and_rule",
+          "why_this_test_actually_covers_the_requirement": "Creates a duplicate C001 claim and now asserts path, exact duplicate line, object ID, duplicate rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "broad_test_needs_more_specific_assertion",
+      "id": "claim_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "corrected"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_duplicate_decision_reports_object_id_and_rule",
+          "why_this_test_actually_covers_the_requirement": "Creates duplicate D001 decision headings and asserts path, duplicate line number, object ID, duplicate rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "decision_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_research_log_malformed_entry_heading_reports_path_line_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Writes a malformed research_log.md entry heading, calls parse_research_log, and asserts path, line number, rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "research_log_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_experiment_missing_required_field_reports_object_id_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Creates an ExperimentSpec missing status and asserts path, YAML line, experiment ID, required-field rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "experiment_spec_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_run_ledger_invalid_values_report_row_object_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Writes a CSV run row with invalid status and asserts path, row line number, run ID, failed status rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "run_ledger_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/core/claim_ledger.py",
+        "src/mechledger/core/decision_log.py",
+        "src/mechledger/core/research_log.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/core/run_ledger.py",
+        "src/mechledger/prediction.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py",
+        "src/mechledger/core/diagnostics.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "diagnostics",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
+          "why_this_test_actually_covers_the_requirement": "Runs prediction lock on an invalid prediction and asserts path, prediction ID, validation rule, failed field, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "external_labels",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
+          "why_this_test_actually_covers_the_requirement": "Runs labels validate on malformed JSONL metadata and asserts path with line, label ID, validation rule, failed field, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "external_label_diagnostics_contract",
+      "implementation_files_reviewed": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_platform_record_invalid_enum_reports_path_type_field_rule_and_fix",
+          "why_this_test_actually_covers_the_requirement": "Validates a bad ActivationRecord through the records CLI and asserts path, record type, activation ID, failed enum field, rule marker, and fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "records_validate_surfaces_record_diagnostics",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "external_labels",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_external_label_validate_invalid_jsonl_row_surfaces_structured_diagnostic",
+          "why_this_test_actually_covers_the_requirement": "Uses the labels validate command and checks JSONL line number, object ID, failed linked_claims field, validation rule, and suggested fix."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "labels_validate_surfaces_external_label_diagnostics",
+      "implementation_files_reviewed": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_diagnostics_contract.py",
+          "test_name": "test_prediction_lock_invalid_record_surfaces_structured_diagnostic",
+          "why_this_test_actually_covers_the_requirement": "Exercises prediction lock failure and verifies the surfaced diagnostic keeps path, prediction ID, rule, failed field, and suggested fix."
+        },
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_score_blocks_state_and_run_evidence_failures",
+          "why_this_test_actually_covers_the_requirement": "Exercises prediction score failure states for unlocked predictions and missing run evidence rather than relying on filename-only behavior."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_lock_score_surface_diagnostics",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_validate_prd_typed_records_and_extension_records",
+          "why_this_test_actually_covers_the_requirement": "Validates a full ActivationRecord fixture through the CLI and records show output, including activation_id and prd_defined_typed schema status."
+        },
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_prd_typed_records_reject_missing_specific_ids_and_invalid_fields",
+          "why_this_test_actually_covers_the_requirement": "Removes activation_id, corrupts shape, and removes summary_stats.max_abs to assert required PRD fields and validators fail."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "activation_record_prd_schema",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_validate_prd_typed_records_and_extension_records",
+          "why_this_test_actually_covers_the_requirement": "Validates both WeightAnalysisRun and WeightAnalysisRecord fixtures, proving the compatibility alias canonicalizes successfully."
+        },
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_list_show_include_normalized_platform_metadata",
+          "why_this_test_actually_covers_the_requirement": "Shows a WeightAnalysisRecord alias and asserts canonical_record_type WeightAnalysisRun plus the documented record_specific_id fallback."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "weight_analysis_run_prd_schema_and_alias",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_list_show_include_normalized_platform_metadata",
+          "why_this_test_actually_covers_the_requirement": "Asserts WeightAnalysisRecord canonicalizes to WeightAnalysisRun and uses wrapper record_id as the documented specific ID fallback."
+        }
+      ],
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "id": "record_specific_id",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "partially_implemented_with_remaining_gap",
+      "remaining_gap": "ActivationRecord, CircuitGraph, and CrossModelComparison have PRD-specific IDs; WeightAnalysisRun has no separate PRD-specific identifier, so record_id is used and documented.",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_validate_prd_typed_records_and_extension_records",
+          "why_this_test_actually_covers_the_requirement": "Validates FeatureCorrespondenceRecord, TrainingDynamicsRecord, and RemoteJobMetadataRecord as extension records with shared metadata only."
+        },
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_platform_records_validate_prd_edge_cases",
+          "why_this_test_actually_covers_the_requirement": "Adds an unsupported computed_result field to an extension record and asserts validation rejects the extra field."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "extension_records_strict_shared_metadata",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "export_bundle_dashboard",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_ro_crate_bundle_and_dashboard_surface_typed_record_metadata",
+          "why_this_test_actually_covers_the_requirement": "Exports RO-Crate twice, compares bytes, and asserts platform record @id, recordSpecificId, linked runs, linked decisions, artifact paths, and evidenceRole."
+        },
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_ro_crate_surfaces_all_platform_record_types_and_aliases",
+          "why_this_test_actually_covers_the_requirement": "Exports all PRD typed records plus aliases and extension records, then asserts canonical types and extension schema status in RO-Crate."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "ro_crate_platform_record_metadata",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "export_bundle_dashboard",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_platform_record_bundle_metadata_is_full_and_metadata_only",
+          "why_this_test_actually_covers_the_requirement": "Creates an ActivationRecord, exports manifest-only bundle, and asserts full platform record metadata appears without sweeping tensor bytes."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "bundle_platform_record_metadata",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "export_bundle_dashboard",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_ro_crate_bundle_and_dashboard_surface_typed_record_metadata",
+          "why_this_test_actually_covers_the_requirement": "Generates dashboard data and asserts counts by record type, counts by schema status, and platform_records_are_evidence false."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "dashboard_platform_record_metadata",
+      "implementation_files_reviewed": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/records.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "artifact_sweeping",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_platform_record_bundle_metadata_is_full_and_metadata_only",
+          "why_this_test_actually_covers_the_requirement": "Writes tensor bytes at a platform record path, exports with include-artifacts, and asserts the unregistered tensor path is not included in bundle files."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "metadata_only_artifact_bytes_boundary",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_core_cli_sdk_and_assessments_have_no_heavy_ml_or_network_imports",
+          "why_this_test_actually_covers_the_requirement": "AST-scans every src/mechledger module and fails on heavy ML, network, RDF, graph, and framework imports."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "import_boundary_ast",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_core_dependencies_do_not_add_heavy_execution_or_graph_stacks",
+          "why_this_test_actually_covers_the_requirement": "Parses pyproject.toml dependencies and asserts heavy ML, network client, RDF, graph, and execution stacks are absent."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "dependency_boundary_pyproject",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_mechledger_does_not_define_execution_framework_schemas",
+          "why_this_test_actually_covers_the_requirement": "AST-scans class and function definitions and rejects PatchSpec, backend abstractions, model loading, intervention, and platform computation names."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "execution_framework_schema_boundary",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_docs_state_core_execution_non_goals",
+          "why_this_test_actually_covers_the_requirement": "Reads README and usage docs and asserts they state non-execution, metadata-only records, heavy dependencies outside core, RO-Crate noncanonical, dashboard server status, and remote merge boundary."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "boundary_phrase_documentation",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "artifact_sweeping",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_platform_record_bundle_metadata_is_full_and_metadata_only",
+          "why_this_test_actually_covers_the_requirement": "Positive metadata-only regression proves validation/export records metadata while leaving unregistered tensor bytes out of artifact payloads."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "positive_metadata_only_test",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "staged_hooks",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_staged_draft_reads_worktree_and_can_pass_with_staged_claim_update",
+          "why_this_test_actually_covers_the_requirement": "Stages a bad draft, edits the worktree draft to comply, and asserts draft check --staged passes using working-tree staged dependencies."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "draft_check_staged",
+      "implementation_files_reviewed": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "staged_hooks",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_staged_index_runs_for_research_and_project_config_paths",
+          "why_this_test_actually_covers_the_requirement": "Stages research and project config paths and asserts index --check --staged runs validation and reports index check passed."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "index_check_staged",
+      "implementation_files_reviewed": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "staged_hooks",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_staged_draft_reads_worktree_and_can_pass_with_staged_claim_update",
+          "why_this_test_actually_covers_the_requirement": "The staged draft test would fail under stash/blob-only isolation because the compliant worktree edit is not the staged draft blob."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_stash_based_staged_isolation",
+      "implementation_files_reviewed": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "staged_hooks",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_staged_draft_and_index_skip_when_only_irrelevant_paths_are_staged",
+          "why_this_test_actually_covers_the_requirement": "Stages only notes.txt and asserts both draft and index staged commands exit zero with their documented skip messages."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "skip_messages_no_relevant_staged_files",
+      "implementation_files_reviewed": [
+        "src/mechledger/hooks.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "run_auditor",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_parsers_and_run_auditor.py",
+          "test_name": "test_run_capture_alias_artifacts_append_status_and_sdk",
+          "why_this_test_actually_covers_the_requirement": "Runs mechledger run around a Python command and asserts run.json, stdout capture, artifact manifest, debt report, attach, annotate, and run-ledger append behavior."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "mechledger_run_command",
+      "implementation_files_reviewed": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "run_auditor",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_parsers_and_run_auditor.py",
+          "test_name": "test_run_capture_alias_artifacts_append_status_and_sdk",
+          "why_this_test_actually_covers_the_requirement": "The wrapped command writes into MECHLEDGER_RUN_DIR/artifacts and the test asserts artifact_manifest.json contains auto-collected artifacts."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "run_local_artifact_auto_collection",
+      "implementation_files_reviewed": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "artifact_sweeping",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_platform_record_bundle_metadata_is_full_and_metadata_only",
+          "why_this_test_actually_covers_the_requirement": "Places unregistered tensor bytes at a declared platform path and asserts bundle file entries do not include that path."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_hidden_artifact_sweeping",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_score_supports_metric_variants_and_feature_sources",
+          "why_this_test_actually_covers_the_requirement": "Scores predictions against runs where feature identity comes from event metadata, metric metadata, and run metadata, not prediction filenames."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_feature_matching_from_run_evidence",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "external_labels",
+      "changes_made": [
+        "Added claim-ledger unchanged assertion to external label workflow test."
+      ],
+      "cited_tests": [
+        {
+          "file": "tests/test_external_labels.py",
+          "test_name": "test_labels_import_list_show_link_and_export_metadata",
+          "why_this_test_actually_covers_the_requirement": "Imports, lists, shows, links, and exports a label while asserting the claim ledger text remains unchanged after linking."
+        }
+      ],
+      "evidence_quality": "broad_test_needs_more_specific_assertion",
+      "id": "external_labels_metadata_by_default",
+      "implementation_files_reviewed": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "corrected"
+    },
+    {
+      "category": "external_labels",
+      "changes_made": [
+        "Added claim-ledger unchanged assertion to external label workflow test."
+      ],
+      "cited_tests": [
+        {
+          "file": "tests/test_external_labels.py",
+          "test_name": "test_labels_import_list_show_link_and_export_metadata",
+          "why_this_test_actually_covers_the_requirement": "Links L001 to C001, verifies the label registry records the link, and asserts the claim ledger is byte-for-byte unchanged."
+        }
+      ],
+      "evidence_quality": "broad_test_needs_more_specific_assertion",
+      "id": "linked_claims_do_not_become_supported_automatically",
+      "implementation_files_reviewed": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "corrected"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_no_hosted_dashboard_server_or_web_framework_is_added",
+          "why_this_test_actually_covers_the_requirement": "AST-scans for web framework imports and asserts the CLI has no dashboard serve or server command registered."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_hosted_dashboard_server",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "other",
+      "changes_made": [],
+      "cited_tests": [],
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "id": "deferred_remote_sync_merge",
+      "implementation_files_reviewed": [],
+      "ledger_disposition": "intentionally_deferred_by_prd",
+      "remaining_gap": "Remote sync merge is deferred/outside the local conflict-reporting commands.",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [],
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "id": "out_of_scope_general_model_execution_framework",
+      "implementation_files_reviewed": [],
+      "ledger_disposition": "intentionally_out_of_scope",
+      "remaining_gap": "General model execution and intervention frameworks are non-goals.",
+      "review_result": "accepted"
+    },
+    {
+      "category": "other",
+      "changes_made": [],
+      "cited_tests": [],
+      "evidence_quality": "disposition_is_nonimplemented_and_justified",
+      "id": "out_of_scope_citation_verification_statcheck",
+      "implementation_files_reviewed": [],
+      "ledger_disposition": "intentionally_out_of_scope",
+      "remaining_gap": "Citation verification and statistic recomputation belong to separate tools.",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_mechledger_does_not_define_execution_framework_schemas",
+          "why_this_test_actually_covers_the_requirement": "Rejects execution framework class/function names such as PatchSpec, ModelBackend, run_model, load_model, and compute_activations in src/mechledger."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_execution_framework",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_core_cli_sdk_and_assessments_have_no_heavy_ml_or_network_imports",
+          "why_this_test_actually_covers_the_requirement": "AST import scan blocks TransformerLens, SAELens, NNsight, pyvene, PyTorch, and network-client abstraction dependencies in core modules."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_universal_abstraction_layer",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "pyproject.toml",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_lock_hash_is_semantic_and_excludes_mutable_fields",
+          "why_this_test_actually_covers_the_requirement": "Locks a prediction, mutates score/lock fields, and asserts the semantic canonical hash excludes mutable lock and score fields."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_canonical_hash_excludes_mutable_fields",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_lock_idempotent_and_blocks_modified_after_lock",
+          "why_this_test_actually_covers_the_requirement": "Changes semantic prediction content after lock and asserts lock detects modified_after_lock instead of silently relocking."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_modified_after_lock_detection",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_lock_idempotent_and_blocks_modified_after_lock",
+          "why_this_test_actually_covers_the_requirement": "After modified-after-lock detection, reruns lock with --force and asserts the prediction can be intentionally relocked."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_force_relock_behavior",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "predictions",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_prediction_locking.py",
+          "test_name": "test_prediction_score_success_uses_alias_and_writes_score_fields",
+          "why_this_test_actually_covers_the_requirement": "Scores a locked prediction against latest run and asserts scored_against_run_id, sign_match, relative_magnitude_match, tamper_status, and CLI output fields."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "prediction_score_output_fields",
+      "implementation_files_reviewed": [
+        "src/mechledger/prediction.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "external_labels",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_external_labels.py",
+          "test_name": "test_labels_import_list_show_link_and_export_metadata",
+          "why_this_test_actually_covers_the_requirement": "Exercises labels import, list, show, link, and RO-Crate export with a real JSONL label registry."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "labels_validate_import_list_show_link",
+      "implementation_files_reviewed": [
+        "src/mechledger/external_labels.py",
+        "src/mechledger/export.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "artifact_sweeping",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_alias_ambiguity_and_no_sweep_during_normal_resolution",
+          "why_this_test_actually_covers_the_requirement": "Creates unrelated files while resolving aliases and asserts normal alias/index behavior does not sweep arbitrary project artifacts."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_arbitrary_artifact_sweeping",
+      "implementation_files_reviewed": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/export.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "run_auditor",
+      "changes_made": [
+        "Added a specific regression test for user-supplied run ID collision failure."
+      ],
+      "cited_tests": [
+        {
+          "file": "tests/test_parsers_and_run_auditor.py",
+          "test_name": "test_run_capture_user_supplied_run_id_collision_fails",
+          "why_this_test_actually_covers_the_requirement": "Creates an existing run directory, invokes mechledger run with the same user-supplied run ID, and asserts exit code 2 plus the collision message and run ID."
+        }
+      ],
+      "evidence_quality": "broad_test_needs_more_specific_assertion",
+      "id": "user_supplied_run_id_collision_failure",
+      "implementation_files_reviewed": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "corrected"
+    },
+    {
+      "category": "run_auditor",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_spec_conformance_hardening.py",
+          "test_name": "test_failed_or_cancelled_runs_cannot_promote_to_evidence_classes",
+          "why_this_test_actually_covers_the_requirement": "Creates failed and cancelled runs and asserts reclassification cannot promote them to evidence classes."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "failed_cancelled_promotion_safety",
+      "implementation_files_reviewed": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py",
+        "src/mechledger/redaction_policy.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "export_bundle_dashboard",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_ro_crate_bundle_and_dashboard_surface_typed_record_metadata",
+          "why_this_test_actually_covers_the_requirement": "Runs RO-Crate export twice and compares ro-crate-metadata.json bytes to enforce deterministic output."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "deterministic_export_output",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "architecture_boundaries",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_core_cli_sdk_and_assessments_have_no_heavy_ml_or_network_imports",
+          "why_this_test_actually_covers_the_requirement": "AST import scan rejects rdflib and related non-core graph/RDF imports under src/mechledger."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "no_rdf_internal_model",
+      "implementation_files_reviewed": [
+        "src/mechledger/export.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "already_implemented_with_existing_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_list_show_include_normalized_platform_metadata",
+          "why_this_test_actually_covers_the_requirement": "Shows a WeightAnalysisRecord alias and asserts linked_runs, linked_claims, and linked_decisions are normalized and exposed in records show output."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "linked_runs_claims_decisions",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_list_show_include_normalized_platform_metadata",
+          "why_this_test_actually_covers_the_requirement": "Shows a WeightAnalysisRecord alias and asserts artifact_paths include result, tensor, and config artifact fields in deterministic order."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "artifact_paths",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_ro_crate_surfaces_all_platform_record_types_and_aliases",
+          "why_this_test_actually_covers_the_requirement": "Exports aliases and asserts ActivationRecord uses activation_id while WeightAnalysisRecord uses the documented stable record_id fallback."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "record_specific_id_stability",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "typed_records",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_records.py",
+          "test_name": "test_records_list_show_include_normalized_platform_metadata",
+          "why_this_test_actually_covers_the_requirement": "Asserts records show includes canonical type, schema status, record-specific ID, linked runs, linked claims, linked decisions, and artifact paths."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "record_linked_runs_claims_decisions_artifacts",
+      "implementation_files_reviewed": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/inspection.py",
+        "src/mechledger/cli.py"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    },
+    {
+      "category": "coverage_completion_schema",
+      "changes_made": [],
+      "cited_tests": [
+        {
+          "file": "tests/test_architecture_boundaries.py",
+          "test_name": "test_docs_state_core_execution_non_goals",
+          "why_this_test_actually_covers_the_requirement": "Reads README and usage docs and asserts documentation states execution non-goals, metadata-only records, heavy-dependency boundary, RO-Crate noncanonical status, dashboard server status, and remote merge boundary."
+        },
+        {
+          "file": "tests/test_prd_completion_ledger.py",
+          "test_name": "test_completion_ledger_cross_links_to_coverage_and_markdown",
+          "why_this_test_actually_covers_the_requirement": "Asserts every completion-ledger row ID appears in the Markdown completion ledger and cross-links to coverage rows."
+        }
+      ],
+      "evidence_quality": "specific_test_asserts_behavior",
+      "id": "documentation_corrections",
+      "implementation_files_reviewed": [
+        "README.md",
+        "docs/USAGE.md",
+        "docs/PRD_COVERAGE_0430_0432.md",
+        "docs/PRD_COMPLETION_LEDGER_0430_0432.md"
+      ],
+      "ledger_disposition": "implemented_with_test",
+      "remaining_gap": "none",
+      "review_result": "accepted"
+    }
+  ],
+  "source_documents": [
+    "0430_revised_v6.md",
+    "0431_selfground_refactor.md",
+    "0432_selfground_refactor.md"
+  ],
+  "summary": {
+    "accepted": 51,
+    "corrected": 4,
+    "downgraded_disposition": 0,
+    "requires_followup": 0,
+    "reviewed_rows": 55
+  }
+}

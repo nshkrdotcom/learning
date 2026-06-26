@@ -98,7 +98,14 @@ def parse_claim_ledger(path: str | Path) -> ClaimLedger:
             )
         claim_id, title = match.groups()
         if claim_id in claims:
-            _raise(path, index + 1, claim_id, "claim.id.duplicate", "Claim ID is duplicated.")
+            _raise(
+                path,
+                index + 1,
+                claim_id,
+                "claim.id.duplicate",
+                "Claim ID is duplicated.",
+                "give each claim a unique C-number.",
+            )
         data, yaml_line, blank_count = _extract_yaml(path, lines, index, claim_id)
         if blank_count > 1:
             warnings.append(f"{path}:{index + 1} {claim_id}: extra blank lines before YAML block")

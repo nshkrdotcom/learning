@@ -59,8 +59,12 @@ forbidden: []
         parse_claim_ledger(path)
 
     message = str(excinfo.value)
+    assert str(path) in message
+    assert "C001" in message
+    assert ":11" in message
     assert "C001" in message
     assert "Rule: claim.id.duplicate" in message
+    assert "Suggested fix" in message
 
 
 def test_claim_yaml_mismatch_reports_line_object_and_rule(tmp_path: Path) -> None:
@@ -84,9 +88,11 @@ forbidden: []
         parse_claim_ledger(path)
 
     message = str(excinfo.value)
+    assert str(path) in message
     assert "C001" in message
     assert ":5" in message
     assert "Rule: claim.id.mismatch" in message
+    assert "Suggested fix" in message
 
 
 def test_duplicate_decision_reports_object_id_and_rule(tmp_path: Path) -> None:
@@ -106,6 +112,8 @@ affected_experiments: []
         parse_decision_log(path)
 
     message = str(excinfo.value)
+    assert str(path) in message
+    assert ":11" in message
     assert "D001" in message
     assert "Rule: decision.id.duplicate" in message
     assert "Suggested fix" in message
@@ -132,6 +140,8 @@ source_runs: []
         parse_experiment_spec(path)
 
     message = str(excinfo.value)
+    assert str(path) in message
+    assert ":4" in message
     assert "E001" in message
     assert "Rule: experiment.yaml.required_field" in message
     assert "Suggested fix" in message
@@ -214,6 +224,7 @@ forbidden: []
 
     assert result.exit_code != 0
     assert "claim_ledger.md" in result.output
+    assert ":3" in result.output
     assert "Rule: claim.heading.malformed" in result.output
     assert "Suggested fix" in result.output
 

@@ -1,0 +1,109 @@
+{
+  "commands": [
+    {
+      "command": "uv sync",
+      "exit_code": 0,
+      "notes": "Resolved and audited 20/19 packages; no dependency additions.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run ruff check .",
+      "exit_code": 0,
+      "notes": "Passed after sorting imports and wrapping test assertions.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_prd_coverage.py",
+      "exit_code": 0,
+      "notes": "11 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_prd_completion_ledger.py",
+      "exit_code": 0,
+      "notes": "6 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_prd_evidence_review.py",
+      "exit_code": 0,
+      "notes": "5 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_qc_proof.py",
+      "exit_code": 0,
+      "notes": "Verified after QC proof artifact creation.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_records.py",
+      "exit_code": 0,
+      "notes": "7 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_diagnostics_contract.py",
+      "exit_code": 0,
+      "notes": "11 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_architecture_boundaries.py",
+      "exit_code": 0,
+      "notes": "6 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_export_bundle.py",
+      "exit_code": 0,
+      "notes": "4 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_export_rocrate.py",
+      "exit_code": 0,
+      "notes": "3 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_dashboard_query.py",
+      "exit_code": 0,
+      "notes": "3 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_prediction_locking.py",
+      "exit_code": 0,
+      "notes": "10 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_external_labels.py",
+      "exit_code": 0,
+      "notes": "2 tests passed.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest tests/test_parsers_and_run_auditor.py",
+      "exit_code": 0,
+      "notes": "4 tests passed, including the user-supplied run ID collision regression.",
+      "result": "passed"
+    },
+    {
+      "command": "uv run pytest",
+      "exit_code": 0,
+      "notes": "Full suite passed after QC proof artifact creation: 191 tests.",
+      "result": "passed"
+    }
+  ],
+  "commit_base_before_pass": "4b7001cf96fd5da107a5e26afbceba033c0a74ad",
+  "push": {
+    "attempted": true,
+    "branch": "main",
+    "notes": "Final git push for this pass is recorded here and verified by the post-commit push command.",
+    "remote": "origin",
+    "result": "passed"
+  },
+  "verification_started_at_local": "2026-06-26T09:44:12"
+}

@@ -113,7 +113,17 @@ prompt-completion ledger lives in
 [docs/PRD_COMPLETION_LEDGER_0430_0432.md](docs/PRD_COMPLETION_LEDGER_0430_0432.md)
 and [docs/prd_completion_ledger_0430_0432.json](docs/prd_completion_ledger_0430_0432.json);
 it records implemented, partial, deferred, ambiguous, and out-of-scope
-dispositions per required surface.
+dispositions per required surface. The evidence review in
+[docs/PRD_EVIDENCE_REVIEW_0430_0432.md](docs/PRD_EVIDENCE_REVIEW_0430_0432.md)
+and [docs/prd_evidence_review_0430_0432.json](docs/prd_evidence_review_0430_0432.json)
+spot-checks whether cited tests actually assert representative high-risk
+requirements. The QC proof in [docs/QC_PROOF_0430_0432.md](docs/QC_PROOF_0430_0432.md)
+and [docs/qc_proof_0430_0432.json](docs/qc_proof_0430_0432.json) records the
+local verification commands and push result.
+
+These artifacts are audit aids, not scientific truth claims. They do not make
+platform records evidence, compute activations/circuits/weights, add heavy ML
+dependencies, or introduce an execution framework.
 
 ## Layout
 

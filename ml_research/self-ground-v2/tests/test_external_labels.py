@@ -30,6 +30,8 @@ def label_record(label_id: str = "L001") -> dict[str, object]:
 
 def test_labels_import_list_show_link_and_export_metadata(tmp_path: Path) -> None:
     populate_project(tmp_path)
+    claim_ledger = tmp_path / "research/logs/claim_ledger.md"
+    claim_ledger_before = claim_ledger.read_text(encoding="utf-8")
     source = tmp_path / "labels.jsonl"
     source.write_text(json.dumps(label_record()) + "\n", encoding="utf-8")
 
@@ -67,6 +69,7 @@ def test_labels_import_list_show_link_and_export_metadata(tmp_path: Path) -> Non
     assert linked.exit_code == 0, linked.output
     linked_payload = json.loads(registry.read_text(encoding="utf-8").splitlines()[0])
     assert linked_payload["linked_claims"] == ["C001"]
+    assert claim_ledger.read_text(encoding="utf-8") == claim_ledger_before
 
     out = tmp_path / "bundles/ro-crate"
     exported = runner.invoke(
