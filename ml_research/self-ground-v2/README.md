@@ -51,6 +51,8 @@ Implemented here:
 - Integrity/tamper records with accepted-decision resolution workflow
 - Run pinning, dry-run garbage collection, archive-before-delete cleanup, and
   per-run reproducibility bundles
+- Copilot output review for ignored local assistant artifacts, with explicit
+  accept/reject/modified outcomes and committed provenance sidecars
 - Conservative environment redaction and explicit SDK `external_call` event
   metadata requirements
 - Minimal dependency-light SDK helpers, including a pure-Python sign-test helper
@@ -60,7 +62,7 @@ Implemented here:
 Intentionally not implemented here:
 
 - Heavy model execution or intervention abstractions
-- Hosted dashboard/server, LLM copilot review queues, remote sync merge, broad
+- Hosted dashboard/server, LLM generation/review queues, remote sync merge, broad
   redaction workflows beyond explicit local records, RDF/JSON-LD as canonical
   storage, or model-execution platform surfaces
 - Heavy ML dependencies such as `torch`, `transformer_lens`, `sae_lens`,
@@ -82,6 +84,7 @@ uv run mechledger prediction score PRED001 --against-run latest
 uv run mechledger export appendix --out research/paper/mechledger_appendix.md
 uv run mechledger dashboard data --out .mechledger/dashboard/data.json
 uv run mechledger questions list
+uv run mechledger copilot list
 uv run mechledger sync status
 uv run mechledger integrity check
 uv run mechledger pin latest
@@ -93,7 +96,8 @@ uv run mechledger status
 
 See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
 usage, artifacts, aliases, Tier 2 evidence registration, prediction locking,
-exports, sessions, questions, labels, query commands, language reports,
+exports, sessions, copilot provenance review, questions, labels, query commands,
+language reports,
 optional records, sync reporting, redaction, integrity records, run lifecycle,
 crystallization, claim review, decisions, debt waivers, and assessment examples.
 
@@ -132,4 +136,5 @@ canonical storage. Users register metrics and artifacts from their own research
 environment. MechLedger may allow work to continue with unresolved scientific
 debt, but it surfaces that debt. External labels are metadata by default, and
 session/copilot records require human review before becoming canonical
-interpretation.
+interpretation. Copilot review records provenance only; it does not call an LLM,
+verify scientific truth, promote claims, invent run results, or waive debt.

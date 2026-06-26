@@ -375,6 +375,58 @@ JSON plus Markdown summary. Accepting a session requires an accepted decision;
 rejected sessions remain visible. Session records are not canonical evidence and
 do not auto-edit claim, research, or decision logs.
 
+## Copilot Output Review
+
+Copilot output records are optional local provenance records for assistant files
+that already exist. MechLedger does not call an LLM, judge scientific truth, or
+promote claims through this workflow.
+
+Ignored local records live under:
+
+```text
+.mechledger/copilot/SESSION_ID/metadata.json
+.mechledger/copilot/SESSION_ID/prompt.md
+.mechledger/copilot/SESSION_ID/output.md
+```
+
+Inspect and review them with:
+
+```bash
+uv run mechledger copilot list
+uv run mechledger copilot list --json
+uv run mechledger copilot show OUT001
+uv run mechledger copilot show OUT001 --json
+uv run mechledger copilot review OUT001 --reject
+uv run mechledger copilot review OUT001 --accept --to research/logs/decision_log.md
+uv run mechledger copilot review OUT001 \
+  --modified research/session_drafts/edited_decision.md \
+  --to research/logs/decision_log.md
+```
+
+`review --reject` updates only `.mechledger/copilot/.../metadata.json`; it does
+not create or edit canonical research files.
+
+`review --accept` and `review --modified` require an explicit `--to` path. The
+destination must be inside the project `research/` tree and outside
+`.mechledger/`. MechLedger copies the generated or human-modified file to that
+destination, writes a committed sidecar next to it, and updates the local
+metadata review fields:
+
+```text
+research/logs/decision_log.md.mechledger-provenance.json
+```
+
+The sidecar records `copilot_session_id`, `copilot_output_id`, prompt/generated
+and accepted artifact SHA-256 hashes, reviewer, accepted path, model, output
+type, and source artifact paths. For `claim_ledger.md`, `decision_log.md`, and
+`research_log.md`, YAML blocks containing `claim_id`, `decision_id`, or
+`entry_id` also get `copilot_session_id: SESSION_ID` when the field is absent or
+null. Existing different `copilot_session_id` values are never overwritten.
+
+Copilot provenance is not evidence by itself. It does not invent run results,
+hide negative evidence, waive scientific debt, or make enforcement-grade
+scientific judgments.
+
 ## Open Questions
 
 Existing `research_log.md` `open_questions` entries are surfaced by:
@@ -768,5 +820,6 @@ untagged claims, verify citations, recompute reported statistics, make
 scientific truth decisions, or discover arbitrary artifacts outside registered
 paths/run-local artifact directories. It may allow progress with unresolved
 scientific debt, but it surfaces that debt. External labels are metadata by
-default. Session/copilot records require human review and accepted decision
-linkage before they can support canonical interpretation.
+default. Session/copilot records require human review before they can support
+canonical interpretation; copilot provenance review does not itself verify
+scientific truth or waive evidence requirements.

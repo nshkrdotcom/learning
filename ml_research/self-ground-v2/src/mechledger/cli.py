@@ -10,6 +10,12 @@ from ruamel.yaml import YAML
 
 from mechledger.alias import resolve_run_id
 from mechledger.artifacts import annotate_artifact, register_artifact, resolve_artifact_path
+from mechledger.copilot import (
+    accept_copilot_output,
+    find_copilot_output,
+    list_copilot_outputs,
+    reject_copilot_output,
+)
 from mechledger.core.experiment_spec import parse_experiment_spec
 from mechledger.dashboard_data import (
     filter_rows,
@@ -132,6 +138,7 @@ query_app = typer.Typer(help="Inspect canonical MechLedger records locally.")
 records_app = typer.Typer(help="Validate optional platform metadata records.")
 sync_app = typer.Typer(help="Report local run and ledger sync drift.")
 integrity_app = typer.Typer(help="Check and resolve local tamper/staleness records.")
+copilot_app = typer.Typer(help="Review local assistant outputs and write provenance.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -155,6 +162,7 @@ app.add_typer(query_app, name="query")
 app.add_typer(records_app, name="records")
 app.add_typer(sync_app, name="sync")
 app.add_typer(integrity_app, name="integrity")
+app.add_typer(copilot_app, name="copilot")
 
 
 @app.command()
@@ -634,6 +642,106 @@ def integrity_resolve_command(
         typer.echo(f"tamper_id: {record.tamper_id}")
         typer.echo(f"resolution_status: {record.resolution_status}")
         typer.echo(f"resolution_decision_id: {record.resolution_decision_id}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@copilot_app.command("list")
+def copilot_list_command(
+    output_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        project = find_project()
+        outputs = list_copilot_outputs(project)
+        if output_json:
+            typer.echo(
+                json.dumps(
+                    [item.list_record(project) for item in outputs],
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+            return
+        if not outputs:
+            typer.echo("No copilot outputs found.")
+            return
+        for item in outputs:
+            output = item.output
+            review_outcome = output.review_outcome.value if output.review_outcome else "pending"
+            typer.echo(
+                f"{output.output_id}\t{output.session_id}\t{output.output_type.value}\t"
+                f"review={review_outcome}\t"
+                f"generated_exists={item.generated_artifact_exists}\t"
+                f"prompt_exists={item.prompt_artifact_exists}"
+            )
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@copilot_app.command("show")
+def copilot_show_command(
+    output_id: str,
+    output_json: Annotated[bool, typer.Option("--json")] = False,
+) -> None:
+    try:
+        project = find_project()
+        item = find_copilot_output(project, output_id)
+        output = item.output
+        if output_json:
+            typer.echo(json.dumps(output.model_dump(mode="json"), indent=2, sort_keys=True))
+            return
+        review_outcome = output.review_outcome.value if output.review_outcome else "pending"
+        typer.echo(f"output_id: {output.output_id}")
+        typer.echo(f"session_id: {output.session_id}")
+        typer.echo(f"output_type: {output.output_type.value}")
+        typer.echo(f"model: {output.model}")
+        typer.echo(f"human_reviewed: {output.human_reviewed}")
+        typer.echo(f"review_outcome: {review_outcome}")
+        typer.echo(f"generated_artifact_path: {output.generated_artifact_path}")
+        typer.echo(f"generated_artifact_exists: {item.generated_artifact_exists}")
+        typer.echo(f"prompt_artifact_path: {output.prompt_artifact_path}")
+        typer.echo(f"prompt_artifact_exists: {item.prompt_artifact_exists}")
+        typer.echo(f"accepted_artifact_path: {output.accepted_artifact_path or 'none'}")
+        typer.echo(f"accepted_provenance_path: {output.accepted_provenance_path or 'none'}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@copilot_app.command("review")
+def copilot_review_command(
+    output_id: str,
+    accept: Annotated[bool, typer.Option("--accept")] = False,
+    reject: Annotated[bool, typer.Option("--reject")] = False,
+    modified: Annotated[Path | None, typer.Option("--modified")] = None,
+    destination: Annotated[Path | None, typer.Option("--to")] = None,
+) -> None:
+    try:
+        project = find_project()
+        selected = sum(1 for enabled in [accept, reject, modified is not None] if enabled)
+        if selected != 1:
+            _fail("Use exactly one of --accept, --reject, or --modified PATH.", code=2)
+        if reject:
+            output = reject_copilot_output(project, output_id)
+            typer.echo(f"output_id: {output.output_id}")
+            typer.echo("review_outcome: rejected")
+            typer.echo("accepted_artifact_path: none")
+            return
+        if destination is None:
+            _fail("Accepting or modifying copilot output requires --to PATH.", code=2)
+        output, provenance = accept_copilot_output(
+            project,
+            output_id,
+            destination=destination,
+            modified_path=modified,
+        )
+        review_outcome = output.review_outcome.value if output.review_outcome else "pending"
+        typer.echo(f"output_id: {output.output_id}")
+        typer.echo(f"review_outcome: {review_outcome}")
+        typer.echo(f"accepted_artifact_path: {output.accepted_artifact_path}")
+        typer.echo(f"accepted_provenance_path: {output.accepted_provenance_path}")
+        typer.echo(f"accepted_artifact_hash: {provenance.accepted_artifact_hash}")
+    except typer.Exit:
+        raise
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
 
