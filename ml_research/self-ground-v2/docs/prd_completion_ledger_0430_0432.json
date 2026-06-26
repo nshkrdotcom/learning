@@ -8541,6 +8541,264 @@
       "verification_commands": [
         "uv run pytest tests/test_architecture_boundaries.py::test_docs_state_core_execution_non_goals tests/test_prd_coverage.py tests/test_prd_completion_ledger.py"
       ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "run_repair_marks_stale_running_run_without_promoting_evidence",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/claim_proposal.py",
+        "src/mechledger/assessments/candidate.py"
+      ],
+      "notes": "Repair command updates stale running metadata, emits a repair event, clears heartbeat state, and the generated claim proposal remains unsupported rather than candidate evidence.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Repairing a stale running run records an honest interrupted status and still prevents candidate-evidence promotion.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "25. Notebook / interactive run repair contract",
+        "29. SDK-managed runs and repair/resume lifecycle"
+      ],
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "test_names": [
+        "test_run_repair_marks_stale_running_run_without_promoting_evidence"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_run_lifecycle.py::test_run_repair_marks_stale_running_run_without_promoting_evidence"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "run_resume_creates_child_run_with_parent_contract",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/run_auditor.py"
+      ],
+      "notes": "Resume creates a child run with parent_run_id, class/purpose metadata, and the standard complete run files while preserving the parent record.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Resuming a run creates a new child run with parent linkage and the normal run directory contract instead of mutating the parent.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "24. Run directory contract",
+        "29. SDK-managed runs and repair/resume lifecycle"
+      ],
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "test_names": [
+        "test_run_resume_creates_child_run_with_parent_and_complete_contract"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_run_lifecycle.py::test_run_resume_creates_child_run_with_parent_and_complete_contract"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "stale_running_run_indexed_interrupted_without_mutation",
+      "implementation_files": [
+        "src/mechledger/indexer.py"
+      ],
+      "notes": "The index stores interrupted_indexed for stale heartbeat rows while canonical run.json remains running until explicit repair.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Indexing may surface stale running runs as interrupted in disposable index state, but must not rewrite canonical run.json.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "25. Notebook / interactive run repair contract"
+      ],
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "test_names": [
+        "test_index_marks_only_stale_running_heartbeat_as_interrupted_indexed"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_run_lifecycle.py::test_index_marks_only_stale_running_heartbeat_as_interrupted_indexed"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "non_completed_run_gate_blocks_candidate_support",
+      "implementation_files": [
+        "src/mechledger/assessments/candidate.py",
+        "src/mechledger/debt_report.py"
+      ],
+      "notes": "Gate check adds blocking status debt and withholds clean support for non-completed runs.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Failed, interrupted, cancelled, and otherwise non-completed runs cannot become clean candidate evidence even with favorable metrics.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "34.4 Candidate claim assessment",
+        "36.8 Scientific debt and run status caps"
+      ],
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "test_names": [
+        "test_gate_blocks_non_completed_run_even_with_candidate_metrics"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_spec_conformance_hardening.py::test_gate_blocks_non_completed_run_even_with_candidate_metrics"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "claim_proposal_uses_evidence_assessment_status_and_debt",
+      "implementation_files": [
+        "src/mechledger/claim_proposal.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py"
+      ],
+      "notes": "Proposal generation propagates failed/weakened assessment status, contradictory metrics, and debt IDs.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Claim proposals must be derived from gate assessment status and unresolved debt rather than run completion alone.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "32. Claim update proposal workflow",
+        "33. Evidence assessment outputs",
+        "34. Candidate claim assessment"
+      ],
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "test_names": [
+        "test_claim_proposal_uses_evidence_assessment_status_and_debt"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_spec_conformance_hardening.py::test_claim_proposal_uses_evidence_assessment_status_and_debt"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "missing_external_pointer_records_non_evidence_backend",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/cli.py"
+      ],
+      "notes": "External missing artifacts are recorded with external_unverified hash status, missing review status, and non-evidence claim relevance.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Missing external artifact pointers must be metadata records, not copied bytes or supporting evidence by default.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "4.4.2 Large artifact storage boundary",
+        "30.6 Artifact review status and claim relevance"
+      ],
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "test_names": [
+        "test_attach_missing_external_pointer_records_non_evidence_backend"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_spec_conformance_hardening.py::test_attach_missing_external_pointer_records_non_evidence_backend"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "crystallize_requires_concrete_fields",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "notes": "Crystallize fails without required concrete fields and generated specs preserve source runs without generic TODO placeholders.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Crystallizing exploratory runs into an ExperimentSpec must reject unresolved placeholders and require concrete question, hypothesis, design, metrics, controls, and success/failure fields.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "16.3 Experiment crystallization from exploratory runs"
+      ],
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "test_names": [
+        "test_crystallize_requires_concrete_fields_and_writes_no_generic_todo"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_spec_conformance_hardening.py::test_crystallize_requires_concrete_fields_and_writes_no_generic_todo"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "query_questions_labels_records",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/open_questions.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py"
+      ],
+      "notes": "Query JSON output includes questions, labels, and records alongside other ledger entities.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Documented query surfaces for questions, labels, and platform records return stable JSON rows from indexed/canonical state.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "45. Open research questions",
+        "46. External labels",
+        "47. Platform records",
+        "48. Query and dashboard local surfaces"
+      ],
+      "test_files": [
+        "tests/test_dashboard_query.py"
+      ],
+      "test_names": [
+        "test_query_commands_return_filtered_json_rows"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_dashboard_query.py::test_query_commands_return_filtered_json_rows"
+      ]
+    },
+    {
+      "disposition": "implemented_with_test",
+      "id": "question_link_validates_targets",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py"
+      ],
+      "notes": "Question linking persists valid canonical links and rejects unknown targets with a nonzero CLI result.",
+      "prompt_section": "Current-pass verification/proof remediation",
+      "remaining_gap": "none",
+      "requirement": "Open question links to claims, runs, decisions, and experiments validate that referenced targets exist.",
+      "source_documents": [
+        "0430_revised_v6.md"
+      ],
+      "source_sections": [
+        "45. Open research questions"
+      ],
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "test_names": [
+        "test_questions_link_adds_valid_links_and_rejects_unknown_targets"
+      ],
+      "verification_commands": [
+        "uv run pytest tests/test_open_questions.py::test_questions_link_adds_valid_links_and_rejects_unknown_targets"
+      ]
     }
   ],
   "source_documents": [

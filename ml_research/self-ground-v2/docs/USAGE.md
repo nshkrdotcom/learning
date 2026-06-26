@@ -685,16 +685,17 @@ The granular PRD coverage map is `docs/PRD_COVERAGE_0430_0432.md` /
 out-of-scope, ambiguous, and partially implemented gaps separately from tested
 implementation rows.
 
-The historical PRD audit artifacts have distinct scopes:
+The current PRD proof artifacts have distinct scopes:
 
 - Coverage map: product-surface status by PRD/refactor section.
 - Completion ledger: disposition for each prompt requirement, including exact
   implementation files, test files, test names, and verification commands for
   implemented rows.
 - Evidence review: risk-weighted audit that representative high-risk rows have
-  cited tests that actually assert the named behavior, not just nearby files.
-- QC proof: exact local verification commands and push result from the prior
-  proof pass. Use the current command output for current release evidence.
+  cited tests that actually assert the named behavior. Broad test-file citation
+  alone is not sufficient evidence.
+- QC proof: exact local verification commands, exit codes, and push result for
+  the current verification pass.
 
 These artifacts do not certify scientific truth and do not turn optional
 platform records into evidence. They preserve the boundary that MechLedger is a

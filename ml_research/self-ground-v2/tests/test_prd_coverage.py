@@ -221,6 +221,15 @@ REQUIRED_SURFACE_IDS = [
     "artifact_paths",
     "metadata_only_boundary",
     "no_platform_record_computation",
+    "run_repair_marks_stale_running_run_without_promoting_evidence",
+    "run_resume_creates_child_run_with_parent_contract",
+    "stale_running_run_indexed_interrupted_without_mutation",
+    "non_completed_run_gate_blocks_candidate_support",
+    "claim_proposal_uses_evidence_assessment_status_and_debt",
+    "missing_external_pointer_records_non_evidence_backend",
+    "crystallize_requires_concrete_fields",
+    "query_questions_labels_records",
+    "question_link_validates_targets",
     "deferred_hosted_dashboard_server",
     "deferred_team_review_queues",
     "deferred_remote_sync_merge",
@@ -299,10 +308,15 @@ def test_prd_coverage_entries_have_required_surface_schema() -> None:
         if entry["status"] in {"implemented", "partially_implemented"}:
             assert entry["implementation_files"], entry["id"]
             assert entry["test_files"], entry["id"]
+            assert any(not path.startswith("docs/") for path in entry["implementation_files"]), (
+                entry["id"]
+            )
         if entry["status"] in {
             "partially_implemented",
             "missing",
             "ambiguous_or_requires_decision",
+            "deferred_by_prd",
+            "intentionally_out_of_scope",
         }:
             assert entry["remaining_gap"], entry["id"]
 
@@ -370,6 +384,7 @@ def test_prd_coverage_evidence_notes_are_not_generic_boilerplate() -> None:
             "intentionally_out_of_scope",
         }:
             assert not entry["implementation_files"], entry["id"]
+            assert entry["remaining_gap"] and entry["remaining_gap"] != "none", entry["id"]
 
 
 def test_prd_coverage_markdown_has_no_legacy_milestone_acceptance_rows() -> None:

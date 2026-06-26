@@ -4,7 +4,27 @@ import json
 from collections import Counter
 from pathlib import Path
 
-BASE_COMMIT = "4b7001cf96fd5da107a5e26afbceba033c0a74ad"
+BASE_COMMIT = "221052c729b55828b82ab13b7116ffcf6feac9b8"
+
+SOURCE_DOCS = {
+    "0430_revised_v6.md",
+    "0431_selfground_refactor.md",
+    "0432_selfground_refactor.md",
+}
+
+REQUIRED_CATEGORIES = {
+    "diagnostics",
+    "typed_records",
+    "coverage_completion_schema",
+    "export_bundle_dashboard",
+    "architecture_boundaries",
+    "staged_hooks",
+    "predictions",
+    "external_labels",
+    "run_auditor",
+    "artifact_sweeping",
+    "qc_proof",
+}
 
 HIGH_RISK_ROW_IDS = [
     "parser_diagnostic_contract",
@@ -45,14 +65,50 @@ HIGH_RISK_ROW_IDS = [
     "deferred_remote_sync_merge",
     "out_of_scope_general_model_execution_framework",
     "out_of_scope_citation_verification_statcheck",
+    "run_repair_marks_stale_running_run_without_promoting_evidence",
+    "run_resume_creates_child_run_with_parent_contract",
+    "non_completed_run_gate_blocks_candidate_support",
+    "claim_proposal_uses_evidence_assessment_status_and_debt",
+    "missing_external_pointer_records_non_evidence_backend",
+    "crystallize_requires_concrete_fields",
+    "query_questions_labels_records",
 ]
 
-VAGUE_EXPLANATIONS = {
+IMPLEMENTED_DISPOSITIONS = {
+    "implemented_with_test",
+    "already_implemented_with_existing_test",
+}
+
+NONIMPLEMENTED_DISPOSITIONS = {
+    "intentionally_deferred_by_prd",
+    "intentionally_out_of_scope",
+    "ambiguous_or_requires_decision",
+    "partially_implemented_with_remaining_gap",
+}
+
+ALLOWED_EVIDENCE_QUALITIES = {
+    "specific_test_asserts_behavior",
+    "broad_test_needs_more_specific_assertion",
+    "disposition_is_nonimplemented_and_justified",
+    "incorrect_or_overclaimed",
+}
+
+ALLOWED_REVIEW_RESULTS = {
+    "accepted",
+    "corrected",
+    "downgraded_disposition",
+    "requires_followup",
+}
+
+VAGUE_EXPLANATION_PHRASES = {
     "covers diagnostics",
     "covers records",
     "covered by test file",
     "nearby coverage",
     "broad test",
+    "test file covers this",
+    "existing tests cover it",
+    "asserts behavior",
 }
 
 
@@ -62,60 +118,86 @@ def _review() -> dict:
     )
 
 
-def _ledger() -> dict:
-    return json.loads(
+def _ledger_rows() -> dict[str, dict]:
+    ledger = json.loads(
         Path("docs/prd_completion_ledger_0430_0432.json").read_text(encoding="utf-8")
     )
+    return {row["id"]: row for row in ledger["rows"]}
 
 
-def test_prd_evidence_review_artifacts_exist_and_parse() -> None:
+def test_prd_evidence_review_artifacts_exist_parse_and_name_scope() -> None:
     review_path = Path("docs/prd_evidence_review_0430_0432.json")
     markdown_path = Path("docs/PRD_EVIDENCE_REVIEW_0430_0432.md")
 
     assert review_path.exists()
     assert markdown_path.exists()
     review = _review()
+    markdown = markdown_path.read_text(encoding="utf-8")
+    assert markdown.strip()
+    assert set(review) >= {
+        "source_documents",
+        "reviewed_commit_base",
+        "review_scope",
+        "rows",
+        "summary",
+    }
+    assert set(review["source_documents"]) == SOURCE_DOCS
     assert review["reviewed_commit_base"] == BASE_COMMIT
+    assert (
+        review["review_scope"]["method"]
+        == "risk_weighted_spot_check_plus_required_high_risk_rows"
+    )
     assert review["review_scope"]["minimum_rows_reviewed"] >= 40
-    assert len(review["rows"]) >= review["review_scope"]["minimum_rows_reviewed"]
+    assert set(review["review_scope"]["required_categories"]) >= REQUIRED_CATEGORIES
 
 
-def test_prd_evidence_review_covers_required_high_risk_rows_once() -> None:
+def test_prd_evidence_review_rows_are_unique_and_cover_required_high_risk_rows() -> None:
     review = _review()
-    ledger_ids = {row["id"] for row in _ledger()["rows"]}
+    ledger_rows = _ledger_rows()
     reviewed_ids = [row["id"] for row in review["rows"]]
 
+    assert len(reviewed_ids) >= 40
     assert len(reviewed_ids) == len(set(reviewed_ids))
     for row_id in reviewed_ids:
-        assert row_id in ledger_ids
+        assert row_id in ledger_rows
     for high_risk_id in HIGH_RISK_ROW_IDS:
-        if high_risk_id in ledger_ids:
+        if high_risk_id in ledger_rows:
             assert reviewed_ids.count(high_risk_id) == 1, high_risk_id
 
 
-def test_prd_evidence_review_rows_have_specific_evidence_or_justification() -> None:
-    implemented = {"implemented_with_test", "already_implemented_with_existing_test"}
+def test_prd_evidence_review_rows_have_specific_evidence_or_nonimplemented_reason() -> None:
+    ledger_rows = _ledger_rows()
     for row in _review()["rows"]:
-        assert row["evidence_quality"] in {
-            "specific_test_asserts_behavior",
-            "broad_test_needs_more_specific_assertion",
-            "disposition_is_nonimplemented_and_justified",
-            "incorrect_or_overclaimed",
-        }
-        if row["ledger_disposition"] in implemented:
+        ledger = ledger_rows[row["id"]]
+        assert row["ledger_disposition"] == ledger["disposition"], row["id"]
+        assert row["evidence_quality"] in ALLOWED_EVIDENCE_QUALITIES, row["id"]
+        assert row["review_result"] in ALLOWED_REVIEW_RESULTS, row["id"]
+        assert row["category"] in REQUIRED_CATEGORIES | {"open_questions", "experiments"}
+
+        if row["ledger_disposition"] in IMPLEMENTED_DISPOSITIONS:
             assert row["cited_tests"], row["id"]
             for cited in row["cited_tests"]:
                 assert cited["file"].startswith("tests/"), row["id"]
                 assert cited["test_name"].startswith("test_"), row["id"]
-                explanation = cited["why_this_test_actually_covers_the_requirement"].strip()
-                assert explanation, row["id"]
-                assert explanation.lower() not in VAGUE_EXPLANATIONS, row["id"]
-                assert len(explanation.split()) >= 10, row["id"]
-        else:
+                explanation = cited[
+                    "why_this_test_actually_covers_the_requirement"
+                ].strip()
+                lowered = explanation.lower()
+                assert len(explanation.split()) >= 12, row["id"]
+                assert not any(
+                    phrase in lowered for phrase in VAGUE_EXPLANATION_PHRASES
+                ), row["id"]
+        elif row["ledger_disposition"] in NONIMPLEMENTED_DISPOSITIONS:
+            assert row["source_documents"], row["id"]
+            assert row["source_sections"], row["id"]
             assert row["remaining_gap"] and row["remaining_gap"] != "none", row["id"]
+            assert row.get("nonimplemented_justification"), row["id"]
+            assert "complete" in row["nonimplemented_justification"].lower(), row["id"]
+        else:
+            raise AssertionError(f"Unexpected disposition for {row['id']}")
 
 
-def test_prd_evidence_review_quality_results_are_consistent() -> None:
+def test_prd_evidence_review_quality_results_are_consistent_and_counted() -> None:
     review = _review()
     for row in review["rows"]:
         if row["evidence_quality"] == "broad_test_needs_more_specific_assertion":
@@ -126,6 +208,10 @@ def test_prd_evidence_review_quality_results_are_consistent() -> None:
                 "downgraded_disposition",
                 "requires_followup",
             }, row["id"]
+        assert not (
+            row["evidence_quality"] == "incorrect_or_overclaimed"
+            and row["review_result"] == "accepted"
+        ), row["id"]
 
     counts = Counter(row["review_result"] for row in review["rows"])
     assert review["summary"]["reviewed_rows"] == len(review["rows"])
@@ -135,9 +221,17 @@ def test_prd_evidence_review_quality_results_are_consistent() -> None:
     assert review["summary"]["requires_followup"] == counts["requires_followup"]
 
 
-def test_prd_evidence_review_markdown_mentions_every_reviewed_row() -> None:
+def test_prd_evidence_review_markdown_summarizes_review_and_mentions_every_row() -> None:
+    review = _review()
     markdown = Path("docs/PRD_EVIDENCE_REVIEW_0430_0432.md").read_text(encoding="utf-8")
+    lowered = markdown.lower()
 
-    assert "broad test-file citation alone is not sufficient evidence" in markdown.lower()
-    for row in _review()["rows"]:
+    assert "review method" in lowered
+    assert "reviewed rows count" in lowered
+    assert "categories covered" in lowered
+    assert "corrected rows" in lowered
+    assert "downgraded rows" in lowered
+    assert "rows requiring follow-up" in lowered
+    assert "broad test-file citation alone is not sufficient evidence" in lowered
+    for row in review["rows"]:
         assert f"`{row['id']}`" in markdown

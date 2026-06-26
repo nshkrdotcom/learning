@@ -4162,6 +4162,156 @@
       "status": "intentionally_out_of_scope",
       "test_files": [],
       "title": "Out Of Scope Citation Verification Statcheck"
+    },
+    {
+      "doc_section": "0430 sections 25 and 29",
+      "evidence_notes": "test_run_repair_marks_stale_running_run_without_promoting_evidence creates a stale running run, repairs it as interrupted, checks the repair event and cleared heartbeat, then verifies the claim proposal stays unsupported.",
+      "id": "run_repair_marks_stale_running_run_without_promoting_evidence",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/claim_proposal.py",
+        "src/mechledger/assessments/candidate.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Run repair marks stale running run without promoting evidence"
+    },
+    {
+      "doc_section": "0430 sections 24 and 29",
+      "evidence_notes": "test_run_resume_creates_child_run_with_parent_and_complete_contract invokes run resume, extracts the child run ID, checks parent_run_id, class, required run files, and that the parent run remains parentless.",
+      "id": "run_resume_creates_child_run_with_parent_contract",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/run_auditor.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Run resume creates child run with parent contract"
+    },
+    {
+      "doc_section": "0430 section 25",
+      "evidence_notes": "test_index_marks_only_stale_running_heartbeat_as_interrupted_indexed creates fresh and stale running heartbeats, runs index, checks indexed_status values, and verifies stale run.json still says running.",
+      "id": "stale_running_run_indexed_interrupted_without_mutation",
+      "implementation_files": [
+        "src/mechledger/indexer.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_run_lifecycle.py"
+      ],
+      "title": "Index reports stale running runs as interrupted without mutating canonical run.json"
+    },
+    {
+      "doc_section": "0430 sections 34.4 and 36.8",
+      "evidence_notes": "test_gate_blocks_non_completed_run_even_with_candidate_metrics writes candidate-looking metrics on non-completed statuses, runs gate check, and verifies candidate support is blocked by run-status debt.",
+      "id": "non_completed_run_gate_blocks_candidate_support",
+      "implementation_files": [
+        "src/mechledger/assessments/candidate.py",
+        "src/mechledger/debt_report.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Non-completed runs block candidate support"
+    },
+    {
+      "doc_section": "0430 sections 32 through 34",
+      "evidence_notes": "test_claim_proposal_uses_evidence_assessment_status_and_debt builds a failed/weakened assessment, regenerates the proposal, and verifies proposed_status, weakens direction, contradictory metrics, and debt IDs.",
+      "id": "claim_proposal_uses_evidence_assessment_status_and_debt",
+      "implementation_files": [
+        "src/mechledger/claim_proposal.py",
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/workflows.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Claim proposal uses evidence assessment status and debt"
+    },
+    {
+      "doc_section": "0430 sections 4.4.2 and 30.6",
+      "evidence_notes": "test_attach_missing_external_pointer_records_non_evidence_backend attaches a missing external artifact and verifies external backend, missing review status, claim_relevance none, and external_unverified hash status.",
+      "id": "missing_external_pointer_records_non_evidence_backend",
+      "implementation_files": [
+        "src/mechledger/artifacts.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Missing external pointers are recorded as non-evidence by default"
+    },
+    {
+      "doc_section": "0430 section 16.3",
+      "evidence_notes": "test_crystallize_requires_concrete_fields_and_writes_no_generic_todo first checks missing-field failure, then supplies concrete fields and verifies the spec contains source runs and no generic TODO text.",
+      "id": "crystallize_requires_concrete_fields",
+      "implementation_files": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_spec_conformance_hardening.py"
+      ],
+      "title": "Experiment crystallization requires concrete fields"
+    },
+    {
+      "doc_section": "0430 sections 45 through 48",
+      "evidence_notes": "test_query_commands_return_filtered_json_rows imports a label, writes an ActivationRecord, queries every documented entity in JSON mode, and verifies the question, label, and record IDs in the returned rows.",
+      "id": "query_questions_labels_records",
+      "implementation_files": [
+        "src/mechledger/dashboard_data.py",
+        "src/mechledger/cli.py",
+        "src/mechledger/open_questions.py",
+        "src/mechledger/external_labels.py",
+        "src/mechledger/records.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_dashboard_query.py"
+      ],
+      "title": "Query commands cover questions, labels, and records"
+    },
+    {
+      "doc_section": "0430 section 45",
+      "evidence_notes": "test_questions_link_adds_valid_links_and_rejects_unknown_targets links a question to claim, experiment, run, and decision targets, checks show output, then verifies an unknown claim is rejected.",
+      "id": "question_link_validates_targets",
+      "implementation_files": [
+        "src/mechledger/open_questions.py",
+        "src/mechledger/cli.py"
+      ],
+      "remaining_gap": "none",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "test_files": [
+        "tests/test_open_questions.py"
+      ],
+      "title": "Question links validate target objects"
     }
   ],
   "source_documents": [

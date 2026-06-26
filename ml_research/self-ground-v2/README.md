@@ -104,11 +104,12 @@ exports, sessions, copilot provenance review, questions, labels, query commands,
 language reports, optional records, sync reporting, redaction, integrity records,
 run lifecycle, crystallization, claim review, staged-mode contracts, read-only
 cache fallback, run reclassification safety, decisions, debt waivers, and no-ML
-end-to-end assessment examples. Historical PRD audit aids remain in
+end-to-end assessment examples. The PRD coverage map lives in
 [docs/PRD_COVERAGE_0430_0432.md](docs/PRD_COVERAGE_0430_0432.md) with the
 machine-readable backing file
-[docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json). The
-prompt-completion ledger lives in
+[docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json); it records
+product-surface status by PRD/refactor section. The prompt-completion ledger
+lives in
 [docs/PRD_COMPLETION_LEDGER_0430_0432.md](docs/PRD_COMPLETION_LEDGER_0430_0432.md)
 and [docs/prd_completion_ledger_0430_0432.json](docs/prd_completion_ledger_0430_0432.json);
 it records implemented, partial, deferred, ambiguous, and out-of-scope
@@ -116,10 +117,11 @@ dispositions per required surface. The evidence review in
 [docs/PRD_EVIDENCE_REVIEW_0430_0432.md](docs/PRD_EVIDENCE_REVIEW_0430_0432.md)
 and [docs/prd_evidence_review_0430_0432.json](docs/prd_evidence_review_0430_0432.json)
 spot-checks whether cited tests actually assert representative high-risk
-requirements. The historical QC proof in
+requirements; broad test-file citation alone is not sufficient evidence. The
+current QC proof in
 [docs/QC_PROOF_0430_0432.md](docs/QC_PROOF_0430_0432.md) and
-[docs/qc_proof_0430_0432.json](docs/qc_proof_0430_0432.json) is retained as a
-prior-pass artifact rather than current release evidence.
+[docs/qc_proof_0430_0432.json](docs/qc_proof_0430_0432.json) records the exact
+verification commands, exit codes, and push result for this pass.
 
 These artifacts are audit aids, not scientific truth claims. They do not make
 platform records evidence, compute activations/circuits/weights, add heavy ML

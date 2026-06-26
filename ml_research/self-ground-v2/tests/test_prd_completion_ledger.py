@@ -57,6 +57,15 @@ REQUIRED_BEHAVIOR_IDS = [
     "boundary_phrase_documentation",
     "positive_metadata_only_test",
     "documentation_corrections",
+    "run_repair_marks_stale_running_run_without_promoting_evidence",
+    "run_resume_creates_child_run_with_parent_contract",
+    "stale_running_run_indexed_interrupted_without_mutation",
+    "non_completed_run_gate_blocks_candidate_support",
+    "claim_proposal_uses_evidence_assessment_status_and_debt",
+    "missing_external_pointer_records_non_evidence_backend",
+    "crystallize_requires_concrete_fields",
+    "query_questions_labels_records",
+    "question_link_validates_targets",
 ]
 
 
@@ -135,6 +144,14 @@ def test_completion_ledger_rows_have_contractual_evidence() -> None:
             assert row["test_files"], row["id"]
             assert row["test_names"], row["id"]
             assert row["verification_commands"], row["id"]
+            assert not all(path.startswith("docs/") for path in row["implementation_files"]), (
+                row["id"]
+            )
+            assert not any(
+                name.lower() in {"test_placeholder", "test_todo", "todo", "placeholder"}
+                for name in row["test_names"]
+            ), row["id"]
+            assert "covered by milestone" not in " ".join(row["test_names"]).lower()
         else:
             assert row["source_sections"], row["id"]
             assert row["remaining_gap"] and row["remaining_gap"] != "none", row["id"]

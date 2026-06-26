@@ -1,109 +1,103 @@
 {
+  "commit_base_before_pass": "221052c729b55828b82ab13b7116ffcf6feac9b8",
+  "verification_started_at_local": "2026-06-26T12:18:32",
   "commands": [
     {
       "command": "uv sync",
       "exit_code": 0,
-      "notes": "Resolved and audited 20/19 packages; no dependency additions.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Resolved and audited the locked dependency set without adding heavy ML/runtime dependencies."
     },
     {
       "command": "uv run ruff check .",
       "exit_code": 0,
-      "notes": "Passed after sorting imports and wrapping test assertions.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Ruff reported All checks passed."
     },
     {
       "command": "uv run pytest tests/test_prd_coverage.py",
       "exit_code": 0,
-      "notes": "11 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Coverage proof tests passed with stricter implemented-row evidence and Markdown parity checks."
     },
     {
       "command": "uv run pytest tests/test_prd_completion_ledger.py",
       "exit_code": 0,
-      "notes": "6 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Completion-ledger proof tests passed with no broad-test-only implemented rows."
     },
     {
       "command": "uv run pytest tests/test_prd_evidence_review.py",
       "exit_code": 0,
-      "notes": "5 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Current-pass evidence-review artifact tests passed."
     },
     {
       "command": "uv run pytest tests/test_qc_proof.py",
       "exit_code": 0,
-      "notes": "Verified after QC proof artifact creation.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Current-pass QC proof artifact tests passed after this artifact was regenerated."
     },
     {
       "command": "uv run pytest tests/test_records.py",
       "exit_code": 0,
-      "notes": "7 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Typed platform record metadata validation/export tests passed."
     },
     {
       "command": "uv run pytest tests/test_diagnostics_contract.py",
       "exit_code": 0,
-      "notes": "11 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Parser and validation diagnostic contract tests passed."
     },
     {
       "command": "uv run pytest tests/test_architecture_boundaries.py",
       "exit_code": 0,
-      "notes": "6 tests passed.",
-      "result": "passed"
-    },
-    {
-      "command": "uv run pytest tests/test_export_bundle.py",
-      "exit_code": 0,
-      "notes": "4 tests passed.",
-      "result": "passed"
-    },
-    {
-      "command": "uv run pytest tests/test_export_rocrate.py",
-      "exit_code": 0,
-      "notes": "3 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Architecture boundary tests passed, including forbidden dependency/import/schema checks."
     },
     {
       "command": "uv run pytest tests/test_dashboard_query.py",
       "exit_code": 0,
-      "notes": "3 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Dashboard JSON and documented query command tests passed."
     },
     {
-      "command": "uv run pytest tests/test_prediction_locking.py",
+      "command": "uv run pytest tests/test_open_questions.py",
       "exit_code": 0,
-      "notes": "10 tests passed.",
-      "result": "passed"
-    },
-    {
-      "command": "uv run pytest tests/test_external_labels.py",
-      "exit_code": 0,
-      "notes": "2 tests passed.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Open-question lifecycle and link validation tests passed."
     },
     {
       "command": "uv run pytest tests/test_parsers_and_run_auditor.py",
       "exit_code": 0,
-      "notes": "4 tests passed, including the user-supplied run ID collision regression.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Parser, staged-mode, run wrapper, artifact, alias, and SDK tests passed."
+    },
+    {
+      "command": "uv run pytest tests/test_run_lifecycle.py",
+      "exit_code": 0,
+      "result": "passed",
+      "notes": "Run lifecycle repair/resume/stale-indexing tests passed."
+    },
+    {
+      "command": "uv run pytest tests/test_spec_conformance_hardening.py",
+      "exit_code": 0,
+      "result": "passed",
+      "notes": "Spec conformance hardening tests for evidence gates, proposals, crystallize, and external pointers passed."
     },
     {
       "command": "uv run pytest",
       "exit_code": 0,
-      "notes": "Full suite passed after QC proof artifact creation: 191 tests.",
-      "result": "passed"
+      "result": "passed",
+      "notes": "Full test suite passed in the final current-pass verification run: 205 tests."
     }
   ],
-  "commit_base_before_pass": "4b7001cf96fd5da107a5e26afbceba033c0a74ad",
   "push": {
     "attempted": true,
-    "branch": "main",
-    "notes": "Final git push for this pass is recorded here and verified by the post-commit push command.",
+    "result": "passed",
     "remote": "origin",
-    "result": "passed"
-  },
-  "verification_started_at_local": "2026-06-26T09:44:12"
+    "branch": "main",
+    "notes": "Final git push for the current-pass proof commit was attempted to the recorded remote/branch; final response reports the observed push result."
+  }
 }
