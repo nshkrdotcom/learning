@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from mechledger.external_labels import read_labels
 from mechledger.inspection import collect_project, write_json
 from mechledger.open_questions import list_questions
 from mechledger.project import Project
@@ -12,8 +13,30 @@ from mechledger.project import Project
 def dashboard_summary(project: Project) -> dict[str, Any]:
     snapshot = collect_project(project)
     questions = list_questions(project)
+    claims = _query_rows(project, "claims", snapshot=snapshot)
+    runs = _query_rows(project, "runs", snapshot=snapshot)
+    debt = _query_rows(project, "debt", snapshot=snapshot)
+    artifacts = _query_rows(project, "artifacts", snapshot=snapshot)
+    decisions = _query_rows(project, "decisions", snapshot=snapshot)
+    experiments = _query_rows(project, "experiments", snapshot=snapshot)
+    labels = _query_rows(project, "labels", snapshot=snapshot)
+    records = _query_rows(project, "records", snapshot=snapshot)
     return {
         "project_id": project.config.project_id,
+        "claims": claims,
+        "runs": runs,
+        "debt": debt,
+        "blockers": [
+            item
+            for item in debt
+            if str(item.get("severity")) == "blocking" and item.get("status") == "open"
+        ],
+        "artifacts": artifacts,
+        "decisions": decisions,
+        "experiments": experiments,
+        "external_labels": labels,
+        "platform_records": records,
+        "draft_findings": [],
         "claims_by_status": _count(claim.status.value for claim in snapshot.claims.values()),
         "unresolved_debt_by_severity": _count(
             str(debt.get("severity"))
@@ -68,7 +91,15 @@ def write_dashboard_data(project: Project, out: Path) -> dict[str, Any]:
 
 
 def query_rows(project: Project, kind: str) -> list[dict[str, Any]]:
-    snapshot = collect_project(project)
+    return _query_rows(project, kind, snapshot=collect_project(project))
+
+
+def _query_rows(
+    project: Project,
+    kind: str,
+    *,
+    snapshot: Any,
+) -> list[dict[str, Any]]:
     if kind == "claims":
         return [
             {
@@ -124,6 +155,15 @@ def query_rows(project: Project, kind: str) -> list[dict[str, Any]]:
             }
             for spec in sorted(snapshot.experiments.values(), key=lambda item: item.experiment_id)
         ]
+    if kind == "questions":
+        return list_questions(project)
+    if kind == "labels":
+        return [
+            label.model_dump(mode="json")
+            for label in sorted(read_labels(project), key=lambda item: item.label_id)
+        ]
+    if kind == "records":
+        return list(snapshot.records)
     raise ValueError(f"Unknown query kind: {kind}")
 
 

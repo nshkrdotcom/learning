@@ -84,9 +84,10 @@ def assess_run_evidence(run_dir: Path, *, project_root: Path) -> EvidenceAssessm
     run_data = _read_json(run_dir / "run.json")
     run_id = str(run_data["run_id"])
     run_class = str(run_data.get("run_class") or "scratch")
+    run_status = str(run_data.get("status") or "unknown")
     metrics = _load_metrics(run_dir / "metrics.jsonl")
     artifacts = _load_artifacts(run_dir)
-    reports = _assessment_reports(run_class, metrics, artifacts)
+    reports = _assessment_reports(run_class, run_status, metrics, artifacts)
     conditions = _flatten_conditions(reports)
     prior_waivers = _load_valid_waivers(
         run_dir / "scientific_debt_report.json",
@@ -110,10 +111,11 @@ def assess_run_evidence(run_dir: Path, *, project_root: Path) -> EvidenceAssessm
     ]
     clean = (
         run_class in ALLOWED_CLEAN_RUN_CLASSES
+        and run_status == "completed"
         and not unwaived_failed_required
         and not open_serious_or_blocking
     )
-    recommended = _recommended_claim_status(run_class, conditions, clean)
+    recommended = _recommended_claim_status(run_class, run_status, conditions, clean)
     open_debt_count = len([debt for debt in debts if debt.status == DebtStatus.OPEN])
     summary = (
         f"recommended_claim_status: {recommended}; "
@@ -134,10 +136,15 @@ def assess_run_evidence(run_dir: Path, *, project_root: Path) -> EvidenceAssessm
 
 def _assessment_reports(
     run_class: str,
+    run_status: str,
     metrics: dict[str, Any],
     artifacts: list[dict[str, Any]],
 ) -> list[AssessmentReport]:
     reports = [
+        AssessmentReport(
+            assessment_id="run_status_completed",
+            conditions={"run_status_completed": _run_status_condition(run_status)},
+        ),
         AssessmentReport(
             assessment_id="run_class_allowed",
             conditions={"run_class_allowed": _run_class_condition(run_class)},
@@ -191,6 +198,23 @@ def _run_class_condition(run_class: str) -> AssessmentConditionResult:
         default_consequence="scientific_debt",
         debt_type=debt_type.value if hasattr(debt_type, "value") else str(debt_type),
         severity=DebtSeverity.SERIOUS,
+    )
+
+
+def _run_status_condition(run_status: str) -> AssessmentConditionResult:
+    return AssessmentConditionResult(
+        condition_id="run_status_completed",
+        condition_type="status_at_least",
+        passed=run_status == "completed",
+        parameters={"status": run_status, "required_status": "completed"},
+        threshold_source=None,
+        failure_message=(
+            f"Run status `{run_status}` is not completed and cannot provide "
+            "clean candidate support."
+        ),
+        default_consequence="blocker",
+        debt_type=DebtType.CUSTOM.value,
+        severity=DebtSeverity.BLOCKING,
     )
 
 
@@ -354,11 +378,16 @@ def _unwaived_failed_required(
 
 def _recommended_claim_status(
     run_class: str,
+    run_status: str,
     conditions: dict[str, AssessmentConditionResult],
     clean: bool,
 ) -> str:
     if clean:
         return "candidate_claim"
+    if run_status == "failed":
+        return "failed_or_weakened"
+    if run_status in {"cancelled", "interrupted", "running", "created"}:
+        return "unsupported"
     failed_debt_types = {
         str(condition.debt_type)
         for condition in conditions.values()

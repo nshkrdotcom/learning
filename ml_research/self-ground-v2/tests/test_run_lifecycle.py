@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import tarfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 from helpers_project import create_run, populate_project, runner
@@ -137,6 +139,128 @@ def test_per_run_bundle_manifest_hashes_every_included_file(tmp_path: Path) -> N
     assert manifest["run_id"] == "RUN_E001"
     assert {entry["path"] for entry in manifest["files"]} == names - {"manifest.json"}
     assert all(len(entry["sha256"]) == 64 for entry in manifest["files"])
+
+
+def test_run_repair_marks_stale_running_run_without_promoting_evidence(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+    run_dir = create_run(tmp_path, run_id="RUN_STALE")
+    run_json = run_dir / "run.json"
+    payload = json.loads(run_json.read_text(encoding="utf-8"))
+    payload.update({"status": "running", "finished_at": None, "exit_code": None})
+    run_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (run_dir / "heartbeat.json").write_text(
+        json.dumps({"last_heartbeat_at": "2026-06-25T00:00:00Z", "pid": 999}) + "\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["run", "repair", "RUN_STALE", "--status", "interrupted"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    repaired = json.loads(run_json.read_text(encoding="utf-8"))
+    assert repaired["status"] == "interrupted"
+    assert repaired["exit_code"] == 130
+    assert not (run_dir / "heartbeat.json").exists()
+    events = [
+        json.loads(line)
+        for line in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    assert any(event["event_type"] == "run_repaired" for event in events)
+    proposal = json.loads((run_dir / "claim_update_proposal.json").read_text())
+    assert proposal["proposed_status"] == "unsupported"
+
+
+def test_run_resume_creates_child_run_with_parent_and_complete_contract(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "resume",
+            "RUN_E001",
+            "--class",
+            "notebook_exploration",
+            "--purpose",
+            "continue notebook",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    child_id = next(
+        line.split(":", 1)[1].strip()
+        for line in result.output.splitlines()
+        if line.startswith("Created child run:")
+    )
+    child_dir = tmp_path / ".mechledger/runs" / child_id
+    run_json = json.loads((child_dir / "run.json").read_text(encoding="utf-8"))
+    assert run_json["parent_run_id"] == "RUN_E001"
+    assert run_json["status"] == "running"
+    assert run_json["run_class"] == "notebook_exploration"
+    expected_files = {
+        "run.json",
+        "heartbeat.json",
+        "events.jsonl",
+        "metrics.jsonl",
+        "artifacts.jsonl",
+        "artifact_manifest.json",
+        "resource_usage.json",
+        "stdout.txt",
+        "stderr.txt",
+        "command.txt",
+        "environment.json",
+        "git.json",
+        "summary.json",
+        "run_ledger_row.csv",
+        "claim_update_proposal.md",
+        "claim_update_proposal.json",
+        "scientific_debt_report.md",
+        "scientific_debt_report.json",
+        "run_class_transition.json",
+        "artifacts",
+    }
+    assert expected_files <= {path.name for path in child_dir.iterdir()}
+    parent = json.loads((tmp_path / ".mechledger/runs/RUN_E001/run.json").read_text())
+    assert parent.get("parent_run_id") is None
+
+
+def test_index_marks_only_stale_running_heartbeat_as_interrupted_indexed(
+    tmp_path: Path,
+) -> None:
+    populate_project(tmp_path)
+    fresh_dir = create_run(tmp_path, run_id="RUN_FRESH")
+    stale_dir = create_run(tmp_path, run_id="RUN_STALE")
+    for run_dir, timestamp in [
+        (fresh_dir, datetime.now(UTC).isoformat().replace("+00:00", "Z")),
+        (stale_dir, "2026-06-25T00:00:00Z"),
+    ]:
+        run_json = run_dir / "run.json"
+        payload = json.loads(run_json.read_text(encoding="utf-8"))
+        payload.update({"status": "running", "finished_at": None, "exit_code": None})
+        run_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        (run_dir / "heartbeat.json").write_text(
+            json.dumps({"last_heartbeat_at": timestamp, "pid": 999}) + "\n",
+            encoding="utf-8",
+        )
+
+    result = runner.invoke(app, ["index"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+    assert result.exit_code == 0, result.output
+    with sqlite3.connect(tmp_path / ".mechledger/index.sqlite") as conn:
+        rows = dict(conn.execute("SELECT run_id, indexed_status FROM local_runs"))
+
+    assert rows["RUN_FRESH"] == "running"
+    assert rows["RUN_STALE"] == "interrupted_indexed"
+    stale_payload = json.loads((stale_dir / "run.json").read_text(encoding="utf-8"))
+    assert stale_payload["status"] == "running"
 
 
 def test_gc_refuses_keep_last_zero_without_explicit_override(tmp_path: Path) -> None:

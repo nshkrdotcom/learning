@@ -52,6 +52,7 @@ from mechledger.language_report import (
 from mechledger.lifecycle import garbage_collect, pin_run, write_run_bundle
 from mechledger.open_questions import (
     add_question,
+    link_question,
     list_questions,
     resolve_question,
     show_question,
@@ -103,6 +104,8 @@ from mechledger.workflows import (
     decision_new_from_diff,
     propose_claim,
     reclassify_run,
+    repair_run,
+    resume_run,
     review_claim,
     session_close,
     waive_debt,
@@ -848,12 +851,35 @@ def run(
         if argv and argv[0] == "reclassify" and "--help" in argv:
             _handle_run_reclassify_help()
             raise typer.Exit(0)
+        if argv and argv[0] == "repair" and "--help" in argv:
+            _handle_run_repair_help()
+            raise typer.Exit(0)
+        if argv and argv[0] == "resume" and "--help" in argv:
+            _handle_run_resume_help()
+            raise typer.Exit(0)
         project = find_project()
         if _looks_like_run_reclassify(argv):
             canonical = _handle_run_reclassify(project, argv)
             to_class = _option_value(argv, "--to") or ""
             typer.echo(f"Reclassified run {canonical} to {to_class}.")
             typer.echo("Regenerated scientific debt report.")
+            return
+        if _looks_like_run_repair(argv):
+            canonical = _handle_run_repair(project, argv)
+            typer.echo(f"Repaired run {canonical}.")
+            typer.echo("Regenerated scientific debt report and claim proposal.")
+            return
+        if _looks_like_run_resume(argv):
+            child = _handle_run_resume(
+                project, argv, run_class=run_class, purpose=purpose
+            )
+            run_dir = project.runs_dir / child
+            run_payload = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+            typer.echo(f"Created child run: {child}")
+            typer.echo(f"Directory: {run_dir.relative_to(project.root)}/")
+            typer.echo(f"Parent run: {run_payload['parent_run_id']}")
+            typer.echo("Status: running")
+            typer.echo("Set MECHLEDGER_RUN_ID and MECHLEDGER_RUN_DIR to log into this run.")
             return
         run_id_out, exit_code = capture_run(
             project,
@@ -911,6 +937,9 @@ def attach(
         typer.Option("--claim-relevance", help="none|diagnostic|supporting|contradicting|required"),
     ] = "none",
     artifact_type: Annotated[str | None, typer.Option("--type")] = None,
+    storage_backend: Annotated[
+        str | None, typer.Option("--storage-backend", help="git|dvc|git_annex|external")
+    ] = None,
     description: Annotated[str | None, typer.Option("--description")] = None,
     allow_missing: Annotated[bool, typer.Option("--allow-missing")] = False,
 ) -> None:
@@ -922,6 +951,7 @@ def attach(
             canonical,
             path,
             artifact_type=artifact_type,
+            storage_backend=storage_backend,
             claim_relevance=claim_relevance,
             description=description,
             allow_missing=allow_missing,
@@ -999,10 +1029,29 @@ def experiment_crystallize(
     runs: Annotated[list[str], typer.Option("--runs")],
     experiment_id: Annotated[str, typer.Option("--id")],
     title: Annotated[str, typer.Option("--title")],
+    question: Annotated[str | None, typer.Option("--question")] = None,
+    hypothesis: Annotated[str | None, typer.Option("--hypothesis")] = None,
+    design: Annotated[str | None, typer.Option("--design")] = None,
+    metrics: Annotated[str | None, typer.Option("--metrics")] = None,
+    controls: Annotated[str | None, typer.Option("--controls")] = None,
+    success_criterion: Annotated[str | None, typer.Option("--success-criterion")] = None,
+    failure_criterion: Annotated[str | None, typer.Option("--failure-criterion")] = None,
 ) -> None:
     try:
         project = find_project()
-        path = crystallize_experiment(project, runs, experiment_id, title)
+        path = crystallize_experiment(
+            project,
+            runs,
+            experiment_id,
+            title,
+            question=question,
+            hypothesis=hypothesis,
+            design=design,
+            metrics=metrics,
+            controls=controls,
+            success_criterion=success_criterion,
+            failure_criterion=failure_criterion,
+        )
         typer.echo(f"Created {path.relative_to(project.root)}")
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
@@ -1438,6 +1487,33 @@ def questions_resolve_command(
         _fail(str(exc), code=2)
 
 
+@questions_app.command("link")
+def questions_link_command(
+    question_id: str,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    decision: Annotated[str | None, typer.Option("--decision")] = None,
+) -> None:
+    try:
+        project = find_project()
+        record = link_question(
+            project,
+            question_id,
+            claim=claim,
+            experiment=experiment,
+            run=run,
+            decision=decision,
+        )
+        typer.echo(f"question_id: {record['question_id']}")
+        typer.echo(f"linked_claims: {', '.join(record.get('linked_claims') or [])}")
+        typer.echo(f"linked_experiments: {', '.join(record.get('linked_experiments') or [])}")
+        typer.echo(f"linked_runs: {', '.join(record.get('linked_runs') or [])}")
+        typer.echo(f"linked_decisions: {', '.join(record.get('linked_decisions') or [])}")
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @questions_app.command("show")
 def questions_show_command(question_id: str) -> None:
     try:
@@ -1639,6 +1715,45 @@ def query_experiments_command(
     limit: Annotated[int | None, typer.Option("--limit")] = None,
 ) -> None:
     _query_options("experiments", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("questions")
+def query_questions_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("questions", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("labels")
+def query_labels_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("labels", as_json, status_filter, claim, experiment, run, severity, limit)
+
+
+@query_app.command("records")
+def query_records_command(
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    status_filter: Annotated[str | None, typer.Option("--status")] = None,
+    claim: Annotated[str | None, typer.Option("--claim")] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    run: Annotated[str | None, typer.Option("--run")] = None,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    limit: Annotated[int | None, typer.Option("--limit")] = None,
+) -> None:
+    _query_options("records", as_json, status_filter, claim, experiment, run, severity, limit)
 
 
 @records_app.command("validate")
@@ -1889,6 +2004,8 @@ def _print_run_help() -> None:
         "  --seed INTEGER\n\n"
         "Workflow:\n"
         "  mechledger run -- python script.py\n"
+        "  mechledger run repair RUN_ID --status interrupted\n"
+        "  mechledger run resume RUN_ID --class notebook_exploration --purpose TEXT\n"
         "  mechledger run reclassify RUN_ID --to CLASS --decision D### --reason TEXT"
     )
 
@@ -1897,6 +2014,14 @@ def _looks_like_run_reclassify(argv: list[str]) -> bool:
     if not argv or argv[0] != "reclassify":
         return False
     return "--help" in argv or any(option in argv for option in ("--to", "--decision", "--reason"))
+
+
+def _looks_like_run_repair(argv: list[str]) -> bool:
+    return bool(argv) and argv[0] == "repair"
+
+
+def _looks_like_run_resume(argv: list[str]) -> bool:
+    return bool(argv) and argv[0] == "resume"
 
 
 def _handle_run_reclassify(project, argv: list[str]) -> str:
@@ -1933,6 +2058,37 @@ def _handle_run_reclassify(project, argv: list[str]) -> str:
     )
 
 
+def _handle_run_repair(project, argv: list[str]) -> str:
+    if "--help" in argv:
+        _handle_run_repair_help()
+        raise typer.Exit(0)
+    if len(argv) < 2:
+        raise ValueError("Usage: mechledger run repair RUN_ID --status interrupted")
+    run_id = argv[1]
+    status = _option_value(argv, "--status")
+    if status is None or not status.strip():
+        raise ValueError("Missing required option for run repair: --status")
+    known_tokens = {"repair", run_id, "--status", status}
+    extras = [token for token in argv if token not in known_tokens]
+    if extras:
+        raise ValueError(f"Unexpected run repair arguments: {' '.join(extras)}")
+    return repair_run(project, run_id, status=status)
+
+
+def _handle_run_resume(project, argv: list[str], *, run_class: str, purpose: str | None) -> str:
+    if "--help" in argv:
+        _handle_run_resume_help()
+        raise typer.Exit(0)
+    if len(argv) < 2:
+        raise ValueError("Usage: mechledger run resume RUN_ID --class notebook_exploration")
+    run_id = argv[1]
+    known_tokens = {"resume", run_id}
+    extras = [token for token in argv if token not in known_tokens]
+    if extras:
+        raise ValueError(f"Unexpected run resume arguments: {' '.join(extras)}")
+    return resume_run(project, run_id, run_class=run_class, purpose=purpose)
+
+
 def _handle_run_reclassify_help() -> None:
     typer.echo(
         "Usage: mechledger run reclassify RUN_ID --to CLASS "
@@ -1940,6 +2096,22 @@ def _handle_run_reclassify_help() -> None:
         "Reclassify a local run after accepted human decision review. "
         "This updates the run directory and regenerated scientific-debt report; "
         "it does not edit committed ledgers."
+    )
+
+
+def _handle_run_repair_help() -> None:
+    typer.echo(
+        "Usage: mechledger run repair RUN_ID --status interrupted\n\n"
+        "Mark a stale local running run as interrupted, cancelled, or failed. "
+        "Repair updates only the local run directory and regenerated reports."
+    )
+
+
+def _handle_run_resume_help() -> None:
+    typer.echo(
+        "Usage: mechledger run resume RUN_ID --class notebook_exploration --purpose TEXT\n\n"
+        "Create a child local run with parent_run_id set to the canonical parent. "
+        "The parent run is not mutated."
     )
 
 

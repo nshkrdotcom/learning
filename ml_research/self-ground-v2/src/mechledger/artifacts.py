@@ -8,6 +8,9 @@ from typing import Any
 
 from mechledger.project import Project, now_utc
 
+VALID_STORAGE_BACKENDS = {"git", "dvc", "git_annex", "external"}
+VALID_CLAIM_RELEVANCE = {"none", "diagnostic", "supporting", "contradicting", "required"}
+
 
 def load_manifest(run_dir: Path) -> dict[str, Any]:
     path = run_dir / "artifact_manifest.json"
@@ -38,12 +41,22 @@ def register_artifact(
     storage_backend: str | None = None,
 ) -> dict[str, Any]:
     run_dir = project.runs_dir / run_id
+    if claim_relevance not in VALID_CLAIM_RELEVANCE:
+        raise ValueError(
+            "claim_relevance must be one of: " + ", ".join(sorted(VALID_CLAIM_RELEVANCE))
+        )
+    if storage_backend is not None and storage_backend not in VALID_STORAGE_BACKENDS:
+        raise ValueError(
+            "artifact storage backend must be one of: "
+            + ", ".join(sorted(VALID_STORAGE_BACKENDS))
+        )
     manifest = load_manifest(run_dir)
     artifact_id = next_artifact_id(manifest)
     resolved = resolve_artifact_path(project, path)
     exists = resolved.exists()
     if not exists and not allow_missing:
         raise FileNotFoundError(f"Artifact path does not exist: {path}")
+    effective_relevance = "none" if not exists else claim_relevance
     artifact = {
         "artifact_id": artifact_id,
         "original_path": str(path),
@@ -55,7 +68,7 @@ def register_artifact(
         if exists and resolved.is_file()
         else "external_unverified",
         "artifact_storage_backend": storage_backend or ("git" if exists else "external"),
-        "claim_relevance": claim_relevance,
+        "claim_relevance": effective_relevance,
         "review_status": "unannotated" if auto_collected else "annotated" if exists else "missing",
         "description": description,
         "byte_size": resolved.stat().st_size if exists and resolved.is_file() else None,

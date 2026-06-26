@@ -298,6 +298,70 @@ def test_sdk_context_manager_creates_complete_run_contract(tmp_path: Path, monke
     assert manifest["artifacts"][0]["review_status"] == "unannotated"
 
 
+def test_sdk_explicit_finish_and_exception_statuses(tmp_path: Path, monkeypatch) -> None:
+    runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PWD", str(tmp_path))
+
+    import mechledger as ml
+
+    explicit = ml.start(experiment="E001", run_class="notebook_exploration", purpose="manual")
+    explicit.log_metric("specificity_gap", 0.1)
+    explicit.finish()
+    explicit_run = json.loads(
+        (tmp_path / ".mechledger/runs" / explicit.run_id / "run.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert explicit_run["status"] == "completed"
+
+    try:
+        with ml.run(experiment="E001", run_class="notebook_exploration", purpose="boom") as run:
+            run.log_event("notebook_cell", "about to raise")
+            raise RuntimeError("cell failed")
+    except RuntimeError:
+        interrupted_id = run.run_id
+    else:
+        raise AssertionError("exception should propagate")
+
+    interrupted_dir = tmp_path / ".mechledger/runs" / interrupted_id
+    interrupted_run = json.loads((interrupted_dir / "run.json").read_text(encoding="utf-8"))
+    assert interrupted_run["status"] == "interrupted"
+    assert (interrupted_dir / "summary.json").exists()
+    assert (interrupted_dir / "scientific_debt_report.json").exists()
+    assert "run_interrupted" in (interrupted_dir / "events.jsonl").read_text(encoding="utf-8")
+
+
+def test_index_check_rejects_malformed_run_jsonl(tmp_path: Path) -> None:
+    runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+    run_dir = tmp_path / ".mechledger/runs/RUN_BAD_JSONL"
+    run_dir.mkdir(parents=True)
+    (run_dir / "run.json").write_text(
+        json.dumps(
+            {
+                "run_id": "RUN_BAD_JSONL",
+                "run_class": "diagnostic",
+                "status": "completed",
+                "started_at": "2026-06-25T00:00:00Z",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "metrics.jsonl").write_text('{"metric_name": "ok", "value": 1}\n{bad\n')
+    (run_dir / "events.jsonl").write_text("", encoding="utf-8")
+    (run_dir / "artifacts.jsonl").write_text("", encoding="utf-8")
+    (run_dir / "artifact_manifest.json").write_text('{"artifacts": []}\n', encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["index", "--check"], catch_exceptions=False, env={"PWD": str(tmp_path)}
+    )
+
+    assert result.exit_code == 1
+    assert "metrics.jsonl:2" in result.output
+    assert "run.jsonl.invalid" in result.output
+
+
 def test_run_capture_signal_termination_is_interrupted_not_evidence_failure(
     tmp_path: Path,
 ) -> None:
@@ -382,6 +446,20 @@ def test_session_experiment_claim_decision_and_debt_workflows(tmp_path: Path) ->
             "E099",
             "--title",
             "Workflow Run",
+            "--question",
+            "Can this workflow run be formalized for follow-up?",
+            "--hypothesis",
+            "The captured run should provide a concrete seed for a formal spec.",
+            "--design",
+            "Use the run summary as source evidence and declare follow-up controls.",
+            "--metrics",
+            "specificity_gap",
+            "--controls",
+            "matched controls",
+            "--success-criterion",
+            "formal follow-up criteria are declared",
+            "--failure-criterion",
+            "formal follow-up cannot reproduce the observed workflow behavior",
         ],
         catch_exceptions=False,
         env={"PWD": str(tmp_path)},

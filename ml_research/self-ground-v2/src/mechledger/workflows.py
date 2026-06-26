@@ -2,16 +2,27 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import subprocess
 from pathlib import Path
 
 from mechledger.alias import resolve_run_id
+from mechledger.claim_proposal import write_claim_update_proposal
 from mechledger.core.claim_ledger import parse_claim_ledger
 from mechledger.core.decision_log import parse_decision_log
 from mechledger.core.run_ledger import DEFAULT_RUN_LEDGER_COLUMNS, parse_run_ledger
 from mechledger.debt_report import generate_scientific_debt_report, write_scientific_debt_report
 from mechledger.project import Project, now_utc
-from mechledger.run_auditor import ALLOWED_RUN_CLASSES, append_event, write_run_json
+from mechledger.run_auditor import (
+    ALLOWED_RUN_CLASSES,
+    append_event,
+    captured_environment,
+    generate_run_id,
+    git_state,
+    slugify,
+    write_run_json,
+    write_run_ledger_row,
+)
 
 EVIDENCE_SUPPORTING_RUN_CLASSES = {
     "serious_evidence_run",
@@ -19,6 +30,185 @@ EVIDENCE_SUPPORTING_RUN_CLASSES = {
     "replication",
     "published_result",
 }
+REPAIR_STATUSES = {"interrupted", "cancelled", "failed"}
+
+
+def repair_run(project: Project, alias: str, *, status: str) -> str:
+    if status not in REPAIR_STATUSES:
+        raise ValueError(
+            "--status for run repair must be one of: " + ", ".join(sorted(REPAIR_STATUSES))
+        )
+    run_id = resolve_run_id(project, alias)
+    run_dir = project.runs_dir / run_id
+    run_json_path = run_dir / "run.json"
+    if not run_json_path.exists():
+        raise FileNotFoundError(f"Run directory is missing run.json: {run_json_path}")
+    run_data = json.loads(run_json_path.read_text(encoding="utf-8"))
+    previous_status = str(run_data.get("status") or "unknown")
+    exit_code = {"interrupted": 130, "cancelled": 130, "failed": 1}[status]
+    run_data.update(
+        {
+            "status": status,
+            "finished_at": run_data.get("finished_at") or now_utc(),
+            "exit_code": run_data.get("exit_code")
+            if run_data.get("exit_code") is not None
+            else exit_code,
+        }
+    )
+    write_run_json(run_dir, run_data)
+    (run_dir / "heartbeat.json").unlink(missing_ok=True)
+    append_event(
+        run_dir,
+        "run_repaired",
+        f"{previous_status} -> {status}",
+        {"previous_status": previous_status, "repair_status": status},
+    )
+    write_run_ledger_row(run_dir, run_data, status)
+    generate_scientific_debt_report(project, run_id)
+    write_claim_update_proposal(project, run_id, regenerate=True)
+    return run_id
+
+
+def resume_run(
+    project: Project,
+    alias: str,
+    *,
+    run_class: str = "notebook_exploration",
+    purpose: str | None = None,
+) -> str:
+    if run_class not in ALLOWED_RUN_CLASSES:
+        raise ValueError(f"Invalid run class: {run_class}")
+    parent_run_id = resolve_run_id(project, alias)
+    parent_run_json = project.runs_dir / parent_run_id / "run.json"
+    if not parent_run_json.exists():
+        raise FileNotFoundError(f"Run directory is missing run.json: {parent_run_json}")
+    slug_source = purpose or f"resume_{parent_run_id}"
+    child_run_id = generate_run_id(
+        project,
+        experiment_id=_parent_experiment_id(parent_run_json),
+        slug_source=slug_source,
+        run_id=None,
+    )
+    run_dir = project.runs_dir / child_run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    (run_dir / "artifacts").mkdir()
+    for name in ["events.jsonl", "metrics.jsonl", "artifacts.jsonl"]:
+        (run_dir / name).write_text("", encoding="utf-8")
+    (run_dir / "artifact_manifest.json").write_text(
+        json.dumps({"artifacts": []}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "run_class_transition.json").write_text("[]\n", encoding="utf-8")
+    (run_dir / "stdout.txt").write_text("", encoding="utf-8")
+    (run_dir / "stderr.txt").write_text("", encoding="utf-8")
+    (run_dir / "command.txt").write_text(
+        f"mechledger run resume {parent_run_id}\n", encoding="utf-8"
+    )
+    git = git_state(project.root)
+    (run_dir / "git.json").write_text(
+        json.dumps(git, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    (run_dir / "environment.json").write_text(
+        json.dumps(captured_environment(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    started = now_utc()
+    run_data = {
+        "run_id": child_run_id,
+        "parent_run_id": parent_run_id,
+        "experiment_id": _parent_experiment_id(parent_run_json),
+        "run_class": run_class,
+        "status": "running",
+        "purpose": purpose,
+        "hypothesis": None,
+        "command": None,
+        "argv": [],
+        "started_at": started,
+        "finished_at": None,
+        "exit_code": None,
+        "git_commit": git.get("commit"),
+        "git_diff_hash": git.get("diff_hash"),
+        "cwd": str(project.root),
+        "model": None,
+        "tokenizer": None,
+        "hook_point": None,
+        "sae_release": None,
+        "sae_id": None,
+        "seed": None,
+        "blocker": None,
+        "pinned": False,
+    }
+    write_run_json(run_dir, run_data)
+    (run_dir / "heartbeat.json").write_text(
+        json.dumps({"last_heartbeat_at": now_utc(), "pid": os.getpid()}, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
+    append_event(run_dir, "run_created", "resumed child run directory created")
+    append_event(
+        run_dir,
+        "run_resumed",
+        f"resumed from {parent_run_id}",
+        {"parent_run_id": parent_run_id},
+    )
+    (run_dir / "resource_usage.json").write_text(
+        json.dumps(
+            {
+                "wall_time_seconds": 0.0,
+                "cpu_time_seconds": None,
+                "gpu_time_seconds": None,
+                "peak_gpu_memory_bytes": None,
+                "gpu_model": None,
+                "disk_bytes_written": 0,
+                "artifact_bytes_written": 0,
+                "tensor_bytes_written": 0,
+                "api_calls": None,
+                "input_tokens": None,
+                "output_tokens": None,
+                "estimated_cost_usd": None,
+                "energy_estimate_kwh": None,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "summary.json").write_text(
+        json.dumps(
+            {
+                "run_id": child_run_id,
+                "status": "running",
+                "exit_code": None,
+                "artifact_count": 0,
+                "stdout_bytes": 0,
+                "stderr_bytes": 0,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    write_run_ledger_row(run_dir, run_data, "running")
+    generate_scientific_debt_report(project, child_run_id)
+    write_claim_update_proposal(project, child_run_id, regenerate=True)
+    append_event(run_dir, "claim_proposal_generated", "claim update proposal generated")
+    from mechledger.alias import append_alias
+
+    append_alias(
+        project,
+        child_run_id,
+        run_data["experiment_id"],
+        slugify(slug_source)[:40] or "run",
+    )
+    return child_run_id
+
+
+def _parent_experiment_id(parent_run_json: Path) -> str | None:
+    payload = json.loads(parent_run_json.read_text(encoding="utf-8"))
+    value = payload.get("experiment_id")
+    return str(value) if value else None
 
 
 def append_run_ledger(project: Project, alias: str, *, yes: bool = False) -> str:
@@ -46,8 +236,34 @@ def append_run_ledger(project: Project, alias: str, *, yes: bool = False) -> str
 
 
 def crystallize_experiment(
-    project: Project, run_aliases: list[str], experiment_id: str, title: str
+    project: Project,
+    run_aliases: list[str],
+    experiment_id: str,
+    title: str,
+    *,
+    question: str | None = None,
+    hypothesis: str | None = None,
+    design: str | None = None,
+    metrics: str | None = None,
+    controls: str | None = None,
+    success_criterion: str | None = None,
+    failure_criterion: str | None = None,
 ) -> Path:
+    required = {
+        "--question": question,
+        "--hypothesis": hypothesis,
+        "--design": design,
+        "--metrics": metrics,
+        "--controls": controls,
+        "--success-criterion": success_criterion,
+        "--failure-criterion": failure_criterion,
+    }
+    missing = [name for name, value in required.items() if not (value or "").strip()]
+    if missing:
+        raise ValueError(
+            "Crystallization requires concrete fields with no generic TODO placeholders: "
+            + ", ".join(missing)
+        )
     run_ids = [resolve_run_id(project, alias) for alias in run_aliases]
     slug = "".join(char.lower() if char.isalnum() else "_" for char in title).strip("_")
     slug = "_".join(part for part in slug.split("_") if part)[:60]
@@ -73,52 +289,59 @@ expected_artifacts: []
 draft
 
 ## Research question
-TODO: state the question that emerged from the source runs.
+{question}
 
 ## Hypothesis
-TODO: state the post-hoc hypothesis without promoting claims.
+{hypothesis}
 
 ## Model / SAE / Hook
-TODO
+Captured source runs define the initial observed context; update this section before
+running the formal experiment if model, SAE, or hook metadata changes.
 
 ## Task
-TODO
+Formal follow-up task derived from the source runs.
 
 ## Mechanism objects
-TODO
+Mechanism objects are carried forward from the source run metadata and must be
+reviewed before claim promotion.
 
 ## Claim format
-TODO
+No claim status is promoted by crystallization; claim updates require review.
 
 ## Intervention
-TODO
+{design}
 
 ## Metrics
-TODO
+{metrics}
 
 ## Baselines
-TODO
+Baseline requirements must be declared before this draft is used for candidate
+evidence.
 
 ## Controls
-TODO
+{controls}
 
 ## Success criterion
-TODO
+{success_criterion}
 
 ## Failure criterion
-TODO
+{failure_criterion}
 
 ## Prerequisites
-TODO
+Review source runs, baseline calibration, controls, and decision records before
+running the formal experiment.
 
 ## Expected artifacts
-TODO
+Register formal-run outputs explicitly or write them to the run-local artifacts
+directory.
 
 ## Evidence seed
 {chr(10).join(f"- {run_id}" for run_id in run_ids)}
 
 ## Notes
-Crystallized after exploratory/source runs; no claim promotion applied.
+This formal ExperimentSpec was crystallized after the source exploratory runs.
+The selected source runs predate this spec and are linked only as evidence seeds.
+No claim promotion was applied.
 """,
         encoding="utf-8",
     )
@@ -127,48 +350,7 @@ Crystallized after exploratory/source runs; no claim promotion applied.
 
 def propose_claim(project: Project, alias: str, *, regenerate: bool = False) -> Path:
     run_id = resolve_run_id(project, alias)
-    run_dir = project.runs_dir / run_id
-    path = run_dir / "claim_update_proposal.json"
-    if path.exists() and not regenerate:
-        return path
-    ledger = parse_claim_ledger(project.root / project.config.default_claim_ledger)
-    target_claim_id = next(iter(ledger.claims), None)
-    expected_block_hash = ledger.claims[target_claim_id].block_hash if target_claim_id else None
-    proposal = {
-        "proposal_id": f"CP-{run_id}",
-        "run_id": run_id,
-        "generated_at": now_utc(),
-        "target_claim_id": target_claim_id,
-        "current_claim_status_at_generation": ledger.claims[target_claim_id].status.value
-        if target_claim_id
-        else None,
-        "proposed_status": None,
-        "proposed_direction": "neutral",
-        "expected_claim_ledger_hash": _hash_file(
-            project.root / project.config.default_claim_ledger
-        ),
-        "expected_claim_block_hash": expected_block_hash,
-        "supporting_metric_names": [],
-        "contradicting_metric_names": [],
-        "supporting_artifact_paths": [],
-        "contradicting_artifact_paths": [],
-        "scientific_debt_ids": [],
-        "blocking_issues": [],
-        "required_human_checks": [
-            "Review evidence manually; MechLedger is not a claim truth oracle."
-        ],
-        "proposed_markdown_patch_path": str(run_dir / "claim_update_proposal.md"),
-        "review_status": "pending",
-        "reviewed_at": None,
-        "reviewed_by": None,
-        "force_applied": False,
-    }
-    path.write_text(json.dumps(proposal, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    (run_dir / "claim_update_proposal.md").write_text(
-        f"# Claim Update Proposal for {run_id}\n\nNo automatic claim promotion proposed.\n",
-        encoding="utf-8",
-    )
-    return path
+    return write_claim_update_proposal(project, run_id, regenerate=regenerate)
 
 
 def review_claim(
@@ -258,10 +440,14 @@ def reclassify_run(
     run_data = json.loads(run_json_path.read_text(encoding="utf-8"))
     from_class = run_data.get("run_class")
     run_status = str(run_data.get("status") or "")
-    if run_status in {"failed", "cancelled"} and to_class in EVIDENCE_SUPPORTING_RUN_CLASSES:
+    if (
+        run_status in {"failed", "cancelled", "interrupted"}
+        and to_class in EVIDENCE_SUPPORTING_RUN_CLASSES
+    ):
         raise ValueError(
-            "Run status failed/cancelled cannot be promoted into an evidence-supporting "
-            "run class. Re-run or record the failed/cancelled result as negative evidence."
+            "Run status failed/cancelled/interrupted cannot be promoted into an "
+            "evidence-supporting run class. Re-run or record the terminal result as "
+            "negative evidence."
         )
     if from_class == to_class:
         raise ValueError(f"Run {run_id} is already classified as {to_class}.")

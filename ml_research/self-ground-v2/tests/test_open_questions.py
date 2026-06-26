@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from helpers_project import populate_project, runner, write_decision_log
@@ -113,3 +114,58 @@ def test_questions_resolve_requires_accepted_decision(tmp_path: Path) -> None:
         env={"PWD": str(tmp_path)},
     )
     assert "resolved" in listed.output
+
+
+def test_questions_link_adds_valid_links_and_rejects_unknown_targets(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+    added = runner.invoke(
+        app,
+        ["questions", "add", "--text", "Link this to current evidence?"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    question_id = next(
+        line.split(":", 1)[1].strip()
+        for line in added.output.splitlines()
+        if line.startswith("question_id:")
+    )
+
+    linked = runner.invoke(
+        app,
+        [
+            "questions",
+            "link",
+            question_id,
+            "--claim",
+            "C001",
+            "--experiment",
+            "E001",
+            "--run",
+            "RUN_E001",
+            "--decision",
+            "D001",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    assert linked.exit_code == 0, linked.output
+    shown = runner.invoke(
+        app,
+        ["questions", "show", question_id],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    payload = json.loads(shown.output)
+    assert payload["linked_claims"] == ["C001"]
+    assert payload["linked_experiments"] == ["E001"]
+    assert payload["linked_runs"] == ["RUN_E001"]
+    assert payload["linked_decisions"] == ["D001"]
+
+    bad = runner.invoke(
+        app,
+        ["questions", "link", question_id, "--claim", "C999"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    assert bad.exit_code == 2
+    assert "Unknown claim" in bad.output

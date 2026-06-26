@@ -41,6 +41,10 @@ def test_init_is_idempotent_and_updates_gitignore(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     assert (tmp_path / ".mechledger/project.json").exists()
     assert (tmp_path / "research/logs/claim_ledger.md").exists()
+    formatted = runner.invoke(
+        app, ["format", "--check"], catch_exceptions=False, env={"PWD": str(tmp_path)}
+    )
+    assert formatted.exit_code == 0, formatted.output
     gitignore = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert ".mechledger/runs/" in gitignore
     assert "research/" not in gitignore

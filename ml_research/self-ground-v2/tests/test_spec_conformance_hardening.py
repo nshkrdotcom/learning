@@ -344,13 +344,16 @@ def test_alias_append_is_newline_terminated(tmp_path: Path) -> None:
     assert payload.endswith(b"\n")
 
 
-def test_failed_or_cancelled_runs_cannot_promote_to_evidence_classes(tmp_path: Path) -> None:
+def test_failed_cancelled_or_interrupted_runs_cannot_promote_to_evidence_classes(
+    tmp_path: Path,
+) -> None:
     init_project(tmp_path)
     write_decision_log(tmp_path, status="accepted")
     _run_json(tmp_path, "RUN_FAILED", status="failed")
     _run_json(tmp_path, "RUN_CANCELLED", status="cancelled")
+    _run_json(tmp_path, "RUN_INTERRUPTED", status="interrupted")
 
-    for run_id in ["RUN_FAILED", "RUN_CANCELLED"]:
+    for run_id in ["RUN_FAILED", "RUN_CANCELLED", "RUN_INTERRUPTED"]:
         result = runner.invoke(
             app,
             [
@@ -368,7 +371,134 @@ def test_failed_or_cancelled_runs_cannot_promote_to_evidence_classes(tmp_path: P
             env={"PWD": str(tmp_path)},
         )
         assert result.exit_code == 2
-        assert "failed/cancelled" in result.output
+        assert "failed/cancelled/interrupted" in result.output
+
+
+def test_gate_blocks_non_completed_run_even_with_candidate_metrics(tmp_path: Path) -> None:
+    init_project(tmp_path)
+    _run_json(
+        tmp_path,
+        "RUN_FAILED_PERFECT",
+        status="failed",
+        run_class="serious_evidence_run",
+    )
+    run_dir = tmp_path / ".mechledger/runs/RUN_FAILED_PERFECT"
+    with (run_dir / "metrics.jsonl").open("w", encoding="utf-8") as handle:
+        for metric_name, value in eval(_passing_metrics_source()).items():
+            handle.write(json.dumps({"metric_name": metric_name, "value": value}) + "\n")
+    (run_dir / "artifact_manifest.json").write_text(
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "artifact_id": "A001",
+                        "original_path": "null.jsonl",
+                        "resolved_path": str(tmp_path / "null.jsonl"),
+                        "project_relative_path": "null.jsonl",
+                        "artifact_type": "jsonl",
+                        "content_hash": "sha256:pointer",
+                        "content_hash_status": "external_unverified",
+                        "artifact_storage_backend": "external",
+                        "claim_relevance": "required",
+                        "review_status": "annotated",
+                    }
+                ]
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(
+        app,
+        ["gate", "check", "RUN_FAILED_PERFECT"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    report = json.loads((run_dir / "scientific_debt_report.json").read_text(encoding="utf-8"))
+    assert result.exit_code == 1
+    assert report["clean_candidate_support"] is False
+    assert any(
+        debt["debt_type"] == "custom" and "completed" in debt["message"]
+        for debt in report["debts"]
+    )
+
+
+def test_claim_proposal_uses_evidence_assessment_status_and_debt(tmp_path: Path) -> None:
+    init_project(tmp_path)
+    write_claim_ledger(tmp_path, status="single_run_evidence")
+    create_run(tmp_path, run_id="RUN_PROPOSE", metrics=eval(_passing_metrics_source()))
+
+    candidate = runner.invoke(
+        app,
+        ["claim", "propose", "--run", "RUN_PROPOSE", "--regenerate"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    candidate_payload = json.loads(
+        (tmp_path / ".mechledger/runs/RUN_PROPOSE/claim_update_proposal.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert candidate.exit_code == 0, candidate.output
+    assert candidate_payload["proposed_status"] == "candidate_claim"
+    assert candidate_payload["proposed_direction"] == "supports"
+    assert all(
+        debt_id.startswith("DTD-") for debt_id in candidate_payload["scientific_debt_ids"]
+    )
+
+    _run_json(tmp_path, "RUN_FAILED_PROP", status="failed", run_class="serious_evidence_run")
+    failed = runner.invoke(
+        app,
+        ["claim", "propose", "--run", "RUN_FAILED_PROP", "--regenerate"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    failed_payload = json.loads(
+        (
+            tmp_path / ".mechledger/runs/RUN_FAILED_PROP/claim_update_proposal.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert failed.exit_code == 0, failed.output
+    assert failed_payload["proposed_status"] != "candidate_claim"
+    assert failed_payload["proposed_direction"] in {"weakens", "blocks", "neutral"}
+    assert failed_payload["blocking_issues"]
+
+
+def test_attach_missing_external_pointer_records_non_evidence_backend(tmp_path: Path) -> None:
+    init_project(tmp_path)
+    create_run(tmp_path, run_id="RUN_POINTER")
+
+    result = runner.invoke(
+        app,
+        [
+            "attach",
+            "RUN_POINTER",
+            "external://bucket/large_tensor.pt",
+            "--allow-missing",
+            "--storage-backend",
+            "external",
+            "--claim-relevance",
+            "supporting",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    manifest = json.loads(
+        (tmp_path / ".mechledger/runs/RUN_POINTER/artifact_manifest.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    artifact = manifest["artifacts"][-1]
+    assert result.exit_code == 0, result.output
+    assert artifact["artifact_storage_backend"] == "external"
+    assert artifact["content_hash_status"] == "external_unverified"
+    assert artifact["review_status"] == "missing"
+    assert artifact["claim_relevance"] == "none"
 
 
 def test_claim_proposal_staleness_uses_semantic_hash(tmp_path: Path) -> None:
@@ -446,6 +576,76 @@ Different prose below the YAML must not affect staleness.
     assert forced.exit_code == 0, forced.output
     assert proposal_payload["force_applied"] is True
     assert proposal_payload["review_status"] == "stale"
+
+
+def test_crystallize_requires_concrete_fields_and_writes_no_generic_todo(
+    tmp_path: Path,
+) -> None:
+    init_project(tmp_path)
+    create_run(tmp_path, run_id="RUN_EXPLORE")
+
+    missing = runner.invoke(
+        app,
+        [
+            "experiment",
+            "crystallize",
+            "--runs",
+            "RUN_EXPLORE",
+            "--id",
+            "E123",
+            "--title",
+            "Exploratory concrete spec",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    assert missing.exit_code == 2
+    assert "--question" in missing.output
+    assert not list((tmp_path / "research/experiments").glob("E123_*.md"))
+
+    created = runner.invoke(
+        app,
+        [
+            "experiment",
+            "crystallize",
+            "--runs",
+            "RUN_EXPLORE",
+            "--id",
+            "E123",
+            "--title",
+            "Exploratory concrete spec",
+            "--question",
+            "Does the observed activation effect replicate in a formal run?",
+            "--hypothesis",
+            "The exploratory effect should remain positive under the declared controls.",
+            "--design",
+            "Replay the source run with declared controls and registered metrics.",
+            "--metrics",
+            "specificity_gap, positive_control_pass_rate",
+            "--controls",
+            "density-matched feature controls",
+            "--success-criterion",
+            "specificity_gap is positive and required controls pass",
+            "--failure-criterion",
+            "controls dominate the target or calibration fails",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    path = tmp_path / "research/experiments/E123_exploratory_concrete_spec.md"
+    text = path.read_text(encoding="utf-8")
+    assert created.exit_code == 0, created.output
+    assert "TODO" not in text
+    assert "formal ExperimentSpec was crystallized after the source exploratory runs" in text
+    assert "RUN_EXPLORE" in text
+    validate = runner.invoke(
+        app,
+        ["experiment", "validate", str(path)],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+    assert validate.exit_code == 0, validate.output
 
 
 def test_no_ml_end_to_end_mvp_loop(tmp_path: Path) -> None:

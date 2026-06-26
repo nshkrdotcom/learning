@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -152,12 +153,56 @@ def validate_project(project: Project) -> tuple[list[str], dict[str, Any]]:
             data["local_runs"].append(json.loads(run_json.read_text(encoding="utf-8")))
         except Exception as exc:  # noqa: BLE001
             errors.append(f"ERROR {run_json}\nRule: run.json.invalid\n{exc}")
+        run_dir = run_json.parent
+        for jsonl_name in ("events.jsonl", "metrics.jsonl", "artifacts.jsonl"):
+            _validate_jsonl(run_dir / jsonl_name, errors)
+        _validate_json(run_dir / "artifact_manifest.json", "artifact_manifest.invalid", errors)
     for report in sorted(project.runs_dir.glob("*/scientific_debt_report.json")):
         try:
             json.loads(report.read_text(encoding="utf-8"))
         except Exception as exc:  # noqa: BLE001
             errors.append(f"ERROR {report}\nRule: scientific_debt_report.invalid\n{exc}")
     return errors, data
+
+
+def _validate_json(path: Path, rule: str, errors: list[str]) -> None:
+    if not path.exists():
+        errors.append(
+            f"ERROR {path}\nRule: {rule}\nMissing required run metadata file."
+        )
+        return
+    try:
+        json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"ERROR {path}\nRule: {rule}\n{exc}")
+
+
+def _validate_jsonl(path: Path, errors: list[str]) -> None:
+    if not path.exists():
+        errors.append(
+            f"ERROR {path}\nRule: run.jsonl.missing\nMissing required run JSONL file."
+        )
+        return
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError as exc:
+            errors.append(
+                f"ERROR {path}:{line_number}\n"
+                "Rule: run.jsonl.invalid\n"
+                f"Malformed JSONL row: {exc.msg}\n"
+                "Suggested fix: rewrite the row as one complete JSON object per line."
+            )
+            continue
+        if not isinstance(row, dict):
+            errors.append(
+                f"ERROR {path}:{line_number}\n"
+                "Rule: run.jsonl.object\n"
+                "JSONL rows must be objects.\n"
+                "Suggested fix: write an object like {\"event_type\": \"...\"}."
+            )
 
 
 def rebuild_index(project: Project) -> tuple[Path, list[str]]:
@@ -278,6 +323,56 @@ def _indexed_run_status(project: Project, run: dict[str, Any]) -> str:
     if run.get("status") != "running":
         return run.get("status") or "unknown"
     heartbeat = project.runs_dir / run["run_id"] / "heartbeat.json"
-    if not heartbeat.exists():
+    timestamp: str | None = None
+    if heartbeat.exists():
+        try:
+            timestamp = str(
+                json.loads(heartbeat.read_text(encoding="utf-8")).get(
+                    "last_heartbeat_at"
+                )
+                or ""
+            )
+        except Exception:  # noqa: BLE001
+            return "interrupted_indexed"
+    else:
+        timestamp = _latest_event_timestamp(project.runs_dir / run["run_id"]) or str(
+            run.get("started_at") or ""
+        )
+    if not timestamp:
+        return "interrupted_indexed"
+    heartbeat_at = _parse_utc(timestamp)
+    if heartbeat_at is None:
+        return "interrupted_indexed"
+    if (datetime.now(UTC) - heartbeat_at).total_seconds() > 120:
         return "interrupted_indexed"
     return "running"
+
+
+def _latest_event_timestamp(run_dir: Path) -> str | None:
+    path = run_dir / "events.jsonl"
+    if not path.exists():
+        return None
+    latest: str | None = None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        timestamp = payload.get("timestamp")
+        if isinstance(timestamp, str):
+            latest = timestamp
+    return latest
+
+
+def _parse_utc(value: str) -> datetime | None:
+    try:
+        if value.endswith("Z"):
+            value = value[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)

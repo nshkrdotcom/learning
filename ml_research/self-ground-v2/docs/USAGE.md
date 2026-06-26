@@ -210,7 +210,17 @@ uv run mechledger artifact annotate latest A001 --claim-relevance supporting
 
 MechLedger records path, hash, size, storage backend, relevance, and review
 status. It does not discover arbitrary artifacts outside registered paths or
-run-local artifact directories.
+run-local artifact directories. Missing artifacts require `--allow-missing` and
+are recorded as `review_status: missing` and `claim_relevance: none`, even if a
+stronger relevance was requested.
+
+For delegated large artifact storage, record the pointer/backend explicitly:
+
+```bash
+uv run mechledger attach latest external://bucket/run42/tensor.pt \
+  --allow-missing \
+  --storage-backend external
+```
 
 ## Evidence Gate Check
 
@@ -543,15 +553,18 @@ Existing `research_log.md` `open_questions` entries are surfaced by:
 ```bash
 uv run mechledger questions list
 uv run mechledger questions add --text "Need another control family?" --claim C003 --experiment E004 --priority high
+uv run mechledger questions link Q001 --claim C003 --run RUN_ID --decision D012
 uv run mechledger questions show Q001
 uv run mechledger questions resolve Q001 --decision D012 --resolution "Accepted added control requirement."
 uv run mechledger next
 ```
 
 New questions are stored in `research/logs/open_questions.md`. Resolving a
-question requires an accepted decision. `next` prints open questions linked to
-claims or experiments, but questions do not become blockers unless another
-configured prerequisite/debt policy already makes the work gated.
+question requires an accepted decision. `questions link` validates supplied
+claim, experiment, run, and decision IDs before updating the canonical question
+record. `next` prints open questions linked to claims or experiments, but
+questions do not become blockers unless another configured prerequisite/debt
+policy already makes the work gated.
 
 ## External Label Registry
 
@@ -588,12 +601,17 @@ uv run mechledger query debt --json --severity serious
 uv run mechledger query artifacts --json --run RUN_E001
 uv run mechledger query decisions --json
 uv run mechledger query experiments --json
+uv run mechledger query questions --json --claim C003
+uv run mechledger query labels --json --claim C003
+uv run mechledger query records --json --run RUN_ID
 ```
 
 Query commands read flat files as source of truth. SQLite remains disposable
-cache state and is not required. Dashboard JSON includes counts for typed
-platform records and marks them as metadata, not evidence. Records themselves
-are inspected through `mechledger records list` and `mechledger records show`.
+cache state and is not required. Dashboard JSON includes deterministic lists and
+counts for claims, runs, debt, blockers, artifacts, decisions, experiments,
+open questions, external labels, and typed platform records. Labels and
+optional platform records are metadata, not evidence. Records themselves are
+inspected through `mechledger records list` and `mechledger records show`.
 
 ## Claim Language Reports
 
@@ -667,7 +685,7 @@ The granular PRD coverage map is `docs/PRD_COVERAGE_0430_0432.md` /
 out-of-scope, ambiguous, and partially implemented gaps separately from tested
 implementation rows.
 
-The PRD proof artifacts have distinct scopes:
+The historical PRD audit artifacts have distinct scopes:
 
 - Coverage map: product-surface status by PRD/refactor section.
 - Completion ledger: disposition for each prompt requirement, including exact
@@ -675,7 +693,8 @@ The PRD proof artifacts have distinct scopes:
   implemented rows.
 - Evidence review: risk-weighted audit that representative high-risk rows have
   cited tests that actually assert the named behavior, not just nearby files.
-- QC proof: exact local verification commands and push result for the pass.
+- QC proof: exact local verification commands and push result from the prior
+  proof pass. Use the current command output for current release evidence.
 
 These artifacts do not certify scientific truth and do not turn optional
 platform records into evidence. They preserve the boundary that MechLedger is a
@@ -848,10 +867,34 @@ Supported classes are `scratch`, `notebook_exploration`, `path_validation`,
 `serious_evidence_run`, `paper_candidate`, `replication`, and
 `published_result`.
 
-Runs with terminal `status: failed` or `status: cancelled` cannot be promoted
-into `serious_evidence_run`, `paper_candidate`, `replication`, or
-`published_result`, even with an accepted decision. Re-run them or record the
-failed/cancelled result as negative evidence.
+Runs with terminal `status: failed`, `status: cancelled`, or
+`status: interrupted` cannot be promoted into `serious_evidence_run`,
+`paper_candidate`, `replication`, or `published_result`, even with an accepted
+decision. Re-run them or record the terminal result as negative evidence.
+
+## Repairing And Resuming Local Runs
+
+If a notebook or local process dies, `mechledger index` may show a running run
+as `interrupted_indexed` when its heartbeat is stale. This does not mutate
+`run.json`. To repair the local run record explicitly:
+
+```bash
+uv run mechledger run repair RUN_ID --status interrupted
+```
+
+Repair accepts `interrupted`, `cancelled`, or `failed`, updates only the local
+run directory, removes the heartbeat, and regenerates the deterministic debt
+report and claim proposal. It cannot mark a run completed.
+
+To continue from an old local run without mutating the parent:
+
+```bash
+uv run mechledger run resume RUN_ID --class notebook_exploration --purpose "continue analysis"
+```
+
+Resume creates a child run whose `run.json` has `parent_run_id` set to the
+canonical parent run ID. It writes the standard local run-file contract and
+prints the child run directory for SDK logging.
 
 ## Experiment Prerequisites And Next
 
@@ -889,11 +932,21 @@ DAG; incomparable statuses are input errors.
 uv run mechledger experiment crystallize \
   --runs latest \
   --id E003 \
-  --title "Observed induction-like early head"
+  --title "Observed induction-like early head" \
+  --question "Does the observed effect replicate in a formal run?" \
+  --hypothesis "The effect remains positive under declared controls." \
+  --design "Replay the source run with registered controls and metrics." \
+  --metrics "specificity_gap, positive_control_pass_rate" \
+  --controls "density-matched feature controls" \
+  --success-criterion "specificity_gap is positive and controls pass" \
+  --failure-criterion "controls dominate the target or calibration fails"
 ```
 
-This creates a draft ExperimentSpec with `source_runs` populated. It does not
-promote claims and does not mutate run directories.
+This creates a draft ExperimentSpec with `source_runs` populated and records
+that the selected exploratory runs predate the formal spec. The command refuses
+generic placeholder-only specs; supply concrete question, hypothesis, design,
+metrics, controls, and success/failure criteria. It does not promote claims and
+does not mutate run directories.
 
 ## Reviewing A Claim Update
 
@@ -908,7 +961,9 @@ reordering order-insensitive scalar lists such as `allowed`, `forbidden`,
 `required_caveats`, `debt_flags`, `linked_runs`, `linked_experiments`, and
 `linked_decisions` also do not stale a proposal. Semantic YAML changes such as
 status changes, linked-run changes, and claim-language policy changes do stale
-it. `claim review --apply` refuses stale proposals unless explicitly run with
+it. Proposal status/direction is derived from the deterministic evidence
+assessment and carries visible debt IDs; it still does not mutate the claim
+ledger. `claim review --apply` refuses stale proposals unless explicitly run with
 `--force-stale --yes`, which records the forced stale review in the proposal and
 still does not silently mutate the claim ledger.
 

@@ -17,6 +17,7 @@ from typing import Any
 
 from mechledger.alias import append_alias
 from mechledger.artifacts import auto_collect_artifacts
+from mechledger.claim_proposal import write_claim_update_proposal
 from mechledger.debt_report import generate_scientific_debt_report
 from mechledger.project import Project, now_utc, run_ledger_header
 from mechledger.redaction_policy import redact_environment
@@ -223,8 +224,8 @@ def capture_run(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     write_run_ledger_row(run_dir, run_payload, status)
-    write_claim_proposal(project, run_id)
     generate_scientific_debt_report(project, run_id)
+    write_claim_update_proposal(project, run_id)
     append_alias(project, run_id, experiment_id, slugify(slug_source)[:40] or "run")
     return run_id, public_exit_code
 
@@ -283,39 +284,7 @@ def write_run_ledger_row(run_dir: Path, run_payload: dict[str, Any], status: str
 
 
 def write_claim_proposal(project: Project, run_id: str) -> None:
-    run_dir = project.runs_dir / run_id
-    proposal = {
-        "proposal_id": f"CP-{run_id}",
-        "run_id": run_id,
-        "generated_at": now_utc(),
-        "target_claim_id": None,
-        "current_claim_status_at_generation": None,
-        "proposed_status": None,
-        "proposed_direction": "neutral",
-        "expected_claim_ledger_hash": _file_hash(
-            project.root / project.config.default_claim_ledger
-        ),
-        "expected_claim_block_hash": None,
-        "supporting_metric_names": [],
-        "contradicting_metric_names": [],
-        "supporting_artifact_paths": [],
-        "contradicting_artifact_paths": [],
-        "scientific_debt_ids": [],
-        "blocking_issues": [],
-        "required_human_checks": ["Review run artifacts before applying any claim update."],
-        "proposed_markdown_patch_path": str(run_dir / "claim_update_proposal.md"),
-        "review_status": "pending",
-        "reviewed_at": None,
-        "reviewed_by": None,
-        "force_applied": False,
-    }
-    (run_dir / "claim_update_proposal.json").write_text(
-        json.dumps(proposal, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    (run_dir / "claim_update_proposal.md").write_text(
-        f"# Claim Update Proposal for {run_id}\n\nNo automatic claim promotion proposed.\n",
-        encoding="utf-8",
-    )
+    write_claim_update_proposal(project, run_id)
 
 
 def git_state(root: Path) -> dict[str, Any]:

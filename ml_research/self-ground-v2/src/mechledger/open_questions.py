@@ -109,6 +109,38 @@ def resolve_question(
     return record
 
 
+def link_question(
+    project: Project,
+    question_id: str,
+    *,
+    claim: str | None = None,
+    experiment: str | None = None,
+    run: str | None = None,
+    decision: str | None = None,
+) -> dict[str, Any]:
+    if not any([claim, experiment, run, decision]):
+        raise ValueError("Provide at least one link: --claim, --experiment, --run, or --decision.")
+    records = _read_question_file(project)
+    record = next((item for item in records if item.get("question_id") == question_id), None)
+    if record is None:
+        raise ValueError(f"Unknown canonical question: {question_id}")
+    snapshot = collect_project(project)
+    if claim and claim not in snapshot.claims:
+        raise ValueError(f"Unknown claim: {claim}")
+    if experiment and experiment not in snapshot.experiments:
+        raise ValueError(f"Unknown experiment: {experiment}")
+    if run and run not in snapshot.runs:
+        raise ValueError(f"Unknown run: {run}")
+    if decision and decision not in snapshot.decisions:
+        raise ValueError(f"Unknown decision: {decision}")
+    _append_unique(record, "linked_claims", claim)
+    _append_unique(record, "linked_experiments", experiment)
+    _append_unique(record, "linked_runs", run)
+    _append_unique(record, "linked_decisions", decision)
+    _write_question_file(project, records)
+    return record
+
+
 def show_question(project: Project, question_id: str) -> dict[str, Any]:
     record = next(
         (item for item in list_questions(project) if item["question_id"] == question_id),
@@ -185,3 +217,9 @@ def _next_question_id(records: list[dict[str, Any]]) -> str:
         if match:
             maximum = max(maximum, int(match.group(1)))
     return f"Q{maximum + 1:03d}"
+
+
+def _append_unique(record: dict[str, Any], key: str, value: str | None) -> None:
+    if value is None:
+        return
+    record[key] = sorted({*(record.get(key) or []), value})

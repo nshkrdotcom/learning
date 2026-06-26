@@ -158,8 +158,8 @@ def init_project(
 
     templates = {
         "research/experiments/TEMPLATE_experiment.md": experiment_template(),
-        "research/logs/claim_ledger.md": "# Claim Ledger\n\n",
-        "research/logs/decision_log.md": "# Decision Log\n\n",
+        "research/logs/claim_ledger.md": "# Claim Ledger\n",
+        "research/logs/decision_log.md": "# Decision Log\n",
         "research/logs/research_log.md": "# Research Log\n\n",
         "research/logs/run_ledger.csv": run_ledger_header() + "\n",
         "research/literature/prior_art_matrix.md": "# Prior Art Matrix\n\n",

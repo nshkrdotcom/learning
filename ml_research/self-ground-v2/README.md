@@ -102,10 +102,9 @@ See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
 usage, artifacts, aliases, Tier 2 evidence registration, prediction locking,
 exports, sessions, copilot provenance review, questions, labels, query commands,
 language reports, optional records, sync reporting, redaction, integrity records,
-run lifecycle,
-crystallization, claim review, staged-mode contracts, read-only cache fallback,
-run reclassification safety, decisions, debt waivers, and no-ML end-to-end
-assessment examples. The PRD coverage map lives in
+run lifecycle, crystallization, claim review, staged-mode contracts, read-only
+cache fallback, run reclassification safety, decisions, debt waivers, and no-ML
+end-to-end assessment examples. Historical PRD audit aids remain in
 [docs/PRD_COVERAGE_0430_0432.md](docs/PRD_COVERAGE_0430_0432.md) with the
 machine-readable backing file
 [docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json). The
@@ -117,9 +116,10 @@ dispositions per required surface. The evidence review in
 [docs/PRD_EVIDENCE_REVIEW_0430_0432.md](docs/PRD_EVIDENCE_REVIEW_0430_0432.md)
 and [docs/prd_evidence_review_0430_0432.json](docs/prd_evidence_review_0430_0432.json)
 spot-checks whether cited tests actually assert representative high-risk
-requirements. The QC proof in [docs/QC_PROOF_0430_0432.md](docs/QC_PROOF_0430_0432.md)
-and [docs/qc_proof_0430_0432.json](docs/qc_proof_0430_0432.json) records the
-local verification commands and push result.
+requirements. The historical QC proof in
+[docs/QC_PROOF_0430_0432.md](docs/QC_PROOF_0430_0432.md) and
+[docs/qc_proof_0430_0432.json](docs/qc_proof_0430_0432.json) is retained as a
+prior-pass artifact rather than current release evidence.
 
 These artifacts are audit aids, not scientific truth claims. They do not make
 platform records evidence, compute activations/circuits/weights, add heavy ML
@@ -163,5 +163,6 @@ to continue with unresolved scientific debt, but it surfaces that debt. External
 labels are metadata by default, and session/copilot records require human review
 before becoming canonical interpretation. Copilot review records provenance
 only; it does not call an LLM, verify scientific truth, promote claims, invent
-run results, or waive debt. Failed or cancelled runs cannot be promoted into
-evidence-supporting run classes; rerun them or record them as negative evidence.
+run results, or waive debt. Failed, cancelled, or interrupted runs cannot be
+promoted into evidence-supporting run classes; rerun them or record them as
+negative evidence.
