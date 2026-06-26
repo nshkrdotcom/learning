@@ -37,6 +37,22 @@ def test_appendix_export_includes_claim_debt_decision_run_and_is_deterministic(
     assert "does not prove scientific truth" in first_text
 
 
+def test_appendix_export_accepts_project_relative_out_path(tmp_path: Path) -> None:
+    populate_project(tmp_path)
+    out = tmp_path / "research/paper/relative_appendix.md"
+
+    result = runner.invoke(
+        app,
+        ["export", "appendix", "--out", "research/paper/relative_appendix.md"],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "appendix: research/paper/relative_appendix.md" in result.output
+    assert out.exists()
+
+
 def test_appendix_filters_and_preserves_negative_claim_status(tmp_path: Path) -> None:
     populate_project(tmp_path)
     write_claim_ledger(tmp_path, status="failed_or_weakened")

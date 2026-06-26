@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import signal
+import sys
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -162,6 +164,8 @@ def test_run_capture_alias_artifacts_append_status_and_sdk(tmp_path: Path) -> No
             (
                 "import os; from pathlib import Path; import mechledger as ml; "
                 "print('hello'); ml.log_metric('specificity_gap', 0.1); "
+                "Path('sdk_result.json').write_text('{\"ok\": true}\\n', encoding='utf-8'); "
+                "ml.log_artifact('sdk_result.json', claim_relevance='supporting'); "
                 "Path(os.environ['MECHLEDGER_RUN_DIR'], 'artifacts', 'out.txt').write_text('x')"
             ),
         ],
@@ -178,7 +182,14 @@ def test_run_capture_alias_artifacts_append_status_and_sdk(tmp_path: Path) -> No
     assert (run_dir / "run.json").exists()
     assert "hello" in (run_dir / "stdout.txt").read_text(encoding="utf-8")
     assert not (run_dir / "heartbeat.json").exists()
-    assert json.loads((run_dir / "artifact_manifest.json").read_text(encoding="utf-8"))["artifacts"]
+    manifest = json.loads((run_dir / "artifact_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["artifacts"]
+    assert any(
+        item["original_path"] == "sdk_result.json"
+        and item["claim_relevance"] == "supporting"
+        and item["review_status"] == "annotated"
+        for item in manifest["artifacts"]
+    )
     assert (run_dir / "scientific_debt_report.json").exists()
 
     attach_target = tmp_path / "extra.json"
@@ -235,6 +246,86 @@ def test_run_capture_user_supplied_run_id_collision_fails(tmp_path: Path) -> Non
     assert result.exit_code == 2
     assert "already exists" in result.output
     assert "RUN_DUPLICATE" in result.output
+
+
+def test_sdk_context_manager_creates_complete_run_contract(tmp_path: Path, monkeypatch) -> None:
+    runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PWD", str(tmp_path))
+
+    import mechledger as ml
+
+    with ml.run(experiment="E001", run_class="diagnostic", purpose="sdk context") as active:
+        assert active.run_id
+        assert "_e001_sdk_context_" in active.run_id
+        artifact_path = active.artifacts_dir() / "notebook_result.json"
+        artifact_path.write_text('{"ok": true}\n', encoding="utf-8")
+        active.log_metric("specificity_gap", 0.2)
+        active.log_intervention_metadata(
+            target_hook="blocks.0.hook_resid_post",
+            operation="ablate",
+        )
+
+    run_dir = tmp_path / ".mechledger/runs" / active.run_id
+    expected = {
+        "run.json",
+        "events.jsonl",
+        "metrics.jsonl",
+        "artifacts.jsonl",
+        "artifact_manifest.json",
+        "resource_usage.json",
+        "stdout.txt",
+        "stderr.txt",
+        "command.txt",
+        "environment.json",
+        "git.json",
+        "summary.json",
+        "run_ledger_row.csv",
+        "claim_update_proposal.md",
+        "claim_update_proposal.json",
+        "scientific_debt_report.md",
+        "scientific_debt_report.json",
+        "run_class_transition.json",
+    }
+    assert expected <= {path.name for path in run_dir.iterdir()}
+    assert (run_dir / "artifacts").is_dir()
+    assert not (run_dir / "heartbeat.json").exists()
+    run_json = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    assert run_json["status"] == "completed"
+    assert run_json["run_class"] == "diagnostic"
+    manifest = json.loads((run_dir / "artifact_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["artifacts"][0]["claim_relevance"] == "none"
+    assert manifest["artifacts"][0]["review_status"] == "unannotated"
+
+
+def test_run_capture_signal_termination_is_interrupted_not_evidence_failure(
+    tmp_path: Path,
+) -> None:
+    runner.invoke(app, ["init"], catch_exceptions=False, env={"PWD": str(tmp_path)})
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "--run-id",
+            "RUN_SIGTERM",
+            "--",
+            sys.executable,
+            "-c",
+            "import os, signal; os.kill(os.getpid(), signal.SIGTERM)",
+        ],
+        catch_exceptions=False,
+        env={"PWD": str(tmp_path)},
+    )
+
+    assert result.exit_code != 0
+    run_dir = tmp_path / ".mechledger/runs/RUN_SIGTERM"
+    run_json = json.loads((run_dir / "run.json").read_text(encoding="utf-8"))
+    assert run_json["status"] == "interrupted"
+    assert run_json["exit_code"] == -signal.SIGTERM
+    assert (run_dir / "summary.json").exists()
+    assert (run_dir / "scientific_debt_report.json").exists()
+    assert "run_interrupted" in (run_dir / "events.jsonl").read_text(encoding="utf-8")
 
 
 def test_session_experiment_claim_decision_and_debt_workflows(tmp_path: Path) -> None:

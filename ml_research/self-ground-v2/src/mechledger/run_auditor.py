@@ -102,6 +102,7 @@ def capture_run(
         json.dumps({"artifacts": []}, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    (run_dir / "run_class_transition.json").write_text("[]\n", encoding="utf-8")
     command_text = " ".join(argv)
     (run_dir / "command.txt").write_text(command_text + "\n", encoding="utf-8")
     started = now_utc()
@@ -155,29 +156,43 @@ def capture_run(
     )
     process_env["MECHLEDGER_RUN_ID"] = run_id
     process_env["MECHLEDGER_RUN_DIR"] = str(run_dir)
+    process_env["MECHLEDGER_PROJECT_ROOT"] = str(project.root)
     started_monotonic = time.monotonic()
+    interrupted_by_keyboard = False
     try:
-        result = subprocess.run(
-            argv,
-            cwd=project.root,
-            env=process_env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                argv,
+                cwd=project.root,
+                env=process_env,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except KeyboardInterrupt:
+            interrupted_by_keyboard = True
+            result = subprocess.CompletedProcess(
+                argv,
+                130,
+                stdout="",
+                stderr="Interrupted by user.\n",
+            )
     finally:
         heartbeat_stop.set()
         heartbeat.join(timeout=2)
     wall = time.monotonic() - started_monotonic
-    (run_dir / "stdout.txt").write_text(result.stdout, encoding="utf-8")
-    (run_dir / "stderr.txt").write_text(result.stderr, encoding="utf-8")
-    status = "completed" if result.returncode == 0 else "failed"
+    stdout = result.stdout or ""
+    stderr = result.stderr or ""
+    (run_dir / "stdout.txt").write_text(stdout, encoding="utf-8")
+    (run_dir / "stderr.txt").write_text(stderr, encoding="utf-8")
+    status = _status_from_returncode(result.returncode, interrupted_by_keyboard)
+    public_exit_code = _public_exit_code(result.returncode, interrupted_by_keyboard)
     finished = now_utc()
     run_payload.update({"status": status, "finished_at": finished, "exit_code": result.returncode})
     write_run_json(run_dir, run_payload)
     (run_dir / "heartbeat.json").unlink(missing_ok=True)
     auto_collected = auto_collect_artifacts(project, run_id)
-    append_event(run_dir, "run_completed" if result.returncode == 0 else "run_failed", status)
+    append_event(run_dir, _event_for_status(status), status)
     resource_usage = {
         "wall_time_seconds": wall,
         "cpu_time_seconds": resource.getrusage(resource.RUSAGE_CHILDREN).ru_utime,
@@ -201,8 +216,8 @@ def capture_run(
         "status": status,
         "exit_code": result.returncode,
         "artifact_count": len(auto_collected),
-        "stdout_bytes": len(result.stdout.encode()),
-        "stderr_bytes": len(result.stderr.encode()),
+        "stdout_bytes": len(stdout.encode()),
+        "stderr_bytes": len(stderr.encode()),
     }
     (run_dir / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
@@ -211,7 +226,7 @@ def capture_run(
     write_claim_proposal(project, run_id)
     generate_scientific_debt_report(project, run_id)
     append_alias(project, run_id, experiment_id, slugify(slug_source)[:40] or "run")
-    return run_id, result.returncode
+    return run_id, public_exit_code
 
 
 def write_run_json(run_dir: Path, payload: dict[str, Any]) -> None:
@@ -347,6 +362,34 @@ def _file_hash(path: Path) -> str | None:
     if not path.exists():
         return None
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _status_from_returncode(returncode: int, interrupted_by_keyboard: bool = False) -> str:
+    if interrupted_by_keyboard:
+        return "cancelled"
+    if returncode == 0:
+        return "completed"
+    if returncode < 0:
+        return "interrupted"
+    return "failed"
+
+
+def _public_exit_code(returncode: int, interrupted_by_keyboard: bool = False) -> int:
+    if interrupted_by_keyboard:
+        return 130
+    if returncode < 0:
+        return 128 + abs(returncode)
+    return returncode
+
+
+def _event_for_status(status: str) -> str:
+    if status == "completed":
+        return "run_completed"
+    if status == "interrupted":
+        return "run_interrupted"
+    if status == "cancelled":
+        return "run_cancelled"
+    return "run_failed"
 
 
 def copy_if_small(src: Path, dst: Path, *, max_bytes: int = 10_000_000) -> bool:

@@ -304,12 +304,23 @@ def index(
 @app.command("format")
 def format_command(
     write: Annotated[bool, typer.Option("--write", help="Apply safe formatting changes.")] = False,
+    check: Annotated[
+        bool, typer.Option("--check", help="Check formatting without modifying files.")
+    ] = False,
 ) -> None:
     try:
+        if write and check:
+            _fail("Use either --write or --check, not both.", code=2)
         project = find_project()
-        changed, diff = format_project(project, write=write)
+        changed, diff = format_project(project, write=write and not check)
         if diff:
             typer.echo(diff, nl=False)
+        if check:
+            if changed:
+                typer.echo("MechLedger format check failed.")
+                raise typer.Exit(1)
+            typer.echo("MechLedger format check passed.")
+            return
         if changed and not write:
             raise typer.Exit(1)
         typer.echo("MechLedger format complete.")
@@ -529,7 +540,7 @@ def export_appendix(
         project = find_project()
         path = write_appendix(
             project,
-            out,
+            _project_output_path(project, out),
             claims=claim or [],
             runs=run or [],
             include_debt=include_debt,
@@ -910,8 +921,9 @@ def attach(
             project,
             canonical,
             path,
+            artifact_type=artifact_type,
             claim_relevance=claim_relevance,
-            description=description or artifact_type,
+            description=description,
             allow_missing=allow_missing,
         )
         typer.echo(f"Attached {artifact['artifact_id']} to {canonical}")

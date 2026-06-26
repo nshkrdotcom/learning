@@ -198,6 +198,46 @@ def test_install_hooks_merges_precommit_config_and_direct_hook_is_git_local(
     assert not (tmp_path / ".mechledger/hooks/pre-commit").exists()
 
 
+def test_format_check_reports_changes_without_mutating(tmp_path: Path) -> None:
+    init_project(tmp_path)
+    claim_path = tmp_path / "research/logs/claim_ledger.md"
+    claim_path.write_text(
+        """# Claim Ledger
+
+### C001 — Em dash heading
+
+
+```yaml
+claim_id: C001
+status: unsupported
+allowed: []
+forbidden: []
+```
+""",
+        encoding="utf-8",
+    )
+    before = claim_path.read_text(encoding="utf-8")
+
+    check = runner.invoke(
+        app, ["format", "--check"], catch_exceptions=False, env={"PWD": str(tmp_path)}
+    )
+
+    assert check.exit_code == 1
+    assert "C001 - Em dash heading" in check.output
+    assert claim_path.read_text(encoding="utf-8") == before
+
+    write = runner.invoke(
+        app, ["format", "--write"], catch_exceptions=False, env={"PWD": str(tmp_path)}
+    )
+    clean = runner.invoke(
+        app, ["format", "--check"], catch_exceptions=False, env={"PWD": str(tmp_path)}
+    )
+
+    assert write.exit_code == 0, write.output
+    assert clean.exit_code == 0, clean.output
+    assert "format check passed" in clean.output.lower()
+
+
 def test_index_uses_temp_fallback_when_mechledger_dir_is_read_only(tmp_path: Path) -> None:
     init_project(tmp_path)
     write_claim_ledger(tmp_path)

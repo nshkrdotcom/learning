@@ -30,10 +30,12 @@ def register_artifact(
     run_id: str,
     path: Path,
     *,
+    artifact_type: str | None = None,
     claim_relevance: str = "none",
     description: str | None = None,
     allow_missing: bool = False,
     auto_collected: bool = False,
+    storage_backend: str | None = None,
 ) -> dict[str, Any]:
     run_dir = project.runs_dir / run_id
     manifest = load_manifest(run_dir)
@@ -47,12 +49,12 @@ def register_artifact(
         "original_path": str(path),
         "resolved_path": str(resolved),
         "project_relative_path": _relative_to_project(project, resolved),
-        "artifact_type": _artifact_type(resolved),
+        "artifact_type": artifact_type or _artifact_type(resolved),
         "content_hash": sha256_file(resolved) if exists and resolved.is_file() else None,
         "content_hash_status": "computed"
         if exists and resolved.is_file()
         else "external_unverified",
-        "artifact_storage_backend": "git" if exists else "external",
+        "artifact_storage_backend": storage_backend or ("git" if exists else "external"),
         "claim_relevance": claim_relevance,
         "review_status": "unannotated" if auto_collected else "annotated" if exists else "missing",
         "description": description,

@@ -150,6 +150,23 @@ ml.log_intervention_metadata(
 The SDK writes JSONL records to the active run directory from the environment
 variables set by `mechledger run`. It imports no heavy ML libraries.
 
+For notebooks or scripts where you want the SDK to create the local run
+directory directly:
+
+```python
+from pathlib import Path
+import mechledger as ml
+
+with ml.run(experiment="E001", run_class="notebook_exploration", purpose="inspect feature") as run:
+    run.log_metric("specificity_gap_mean", 0.123)
+    artifact = run.artifacts_dir() / "notebook_result.json"
+    artifact.write_text("{}\n", encoding="utf-8")
+```
+
+Files written under `run.artifacts_dir()` are auto-collected as unannotated,
+non-evidence artifacts when the run finishes. Use `run.log_artifact(...)` or
+`mechledger artifact annotate` when an artifact has reviewed claim relevance.
+
 For paired delta JSONL files, the SDK also provides a dependency-light sign
 test helper:
 
