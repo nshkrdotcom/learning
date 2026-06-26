@@ -1,0 +1,270 @@
+{
+  "entries": [
+    {
+      "doc_section": "product-boundary",
+      "evidence": [
+        "tests/test_architecture_boundaries.py",
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "id": "non_goals_execution_framework",
+      "notes": "Core records metadata, metrics, artifacts, claims, decisions, and debt. It does not execute mechinterp interventions or load model stacks.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "No execution framework, generic ML tracker, hosted dashboard, or AI reviewer"
+    },
+    {
+      "doc_section": "52",
+      "evidence": [
+        "src/mechledger/project.py",
+        "src/mechledger/core/*.py"
+      ],
+      "id": "flat_file_canonical_storage",
+      "notes": "Canonical project state remains flat files under research/ plus .mechledger/project.json; SQLite/cache files are disposable.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Flat-file canonical storage"
+    },
+    {
+      "doc_section": "50.0",
+      "evidence": [
+        "src/mechledger/core/claim_status.py",
+        "src/mechledger/draftguard.py",
+        "tests/test_architecture_boundaries.py"
+      ],
+      "id": "milestone_50_0",
+      "notes": "SELF-GROUND-style claim status, debt, compatibility, and dogfood boundaries are extracted into dependency-light core behavior.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Milestone -1 extraction and dogfood"
+    },
+    {
+      "doc_section": "50.1",
+      "evidence": [
+        "src/mechledger/cli.py",
+        "src/mechledger/scaffold.py",
+        "src/mechledger/draftguard.py",
+        "src/mechledger/hooks.py"
+      ],
+      "id": "milestone_50_1",
+      "notes": "Initialization, scaffold, parsers, Draft Guard, staged checks, hooks, format, and session close surfaces exist.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Milestone 0 Draft Guard MVP"
+    },
+    {
+      "doc_section": "50.2",
+      "evidence": [
+        "src/mechledger/run_auditor.py",
+        "src/mechledger/alias.py",
+        "src/mechledger/artifacts.py",
+        "src/mechledger/indexer.py"
+      ],
+      "id": "milestone_50_2",
+      "notes": "Run wrapper, aliases, run-local files, SDK logging, artifact registration, run-ledger proposal, status/next, and disposable indexes are implemented.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Milestone 1 Flat-File Run Auditor"
+    },
+    {
+      "doc_section": "50.3",
+      "evidence": [
+        "src/mechledger/workflows.py",
+        "src/mechledger/core/experiment_spec.py",
+        "src/mechledger/debt.py"
+      ],
+      "id": "milestone_50_3",
+      "notes": "ExperimentSpec validation, prerequisite-aware next, claim proposal/review/staleness, reclassification, and debt waiver workflows are present.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Milestone 2 Experiment and Claim Workflow"
+    },
+    {
+      "doc_section": "50.4",
+      "evidence": [
+        "src/mechledger/assessments.py",
+        "src/mechledger/tier2.py",
+        "tests/test_milestone3_tier2_commands.py"
+      ],
+      "id": "milestone_50_4",
+      "notes": "Gate, calibration, telemetry, null, and paired-stat registration surfaces assess registered evidence and produce debt reports.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Milestone 3 MechInterp Evidence Assessment"
+    },
+    {
+      "doc_section": "50.5",
+      "evidence": [
+        "src/mechledger/sessions.py",
+        "src/mechledger/copilot.py",
+        "src/mechledger/open_questions.py",
+        "src/mechledger/dashboard_data.py"
+      ],
+      "id": "milestone_50_5_local_surfaces",
+      "notes": "Local session/copilot provenance, open questions, external labels, wording reports, dashboard data, and query surfaces exist without a hosted dashboard.",
+      "source_document": "0430_revised_v6.md",
+      "status": "partially_implemented",
+      "title": "Milestone 4 Assistant and local dashboard-adjacent surfaces"
+    },
+    {
+      "doc_section": "50.5",
+      "evidence": [
+        "README.md",
+        "docs/USAGE.md"
+      ],
+      "id": "milestone_50_5_dashboard_server",
+      "notes": "The PRD defers the dashboard server until the core loop proves useful. This repo exports deterministic local JSON instead.",
+      "source_document": "0430_revised_v6.md",
+      "status": "deferred_by_prd",
+      "title": "Dashboard server"
+    },
+    {
+      "doc_section": "50.6",
+      "evidence": [
+        "src/mechledger/records.py",
+        "src/mechledger/export.py",
+        "tests/test_records.py"
+      ],
+      "id": "milestone_50_6",
+      "notes": "Typed PRD record validators, reproducibility bundles, appendix export, and RO-Crate export are implemented as metadata/export surfaces only.",
+      "source_document": "0430_revised_v6.md",
+      "status": "partially_implemented",
+      "title": "Milestone 5 Long-Term MechInterp Platform metadata"
+    },
+    {
+      "doc_section": "47.1",
+      "evidence": [
+        "src/mechledger/records.py",
+        "tests/test_records.py"
+      ],
+      "id": "activation_record_schema",
+      "notes": "ActivationRecord validates the PRD-required fields, enums, tensor shape, and summary stats but does not compute activations.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "ActivationRecord typed metadata schema"
+    },
+    {
+      "doc_section": "47.2",
+      "evidence": [
+        "src/mechledger/records.py",
+        "tests/test_records.py"
+      ],
+      "id": "weight_analysis_run_schema",
+      "notes": "WeightAnalysisRun is validated; WeightAnalysisRecord remains a documented backwards-compatible alias.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "WeightAnalysisRun typed metadata schema"
+    },
+    {
+      "doc_section": "47.3",
+      "evidence": [
+        "src/mechledger/records.py",
+        "tests/test_records.py"
+      ],
+      "id": "circuit_graph_schema",
+      "notes": "CircuitGraph is validated; CircuitGraphRecord remains a documented backwards-compatible alias.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "CircuitGraph typed metadata schema"
+    },
+    {
+      "doc_section": "47.4",
+      "evidence": [
+        "src/mechledger/records.py",
+        "tests/test_records.py"
+      ],
+      "id": "cross_model_comparison_schema",
+      "notes": "CrossModelComparison is validated; CrossModelComparisonRecord remains a documented backwards-compatible alias.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "CrossModelComparison typed metadata schema"
+    },
+    {
+      "doc_section": "47",
+      "evidence": [
+        "src/mechledger/records.py",
+        "docs/USAGE.md"
+      ],
+      "id": "extension_platform_records",
+      "notes": "FeatureCorrespondenceRecord, TrainingDynamicsRecord, and RemoteJobMetadataRecord are supported as stricter extension records because the available PRD text does not provide concrete field schemas.",
+      "source_document": "0430_revised_v6.md",
+      "status": "ambiguous_or_requires_decision",
+      "title": "Extension optional platform records"
+    },
+    {
+      "doc_section": "43-44",
+      "evidence": [
+        "src/mechledger/copilot.py",
+        "src/mechledger/sessions.py"
+      ],
+      "id": "session_copilot_provenance",
+      "notes": "Local session/copilot review records are non-authoritative and require human review/provenance before accepted artifacts enter research/.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Session and copilot provenance"
+    },
+    {
+      "doc_section": "42",
+      "evidence": [
+        "src/mechledger/sync_status.py",
+        "src/mechledger/integrity.py",
+        "src/mechledger/redaction.py",
+        "src/mechledger/lifecycle.py"
+      ],
+      "id": "local_integrity_sync_redaction_lifecycle",
+      "notes": "Local conflict reports, tamper records, explicit redaction, pin/gc, and run bundles exist without remote merge.",
+      "source_document": "0430_revised_v6.md",
+      "status": "implemented",
+      "title": "Sync, integrity, redaction, and lifecycle"
+    },
+    {
+      "doc_section": "51",
+      "evidence": [
+        "README.md",
+        "docs/USAGE.md",
+        "tests/test_architecture_boundaries.py"
+      ],
+      "id": "deferred_remote_sync_merge",
+      "notes": "Remote sync and merge are outside this local-first implementation; sync commands report drift only.",
+      "source_document": "0430_revised_v6.md",
+      "status": "intentionally_out_of_scope",
+      "title": "Remote sync and merge"
+    },
+    {
+      "doc_section": "0431",
+      "evidence": [
+        "pyproject.toml",
+        "tests/test_architecture_boundaries.py"
+      ],
+      "id": "dependency_light_boundary",
+      "notes": "0431 keeps torch, TransformerLens, SAELens, and other model stacks outside core; tests enforce this.",
+      "source_document": "0431_selfground_refactor.md",
+      "status": "implemented",
+      "title": "Dependency-light core boundary"
+    },
+    {
+      "doc_section": "0432",
+      "evidence": [
+        "tests/test_architecture_boundaries.py"
+      ],
+      "id": "no_self_ground_execution_revival",
+      "notes": "0432 reuses audit/evidence logic but does not revive SELF-GROUND execution code or mechanism-lab abstractions.",
+      "source_document": "0432_selfground_refactor.md",
+      "status": "implemented",
+      "title": "No SELF-GROUND execution framework revival"
+    }
+  ],
+  "source_documents": [
+    "0430_revised_v6.md",
+    "0431_selfground_refactor.md",
+    "0432_selfground_refactor.md"
+  ],
+  "status_values": [
+    "implemented",
+    "partially_implemented",
+    "deferred_by_prd",
+    "intentionally_out_of_scope",
+    "missing",
+    "ambiguous_or_requires_decision"
+  ]
+}

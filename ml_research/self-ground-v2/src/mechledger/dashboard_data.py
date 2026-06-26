@@ -47,6 +47,13 @@ def dashboard_summary(project: Project) -> dict[str, Any]:
         "experiments_by_readiness": _count(
             spec.status for spec in snapshot.experiments.values()
         ),
+        "platform_records_by_type": _count(
+            str(record.get("record_type") or "unknown") for record in snapshot.records
+        ),
+        "platform_records_by_schema_status": _count(
+            str(record.get("schema_status") or "unknown") for record in snapshot.records
+        ),
+        "platform_records_are_evidence": False,
         "open_questions": [
             question for question in questions if question.get("status") == "open"
         ],

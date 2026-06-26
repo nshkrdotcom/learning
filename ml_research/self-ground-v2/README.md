@@ -42,8 +42,10 @@ Implemented here:
   evidence by default
 - Local dashboard JSON and query commands over canonical flat files
 - Deterministic Draft Guard suggestion and claim-language reports
-- Optional platform record schemas/validators for future activation, circuit,
-  weight, comparison, correspondence, training-dynamics, and remote-job metadata
+- Typed optional platform record schemas/validators for PRD-defined activation,
+  weight-analysis, circuit-graph, and cross-model-comparison metadata, plus
+  stricter extension records for correspondence, training-dynamics, and
+  remote-job metadata
 - Local sync/conflict reporting with `sync status` and `sync diff`; these report
   drift and never merge state
 - Explicit run/artifact redaction records, redacted artifact placeholders, and
@@ -103,7 +105,10 @@ language reports, optional records, sync reporting, redaction, integrity records
 run lifecycle,
 crystallization, claim review, staged-mode contracts, read-only cache fallback,
 run reclassification safety, decisions, debt waivers, and no-ML end-to-end
-assessment examples.
+assessment examples. The PRD coverage map lives in
+[docs/PRD_COVERAGE_0430_0432.md](docs/PRD_COVERAGE_0430_0432.md) with the
+machine-readable backing file
+[docs/prd_coverage_0430_0432.json](docs/prd_coverage_0430_0432.json).
 
 ## Layout
 
@@ -134,13 +139,14 @@ MechLedger does not execute interventions, intercept arbitrary network calls,
 discover artifacts outside registered paths or run-local artifact directories,
 merge SQLite, perform remote sync merge, enforce untagged paper claims, detect
 constants hidden in Python source, make scientific truth decisions, import
-heavy ML libraries in core, compute p-values/null statistics, verify
-citations/recompute reported statistics, or use RO-Crate/RDF/SQLite as
-canonical storage. Users register metrics and artifacts from their own research
-environment. MechLedger may allow work to continue with unresolved scientific
-debt, but it surfaces that debt. External labels are metadata by default, and
-session/copilot records require human review before becoming canonical
-interpretation. Copilot review records provenance only; it does not call an LLM,
-verify scientific truth, promote claims, invent run results, or waive debt.
-Failed or cancelled runs cannot be promoted into evidence-supporting run
-classes; rerun them or record them as negative evidence.
+heavy ML libraries in core, compute activations/circuits/weights/platform
+records, compute p-values/null statistics, verify citations/recompute reported
+statistics, or use RO-Crate/RDF/SQLite as canonical storage. Users register
+metrics and artifacts from their own research environment. Optional platform
+records are metadata validation/export records only. MechLedger may allow work
+to continue with unresolved scientific debt, but it surfaces that debt. External
+labels are metadata by default, and session/copilot records require human review
+before becoming canonical interpretation. Copilot review records provenance
+only; it does not call an LLM, verify scientific truth, promote claims, invent
+run results, or waive debt. Failed or cancelled runs cannot be promoted into
+evidence-supporting run classes; rerun them or record them as negative evidence.

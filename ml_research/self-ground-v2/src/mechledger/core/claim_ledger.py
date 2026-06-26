@@ -88,7 +88,14 @@ def parse_claim_ledger(path: str | Path) -> ClaimLedger:
             continue
         match = CLAIM_HEADING.match(line)
         if match is None:
-            _raise(path, index + 1, None, "claim.heading.malformed", "Use `### C001 - Title`.")
+            _raise(
+                path,
+                index + 1,
+                None,
+                "claim.heading.malformed",
+                "Malformed claim heading.",
+                "use `### C001 - Title`.",
+            )
         claim_id, title = match.groups()
         if claim_id in claims:
             _raise(path, index + 1, claim_id, "claim.id.duplicate", "Claim ID is duplicated.")
@@ -102,6 +109,7 @@ def parse_claim_ledger(path: str | Path) -> ClaimLedger:
                 claim_id,
                 "claim.id.mismatch",
                 "YAML `claim_id` must equal heading claim ID.",
+                "edit the YAML claim_id or heading so they match.",
             )
         for field in ("claim_id", "status", "allowed", "forbidden"):
             if field not in data:

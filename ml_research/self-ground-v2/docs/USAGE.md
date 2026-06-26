@@ -408,8 +408,11 @@ uv run mechledger export ro-crate --out bundles/ro-crate/
 This writes `bundles/ro-crate/ro-crate-metadata.json` from canonical flat files,
 local run directories, artifact manifests, debt reports, external labels, and
 optional platform records. The JSON is deterministic and uses simple
-JSON-LD-compatible fields without importing RDF tooling. Missing optional files
-are warnings; malformed canonical ledgers fail.
+JSON-LD-compatible fields without importing RDF tooling. Typed platform record
+entities use stable record-specific IDs such as `#ACT001` and link to declared
+runs, claims, decisions, and artifact paths as metadata. RO-Crate is export-only
+and not canonical storage. Missing optional files are warnings; malformed
+canonical ledgers fail.
 
 Create a reproducibility bundle:
 
@@ -421,6 +424,12 @@ uv run mechledger export bundle --out bundles/manifest.json --manifest-only
 Bundles include canonical files and selected run metadata. Artifact metadata is
 always recorded in `manifest.json`; artifact bytes are included only with
 `--include-artifacts` and only for registered local paths inside the project.
+Typed platform record metadata files under `research/records/` and
+`research/portfolio/` are included as canonical project files, and
+`manifest.json` records their `record_type`, wrapper `record_id`, specific PRD
+identifier, and schema status. Bundle export does not sweep tensor/model bytes
+named by platform records unless those bytes are separately registered local
+artifacts and `--include-artifacts` is set.
 Environment redaction is recorded and enabled by default. `.mechledger` caches,
 SQLite indexes, tmp files, session/copilot scratch records, and unregistered
 large files are not swept into bundles. `.tar.zst` requires the local `zstd`
@@ -565,7 +574,9 @@ uv run mechledger query experiments --json
 ```
 
 Query commands read flat files as source of truth. SQLite remains disposable
-cache state and is not required.
+cache state and is not required. Dashboard JSON includes counts for typed
+platform records and marks them as metadata, not evidence. Records themselves
+are inspected through `mechledger records list` and `mechledger records show`.
 
 ## Claim Language Reports
 
@@ -588,13 +599,42 @@ uv run mechledger records list
 uv run mechledger records show REC001
 ```
 
-Supported record types are `ActivationRecord`, `CircuitGraphRecord`,
-`WeightAnalysisRecord`, `CrossModelComparisonRecord`,
+PRD-defined typed records:
+
+- `ActivationRecord`
+- `WeightAnalysisRun`; `WeightAnalysisRecord` is accepted as a backwards
+  compatible alias for the same PRD concept.
+- `CircuitGraph`; `CircuitGraphRecord` is accepted as a backwards compatible
+  alias.
+- `CrossModelComparison`; `CrossModelComparisonRecord` is accepted as a
+  backwards compatible alias.
+
+These records validate concrete PRD fields such as `activation_id`, `graph_id`,
+`comparison_id`, tensor `shape`, artifact backend/hash-status enums, summary
+stats, graph/comparison/analysis enums, linked claims, and artifact pointers.
+Missing required fields and invalid enum values fail with diagnostics that name
+the file, record type, object ID when available, failed field/rule, and a
+suggested fix when obvious.
+
 `FeatureCorrespondenceRecord`, `TrainingDynamicsRecord`, and
-`RemoteJobMetadataRecord`. Validation checks structure, IDs, source paths,
-linked runs/claims/decisions, and artifact pointers only; MechLedger does not
-compute activations, circuits, weights, correspondences, training dynamics, or
-remote jobs.
+`RemoteJobMetadataRecord` remain supported as extension records because the
+available 0430-0432 text does not define full concrete schemas for them. They
+must still provide the stricter shared metadata contract:
+
+```text
+record_id
+record_type
+source_paths
+linked_runs
+linked_claims
+linked_decisions
+artifact_paths
+```
+
+All optional platform records are metadata validation/export records only.
+MechLedger does not compute activations, circuits, weights, correspondences,
+training dynamics, or remote jobs, and it does not add torch, TransformerLens,
+SAELens, NumPy, SciPy, nnsight, pyvene, or execution backends to core.
 
 ## Local Sync And Integrity
 

@@ -115,10 +115,13 @@ def collect_project(project: Project) -> ProjectSnapshot:
     if labels_path.exists():
         snapshot.external_labels = read_jsonl(labels_path)
 
+    from mechledger.records import record_export_payload, validate_record
+
     for record_path in record_paths(root):
-        payload = read_structured_record(record_path)
-        payload["file"] = relative_to_root(project, record_path)
-        snapshot.records.append(payload)
+        record = validate_record(record_path)
+        snapshot.records.append(
+            record_export_payload(record, project=project, path=record_path)
+        )
     snapshot.records.sort(key=lambda item: str(item.get("record_id") or item.get("file")))
     return snapshot
 

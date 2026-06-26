@@ -279,14 +279,25 @@ def _rocrate_graph(snapshot: ProjectSnapshot) -> list[dict[str, Any]]:
                 "evidenceRole": "external-label-metadata",
             }
         )
-    for record in sorted(snapshot.records, key=lambda item: str(item.get("record_id") or "")):
+    for record in sorted(
+        snapshot.records,
+        key=lambda item: (
+            str(item.get("file") or ""),
+            str(item.get("record_specific_id") or item.get("record_id") or ""),
+        ),
+    ):
         file = str(record.get("file") or "")
+        specific_id = str(record.get("record_specific_id") or record.get("record_id"))
         graph.append(
             {
-                "@id": f"{file}#{record.get('record_id')}",
+                "@id": f"{file}#{specific_id}",
                 "@type": "CreativeWork",
-                "identifier": record.get("record_id"),
+                "identifier": specific_id,
+                "recordId": record.get("record_id"),
+                "recordSpecificId": specific_id,
                 "recordType": record.get("record_type"),
+                "canonicalRecordType": record.get("canonical_record_type"),
+                "schemaStatus": record.get("schema_status"),
                 "linkedRuns": [
                     f".mechledger/runs/{run_id}/"
                     for run_id in sorted(record.get("linked_runs") or [])
@@ -295,6 +306,12 @@ def _rocrate_graph(snapshot: ProjectSnapshot) -> list[dict[str, Any]]:
                     f"{claim_ledger_id}#{claim_id}"
                     for claim_id in sorted(record.get("linked_claims") or [])
                 ],
+                "linkedDecisions": [
+                    f"{decision_log_id}#{decision_id}"
+                    for decision_id in sorted(record.get("linked_decisions") or [])
+                ],
+                "artifactPaths": sorted(record.get("artifact_paths") or []),
+                "evidenceRole": "platform-record-metadata",
             }
         )
     graph.sort(key=lambda item: str(item.get("@id") or ""))
@@ -332,6 +349,7 @@ def write_bundle(
         ],
         "included_run_ids": selected_run_ids,
         "artifact_metadata": artifact_metadata,
+        "platform_records": _platform_record_manifest_entries(snapshot),
         "omitted_artifact_reasons": omitted,
         "redaction_policy": {"redact_env": redact_env},
         "files": [
@@ -536,6 +554,27 @@ def _artifact_bundle_entries(
             continue
         bytes_to_include.append((dest, source))
     return metadata, bytes_to_include, omitted
+
+
+def _platform_record_manifest_entries(snapshot: ProjectSnapshot) -> list[dict[str, str]]:
+    return [
+        {
+            "file": str(record.get("file") or ""),
+            "record_id": str(record.get("record_id") or ""),
+            "record_specific_id": str(
+                record.get("record_specific_id") or record.get("record_id") or ""
+            ),
+            "record_type": str(record.get("record_type") or ""),
+            "schema_status": str(record.get("schema_status") or ""),
+        }
+        for record in sorted(
+            snapshot.records,
+            key=lambda item: (
+                str(item.get("file") or ""),
+                str(item.get("record_id") or ""),
+            ),
+        )
+    ]
 
 
 def _write_tar_gz(out: Path, files: list[tuple[str, Path]], manifest: dict[str, Any]) -> None:
