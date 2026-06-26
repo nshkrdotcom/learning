@@ -29,7 +29,9 @@ Implemented here:
 - Full `gate check` evidence assessment over registered metrics/artifacts:
   empirical nulls, paired statistics, matched controls, seed sensitivity,
   telemetry, compatibility, clean-candidate support, and scientific-debt reports
-- Minimal dependency-light SDK helpers
+- Tier 2 convenience/register commands for calibration, telemetry, empirical-null
+  plans/distributions, and paired-test results
+- Minimal dependency-light SDK helpers, including a pure-Python sign-test helper
 - Backfilled E001-E004 claim ledger, run ledger, research log, and reuse decision
 - Milestone -1 report with dogfood results and divergences
 
@@ -50,14 +52,16 @@ uv run mechledger draft check research/paper/draft.md
 uv run mechledger index --check
 uv run mechledger run -- python scripts/your_experiment.py
 uv run mechledger gate check latest
+uv run mechledger calibration check latest
+uv run mechledger telemetry check latest
 uv run mechledger experiment validate research/experiments/*.md
 uv run mechledger next
 uv run mechledger status
 ```
 
 See [docs/USAGE.md](docs/USAGE.md) for Draft Guard setup, wrapping scripts, SDK
-usage, artifacts, aliases, crystallization, claim review, decisions, debt
-waivers, and assessment examples.
+usage, artifacts, aliases, Tier 2 evidence registration, crystallization, claim
+review, decisions, debt waivers, and assessment examples.
 
 ## Layout
 

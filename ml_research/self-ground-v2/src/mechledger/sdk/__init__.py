@@ -6,6 +6,17 @@ from pathlib import Path
 from typing import Any
 
 from mechledger.project import now_utc
+from mechledger.sdk import stats
+
+__all__ = [
+    "ActiveRun",
+    "current_run",
+    "log_artifact",
+    "log_event",
+    "log_intervention_metadata",
+    "log_metric",
+    "stats",
+]
 
 
 class ActiveRun:

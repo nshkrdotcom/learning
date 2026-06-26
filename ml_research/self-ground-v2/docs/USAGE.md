@@ -61,6 +61,23 @@ ml.log_intervention_metadata(
 The SDK writes JSONL records to the active run directory from the environment
 variables set by `mechledger run`. It imports no heavy ML libraries.
 
+For paired delta JSONL files, the SDK also provides a dependency-light sign
+test helper:
+
+```python
+result = ml.stats.compute_paired_test(
+    "results/per_task_results.jsonl",
+    paired_by="task_id",
+    metric="specificity_gap",
+    test="sign",
+)
+
+ml.stats.write_paired_test_result(result, "results/paired_test.json")
+```
+
+The SDK helper does not compute Wilcoxon or permutation tests. Register those
+from the research environment that produced them.
+
 ## Run-Local Artifact Auto-Collection
 
 Write outputs into:
@@ -141,6 +158,79 @@ relative_norm_drift
 nonfinite_rate
 skip_rate
 ```
+
+## Tier 2 Convenience And Register Commands
+
+Calibration and telemetry checks are filtered wrappers over the same assessment
+policy used by `gate check`:
+
+```bash
+uv run mechledger calibration check latest
+uv run mechledger telemetry check latest
+```
+
+They write:
+
+```text
+.mechledger/runs/RUN_ID/calibration_check.json
+.mechledger/runs/RUN_ID/calibration_check.md
+.mechledger/runs/RUN_ID/telemetry_check.json
+.mechledger/runs/RUN_ID/telemetry_check.md
+```
+
+Both reports include condition status, debt/resolution text, and
+`threshold_source` for evaluated threshold conditions. Calibration exits 1 only
+for blocking calibration or positive-control findings. Telemetry exits 1 only
+for telemetry blockers such as non-finite rows or all rows skipped.
+
+Create an empirical-null plan:
+
+```bash
+uv run mechledger null run --plan \
+  --experiment E001 \
+  --feature-set-size 20 \
+  --seeds 30 \
+  --sampling density_matched
+```
+
+This writes `research/experiments/E001_null_plan.yaml` with
+`experiment_id`, `feature_set_size`, `seed_count`, `sampling_method`,
+`exclude_feature_ids`, `output_metric`, and `planned_output_artifact`. Existing
+plans are refused unless `--force` is supplied.
+
+Register researcher-produced empirical-null output:
+
+```bash
+uv run mechledger null run --register latest \
+  --null-distribution results/null_distribution.jsonl \
+  --metric specificity_gap_mean \
+  --seed-count 30 \
+  --percentile-rank 0.99
+```
+
+The command verifies the file exists, attaches it as required evidence, appends
+`random_null_seed_count`, `null_distribution_path`, `null_metric`, and optional
+`percentile_rank` to `metrics.jsonl`, writes `null_check.json/md`, and
+regenerates the scientific debt report. It refuses duplicate null artifact
+registration unless `--force` is supplied. It does not compute a percentile
+rank unless one is explicitly provided by the researcher.
+
+Register a paired-test result:
+
+```bash
+uv run mechledger stats paired-test latest --register results/paired_test.json
+```
+
+The JSON must contain the documented paired-test fields including `run_id`,
+`paired_by`, `metric`, `test`, `n_pairs`, `p_value`, `effect_direction`,
+`sign_consistency`, threshold metadata, and input/output artifact paths.
+Supported test labels are `sign`, `wilcoxon`, `permutation`, and
+`custom_registered`; the core CLI records and evaluates metadata only. The
+command writes `.mechledger/runs/RUN_ID/paired_test.json`, writes a Markdown
+summary, appends the paired-test metrics consumed by the policy evaluator,
+registers the JSON as required evidence, and regenerates the scientific debt
+report. Existing paired-test registration is refused unless `--force` is
+supplied.
 
 ## Short Run Aliases
 

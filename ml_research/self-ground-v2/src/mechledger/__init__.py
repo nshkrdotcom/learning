@@ -6,6 +6,7 @@ from mechledger.sdk import (
     log_event,
     log_intervention_metadata,
     log_metric,
+    stats,
 )
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "log_event",
     "log_intervention_metadata",
     "log_metric",
+    "stats",
 ]
 
 __version__ = "0.0.0"

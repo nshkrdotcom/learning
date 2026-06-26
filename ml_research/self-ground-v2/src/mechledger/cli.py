@@ -6,9 +6,10 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from ruamel.yaml import YAML
 
 from mechledger.alias import resolve_run_id
-from mechledger.artifacts import annotate_artifact, register_artifact
+from mechledger.artifacts import annotate_artifact, register_artifact, resolve_artifact_path
 from mechledger.core.experiment_spec import parse_experiment_spec
 from mechledger.debt_report import generate_scientific_debt_report
 from mechledger.draftguard import check_draft_files
@@ -21,6 +22,14 @@ from mechledger.prerequisites import (
 )
 from mechledger.project import command_cwd, find_project, init_project
 from mechledger.run_auditor import capture_run
+from mechledger.tier2 import (
+    append_metric,
+    evaluate_filtered_report,
+    has_registered_artifact_path,
+    load_paired_test_result,
+    paired_test_markdown,
+    write_tier2_check_report,
+)
 from mechledger.workflows import (
     append_run_ledger,
     crystallize_experiment,
@@ -50,6 +59,10 @@ claim_app = typer.Typer(help="Generate and review claim proposals.")
 debt_app = typer.Typer(help="Waive visible scientific debt.")
 decision_app = typer.Typer(help="Create decision records.")
 gate_app = typer.Typer(help="Assess evidence and generate scientific-debt reports.")
+calibration_app = typer.Typer(help="Check calibration and positive-control evidence.")
+telemetry_app = typer.Typer(help="Check intervention telemetry metrics.")
+null_app = typer.Typer(help="Plan or register empirical-null evidence.")
+stats_app = typer.Typer(help="Register lightweight statistical evidence.")
 
 app.add_typer(draft_app, name="draft")
 app.add_typer(session_app, name="session")
@@ -60,6 +73,10 @@ app.add_typer(claim_app, name="claim")
 app.add_typer(debt_app, name="debt")
 app.add_typer(decision_app, name="decision")
 app.add_typer(gate_app, name="gate")
+app.add_typer(calibration_app, name="calibration")
+app.add_typer(telemetry_app, name="telemetry")
+app.add_typer(null_app, name="null")
+app.add_typer(stats_app, name="stats")
 
 
 @app.command()
@@ -539,6 +556,181 @@ def gate_check(run_id: str) -> None:
         _fail(str(exc), code=2)
 
 
+@calibration_app.command("check")
+def calibration_check(run_id: str) -> None:
+    try:
+        project = find_project()
+        canonical = resolve_run_id(project, run_id)
+        run_dir = project.runs_dir / canonical
+        report = evaluate_filtered_report(project, canonical, "calibration")
+        write_tier2_check_report(run_dir, "calibration_check", report)
+        _echo_tier2_summary("calibration_check", report, project, run_dir)
+        raise typer.Exit(1 if report.blocking_debts else 0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@telemetry_app.command("check")
+def telemetry_check(run_id: str) -> None:
+    try:
+        project = find_project()
+        canonical = resolve_run_id(project, run_id)
+        run_dir = project.runs_dir / canonical
+        report = evaluate_filtered_report(project, canonical, "telemetry")
+        write_tier2_check_report(run_dir, "telemetry_check", report)
+        _echo_tier2_summary("telemetry_check", report, project, run_dir)
+        raise typer.Exit(1 if report.blocking_debts else 0)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@null_app.command("run")
+def null_run(
+    plan: Annotated[bool, typer.Option("--plan", help="Write an empirical-null plan.")] = False,
+    register: Annotated[
+        str | None, typer.Option("--register", help="Register null evidence for RUN_ID.")
+    ] = None,
+    experiment: Annotated[str | None, typer.Option("--experiment")] = None,
+    feature_set_size: Annotated[int | None, typer.Option("--feature-set-size")] = None,
+    seeds: Annotated[int | None, typer.Option("--seeds")] = None,
+    sampling: Annotated[str, typer.Option("--sampling")] = "random_feature_sets",
+    exclude_feature_ids: Annotated[
+        list[str] | None, typer.Option("--exclude-feature-id")
+    ] = None,
+    output_metric: Annotated[str, typer.Option("--output-metric")] = "specificity_gap",
+    planned_output_artifact: Annotated[
+        str | None, typer.Option("--planned-output-artifact")
+    ] = None,
+    null_distribution: Annotated[
+        Path | None, typer.Option("--null-distribution")
+    ] = None,
+    metric: Annotated[str | None, typer.Option("--metric")] = None,
+    seed_count: Annotated[int | None, typer.Option("--seed-count")] = None,
+    percentile_rank: Annotated[
+        float | None, typer.Option("--percentile-rank")
+    ] = None,
+    force: Annotated[bool, typer.Option("--force", help="Overwrite or re-register.")] = False,
+) -> None:
+    try:
+        if plan == bool(register):
+            _fail("Use exactly one null mode: --plan or --register RUN_ID.", code=2)
+        project = find_project()
+        if plan:
+            path = _write_null_plan(
+                project.root,
+                experiment=experiment,
+                feature_set_size=feature_set_size,
+                seeds=seeds,
+                sampling=sampling,
+                exclude_feature_ids=exclude_feature_ids or [],
+                output_metric=output_metric,
+                planned_output_artifact=planned_output_artifact,
+                force=force,
+            )
+            typer.echo(f"Wrote null plan: {path.relative_to(project.root)}")
+            return
+        if register is None:
+            _fail("Missing --register RUN_ID.", code=2)
+        canonical = resolve_run_id(project, register)
+        run_dir = project.runs_dir / canonical
+        if null_distribution is None:
+            _fail("Missing --null-distribution PATH.", code=2)
+        resolved_null_path = resolve_artifact_path(project, null_distribution)
+        if not resolved_null_path.exists() or not resolved_null_path.is_file():
+            _fail(f"Null distribution path does not exist: {null_distribution}", code=2)
+        if seed_count is None or seed_count <= 0:
+            _fail("--seed-count must be > 0.", code=2)
+        if not metric:
+            _fail("Missing --metric.", code=2)
+        if percentile_rank is not None and (
+            percentile_rank < 0.0 or percentile_rank > 1.0
+        ):
+            _fail("--percentile-rank must be between 0 and 1.", code=2)
+        if (
+            not force
+            and has_registered_artifact_path(project, canonical, resolved_null_path)
+        ):
+            _fail(f"Null distribution already registered: {null_distribution}", code=2)
+        register_artifact(
+            project,
+            canonical,
+            resolved_null_path,
+            claim_relevance="required",
+            description=f"empirical null distribution for {metric}",
+        )
+        append_metric(run_dir, "random_null_seed_count", seed_count)
+        append_metric(run_dir, "null_distribution_path", str(null_distribution))
+        append_metric(run_dir, "null_metric", metric)
+        if percentile_rank is not None:
+            append_metric(run_dir, "percentile_rank", percentile_rank)
+        report = evaluate_filtered_report(project, canonical, "empirical_null")
+        write_tier2_check_report(run_dir, "null_check", report)
+        generate_scientific_debt_report(project, canonical)
+        _echo_tier2_summary("null_check", report, project, run_dir)
+        raise typer.Exit(0 if report.clean else 1)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
+@stats_app.command("paired-test")
+def stats_paired_test(
+    run_id: str,
+    register: Annotated[
+        Path | None, typer.Option("--register", help="Registered PairedTestResult JSON.")
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Overwrite existing registration.")
+    ] = False,
+) -> None:
+    try:
+        if register is None:
+            _fail("Missing --register path/to/paired_test.json.", code=2)
+        project = find_project()
+        register_path = resolve_artifact_path(project, register)
+        if not register_path.exists() or not register_path.is_file():
+            _fail(f"Paired-test result does not exist: {register}", code=2)
+        canonical = resolve_run_id(project, run_id)
+        run_dir = project.runs_dir / canonical
+        result = load_paired_test_result(register_path, run_id=canonical)
+        output_path = run_dir / "paired_test.json"
+        if output_path.exists() and not force:
+            _fail(f"Paired-test result already registered: {output_path}", code=2)
+        output_path.write_text(
+            json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        append_metric(run_dir, "paired_test_name", result.test)
+        append_metric(run_dir, "paired_by", result.paired_by)
+        append_metric(run_dir, "paired_test_n_pairs", result.n_pairs)
+        append_metric(run_dir, "paired_test_p_value", result.p_value)
+        append_metric(run_dir, "effect_direction", result.effect_direction)
+        append_metric(run_dir, "sign_consistency", result.sign_consistency)
+        register_artifact(
+            project,
+            canonical,
+            output_path,
+            claim_relevance="required",
+            description=f"paired {result.test} test for {result.metric}",
+        )
+        report = evaluate_filtered_report(project, canonical, "paired_statistic")
+        (run_dir / "paired_test.md").write_text(
+            paired_test_markdown(result, report), encoding="utf-8"
+        )
+        generate_scientific_debt_report(project, canonical)
+        _echo_tier2_summary("paired_test", report, project, run_dir)
+        raise typer.Exit(0 if report.clean else 1)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        _fail(str(exc), code=2)
+
+
 @app.command()
 def status() -> None:
     try:
@@ -614,6 +806,87 @@ def next_command() -> None:
         raise
     except Exception as exc:  # noqa: BLE001
         _fail(str(exc), code=2)
+
+
+SUPPORTED_NULL_SAMPLING = {
+    "random_feature_sets",
+    "density_matched",
+    "score_matched",
+    "bottom_active",
+    "custom",
+}
+
+
+def _write_null_plan(
+    root: Path,
+    *,
+    experiment: str | None,
+    feature_set_size: int | None,
+    seeds: int | None,
+    sampling: str,
+    exclude_feature_ids: list[str],
+    output_metric: str,
+    planned_output_artifact: str | None,
+    force: bool,
+) -> Path:
+    if not experiment:
+        raise ValueError("Missing --experiment for null plan.")
+    if feature_set_size is None or feature_set_size <= 0:
+        raise ValueError("--feature-set-size must be > 0.")
+    if seeds is None or seeds <= 0:
+        raise ValueError("--seeds must be > 0.")
+    if sampling not in SUPPORTED_NULL_SAMPLING:
+        raise ValueError(
+            "--sampling must be one of: " + ", ".join(sorted(SUPPORTED_NULL_SAMPLING))
+        )
+    if not output_metric:
+        raise ValueError("--output-metric must not be empty.")
+    path = root / "research/experiments" / f"{experiment}_null_plan.yaml"
+    if path.exists() and not force:
+        raise FileExistsError(f"Null plan already exists: {path}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "experiment_id": experiment,
+        "feature_set_size": feature_set_size,
+        "seed_count": seeds,
+        "sampling_method": sampling,
+        "exclude_feature_ids": exclude_feature_ids,
+        "output_metric": output_metric,
+        "planned_output_artifact": planned_output_artifact
+        or f"runs/null/{experiment}_null_distribution.jsonl",
+    }
+    yaml = YAML()
+    with path.open("w", encoding="utf-8") as handle:
+        yaml.dump(payload, handle)
+    return path
+
+
+def _echo_tier2_summary(name: str, report, project, run_dir: Path) -> None:
+    open_debts = report.open_debts
+    blockers = report.blocking_debts
+    typer.echo(f"run_id: {report.run_id}")
+    typer.echo(f"assessment_ids: {', '.join(report.assessment_ids)}")
+    typer.echo(f"clean: {str(report.clean).lower()}")
+    typer.echo(
+        "open_debt: "
+        + (
+            ", ".join(f"{debt.debt_id}/{debt.debt_type}" for debt in open_debts)
+            if open_debts
+            else "none"
+        )
+    )
+    typer.echo(
+        "blocking_findings: "
+        + (
+            ", ".join(f"{debt.debt_id}/{debt.debt_type}" for debt in blockers)
+            if blockers
+            else "none"
+        )
+    )
+    json_path = (run_dir / f"{name}.json").relative_to(project.root)
+    md_path = (run_dir / f"{name}.md").relative_to(project.root)
+    typer.echo(f"{name}: {json_path}")
+    typer.echo(f"{name}_markdown: {md_path}")
 
 
 def _default_drafts(project) -> list[Path]:

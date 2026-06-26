@@ -35,3 +35,14 @@ def test_core_cli_sdk_and_assessments_have_no_heavy_ml_imports() -> None:
                 assert node.module.split(".")[0] not in banned, (
                     f"banned import in {path}: {node.module}"
                 )
+
+
+def test_core_dependencies_do_not_add_heavy_numerical_stacks() -> None:
+    banned = {"torch", "transformer-lens", "saelens", "numpy", "scipy", "pandas"}
+    pyproject = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    dependencies = {
+        item.split("[", 1)[0].split("=", 1)[0].split("<", 1)[0].split(">", 1)[0].lower()
+        for item in pyproject["project"]["dependencies"]
+    }
+
+    assert not dependencies & banned
