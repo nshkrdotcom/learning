@@ -91,6 +91,15 @@ Fundamental items must be:
 - [x] Missing identity or failed conformance cannot be upgraded into claim-bearing evidence.
   - Sources: `0005` prediction/evidence gates, `0006` claim-bearing gate.
   - Evidence: `tests/test_phase3_adapters.py`, `tests/test_phase5_workflow.py`.
+- [x] Optional P1 adapters for nnsight/nnterp, pyvene, and Neuronpedia declare capabilities, versions, limitations, and non-claim-bearing posture.
+  - Sources: `0006` P1 adapter acceptance, `mech.md` ecosystem survey.
+  - Evidence: `tests/test_phase24_adapter_expansion.py`, `docs/ADAPTERS.md`.
+- [x] Unsupported adapters cannot become claim-bearing even if a diagnostic check passes.
+  - Sources: `0006` no diagnostic-to-evidence promotion, `mech.md` no fake backend rule.
+  - Evidence: `tests/test_phase24_adapter_expansion.py`.
+- [x] Git LFS, DVC, and git-annex artifact pointers are recorded without dereferencing large external stores.
+  - Sources: `0006` artifact contract, `0010_mechinterp_tracker_gpt.md` artifact ledger.
+  - Evidence: `tests/test_phase24_adapter_expansion.py`.
 
 ## Scientific Workflow
 
@@ -207,8 +216,8 @@ These are intentionally deferred because the canonical archive excludes them fro
 - [ ] Dashboard-first UI.
 - [ ] Cloud sync or multi-user collaboration.
 - [ ] Distributed workers or NSHKR service split.
-- [ ] nnsight/nnterp parity.
-- [ ] pyvene hard dependency.
+- [ ] nnsight/nnterp claim-bearing parity.
+- [ ] pyvene hard dependency or claim-bearing execution path.
 - [ ] Neuronpedia write integration.
 - [ ] OpenInterpretability, circuit-tracer, CLT-Forge, SAEBench, RAVEL, Tracr, Inspect, or lm-eval interop.
 - [ ] Filesystem watching for arbitrary artifacts.

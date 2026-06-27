@@ -59,6 +59,33 @@ uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-de
 uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
 ```
 
+Optional adapter diagnostics keep dependencies optional and non-claim-bearing:
+
+```bash
+uv run mwb adapter conformance nnsight \
+  --model gpt2 \
+  --module-path transformer.h.0.mlp \
+  --device cpu \
+  --dry-run
+
+uv run mwb adapter conformance pyvene \
+  --model gpt2 \
+  --module-path transformer.h.0.mlp \
+  --intervention-kind resample_ablation \
+  --device cpu \
+  --dry-run
+
+uv run mwb adapter conformance neuronpedia \
+  --model-id gemma-2-2b \
+  --sae-id 20-gemmascope-res-16k \
+  --feature-index 123 \
+  --dry-run
+```
+
+Conformance artifacts are written under `.mechanism/adapters/<adapter>/`. See
+`docs/ADAPTERS.md` for the conformance matrix, optional dependency behavior, and
+artifact pointer support.
+
 ## SELF-GROUND Dogfood
 
 Run the built-in negation demo:

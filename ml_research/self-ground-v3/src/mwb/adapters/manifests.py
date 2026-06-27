@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import importlib.metadata as metadata
+import json
 import platform
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from mwb.refs import stable_ref
 
 
 class ClaimBearingSupport(BaseModel):
@@ -35,6 +39,8 @@ class BackendVersionManifest(BaseModel):
 class AdapterConformanceResult(BaseModel):
     adapter_name: str
     status: str
+    manifest_ref: str | None = None
+    backend_version_ref: str | None = None
     checks: list[dict[str, Any]] = Field(default_factory=list)
     manifest: dict[str, Any] | None = None
     backend_versions: dict[str, Any] | None = None
@@ -63,6 +69,85 @@ def package_version(package: str) -> str | None:
         return None
 
 
+def adapter_manifest_ref(manifest: AdapterCapabilityManifest | dict[str, Any]) -> str:
+    payload = (
+        manifest.model_dump(mode="json")
+        if isinstance(manifest, AdapterCapabilityManifest)
+        else manifest
+    )
+    return stable_ref(
+        "adapter_manifest",
+        payload.get("adapter_name"),
+        payload.get("adapter_version"),
+        payload.get("package", {}),
+        payload.get("capabilities", {}),
+        payload.get("claim_bearing", {}),
+    )
+
+
+def backend_version_ref(manifest: BackendVersionManifest | dict[str, Any]) -> str:
+    payload = (
+        manifest.model_dump(mode="json")
+        if isinstance(manifest, BackendVersionManifest)
+        else manifest
+    )
+    return stable_ref(
+        "backend",
+        payload.get("adapter_name"),
+        payload.get("adapter_version"),
+        payload.get("package_versions", {}),
+        payload.get("python_version"),
+        payload.get("platform"),
+        payload.get("device"),
+    )
+
+
+def result_from_manifests(
+    *,
+    adapter_name: str,
+    status: str,
+    manifest: AdapterCapabilityManifest,
+    backend_versions: BackendVersionManifest,
+) -> AdapterConformanceResult:
+    manifest_payload = manifest.model_dump(mode="json")
+    backend_payload = backend_versions.model_dump(mode="json")
+    manifest_payload["manifest_ref"] = adapter_manifest_ref(manifest_payload)
+    backend_payload["backend_version_ref"] = backend_version_ref(backend_payload)
+    return AdapterConformanceResult(
+        adapter_name=adapter_name,
+        status=status,
+        manifest_ref=manifest_payload["manifest_ref"],
+        backend_version_ref=backend_payload["backend_version_ref"],
+        manifest=manifest_payload,
+        backend_versions=backend_payload,
+    )
+
+
+def write_conformance_artifacts(
+    result: AdapterConformanceResult,
+    *,
+    output_dir: Path | None,
+    stem: str,
+) -> None:
+    if output_dir is None:
+        return
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if result.manifest is not None:
+        (output_dir / "manifest.json").write_text(
+            json.dumps(result.manifest, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    if result.backend_versions is not None:
+        (output_dir / "backend_versions.json").write_text(
+            json.dumps(result.backend_versions, indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    (output_dir / f"{stem}_conformance.json").write_text(
+        result.model_dump_json(indent=2),
+        encoding="utf-8",
+    )
+
+
 def backend_version_manifest(
     *,
     adapter_name: str,
@@ -89,4 +174,3 @@ def backend_version_manifest(
         cuda_version=cuda_version,
         device=device,
     )
-

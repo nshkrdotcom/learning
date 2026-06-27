@@ -35,7 +35,10 @@ uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-r
 uv run mwb bundle audit negation_phase3_calibrated
 uv run mwb benchmark framework
 uv run mwb policy check
+uv run mwb adapter conformance nnsight --model gpt2 --module-path transformer.h.0.mlp --dry-run
+uv run mwb adapter conformance pyvene --model gpt2 --module-path transformer.h.0.mlp --dry-run
+uv run mwb adapter conformance neuronpedia --model-id gemma-2-2b --sae-id 20-gemmascope-res-16k --feature-index 123 --dry-run
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
-See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/STATIC_COMPILER.md`, `docs/CAUSAL_VERIFICATION.md`, `docs/EXAMPLE_GEOMETRY.md`, `docs/DIAGNOSIS_AND_PROBES.md`, `docs/REFERENCE_MECHANISMS.md`, `docs/CLAIM_GRAMMAR.md`, `docs/POLICY_PROFILES.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, space type system, static compiler, causal verification, example geometry, diagnosis/probe workflows, reference benchmarks, claim grammar, policy profiles, source-traced buildout plan, and dogfood evidence boundary.
+See `docs/USAGE.md`, `docs/ADAPTERS.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/STATIC_COMPILER.md`, `docs/CAUSAL_VERIFICATION.md`, `docs/EXAMPLE_GEOMETRY.md`, `docs/DIAGNOSIS_AND_PROBES.md`, `docs/REFERENCE_MECHANISMS.md`, `docs/CLAIM_GRAMMAR.md`, `docs/POLICY_PROFILES.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, adapter matrix, evidence graph, research ledgers, hypothesis lifecycle, space type system, static compiler, causal verification, example geometry, diagnosis/probe workflows, reference benchmarks, claim grammar, policy profiles, source-traced buildout plan, and dogfood evidence boundary.

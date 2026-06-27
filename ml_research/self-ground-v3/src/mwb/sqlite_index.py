@@ -367,6 +367,24 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
             indexed_policy_refs,
         )
 
+    adapters_dir = project.mechanism_dir / "adapters"
+    adapter_dirs = (
+        sorted(path for path in adapters_dir.glob("*") if path.is_dir())
+        if adapters_dir.exists()
+        else []
+    )
+    for adapter_dir in adapter_dirs:
+        counts["adapter_manifests"] += _insert_json_file(
+            sqlite_path,
+            adapter_dir / "manifest.json",
+            "adapter_manifests",
+        )
+        counts["backend_versions"] += _insert_json_file(
+            sqlite_path,
+            adapter_dir / "backend_versions.json",
+            "backend_versions",
+        )
+
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")
         if ref:
@@ -408,6 +426,8 @@ def _insert_json_file(sqlite_path: Path, path: Path, table: str) -> int:
     payload = json.loads(path.read_text(encoding="utf-8"))
     ref = (
         payload.get("wb_ref")
+        or payload.get("manifest_ref")
+        or payload.get("backend_version_ref")
         or payload.get("run_ref")
         or payload.get("source_run_ref")
         or payload.get("mechanism_card_ref")

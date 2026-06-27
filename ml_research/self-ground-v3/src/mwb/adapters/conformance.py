@@ -17,6 +17,9 @@ def claim_bearing_gate(
         if result is None:
             blockers.append(f"missing adapter conformance: {adapter_name}")
             continue
+        claim_bearing = (result.manifest or {}).get("claim_bearing", {})
+        if claim_bearing.get("supported") is False:
+            blockers.append(f"adapter not claim-bearing: {adapter_name}")
         if result.status != "pass":
             blockers.append(f"adapter conformance not pass: {adapter_name}={result.status}")
 
@@ -25,4 +28,3 @@ def claim_bearing_gate(
             blockers.append(f"missing required ref: {name}")
 
     return ClaimBearingGateResult(supported=not blockers, blockers=blockers)
-

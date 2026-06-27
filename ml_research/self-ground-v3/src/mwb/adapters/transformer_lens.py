@@ -9,6 +9,8 @@ from mwb.adapters.manifests import (
     ClaimBearingSupport,
     backend_version_manifest,
     package_version,
+    result_from_manifests,
+    write_conformance_artifacts,
 )
 from mwb.domain.objects import ModelIdentity, TensorSpace
 from mwb.hashing import sha256_text
@@ -106,11 +108,11 @@ class TransformerLensAdapter:
     ) -> AdapterConformanceResult:
         manifest = self.capability_manifest()
         versions = self.backend_version_manifest(device=device)
-        result = AdapterConformanceResult(
+        result = result_from_manifests(
             adapter_name=self.adapter_name,
             status="diagnostic_only" if dry_run else "pass",
-            manifest=manifest.model_dump(mode="json"),
-            backend_versions=versions.model_dump(mode="json"),
+            manifest=manifest,
+            backend_versions=versions,
         )
         identity = self.model_identity_for_name(
             model_name,
@@ -121,6 +123,11 @@ class TransformerLensAdapter:
 
         if dry_run:
             result.add_check("dry_run_no_model_load", "pass")
+            write_conformance_artifacts(
+                result,
+                output_dir=output_dir,
+                stem="transformer_lens",
+            )
             return result
 
         try:
@@ -145,14 +152,9 @@ class TransformerLensAdapter:
                 hook=resolved_hook,
                 shape=shape,
             )
-            if output_dir is not None:
-                output_dir.mkdir(parents=True, exist_ok=True)
-                (output_dir / "transformer_lens_conformance.json").write_text(
-                    result.model_dump_json(indent=2),
-                    encoding="utf-8",
-                )
         except Exception as exc:
             result.status = "fail"
             result.errors.append(str(exc))
             result.add_check("adapter_exception", "fail", error=type(exc).__name__)
+        write_conformance_artifacts(result, output_dir=output_dir, stem="transformer_lens")
         return result

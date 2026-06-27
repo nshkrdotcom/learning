@@ -1223,3 +1223,61 @@ Observed result:
 
 Known residual risk:
 - Policy profiles encode deterministic local gates. They do not remove the need for human review of new lab standards, waivers, or domain-specific thresholds.
+
+## Phase 24: Adapter Expansion With Conformance
+
+Status: complete; implementation commit pending
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md` adapter strategy, provenance archive, P1 acceptance, and no diagnostic-to-evidence promotion invariant.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0010_mechinterp_tracker_gpt.md` technique coverage and external backend landscape.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mech.md` ecosystem survey for nnsight, nnterp, pyvene, Neuronpedia, and artifact tooling.
+
+Implemented:
+- Optional `NNsightAdapter` with capability manifest, version manifest, model identity, module TensorSpace mapping, dry-run conformance, missing dependency diagnostics, and an honest real-trace path when `nnsight` is installed.
+- Optional `PyVeneAdapter` with capability manifest, version manifest, intervention-contract serialization, missing dependency diagnostics, and no fake backend execution pass.
+- Read-only `NeuronpediaAdapter` with external metadata URI refs, dictionary/unit refs, optional HTTP metadata fetch, and explicit no-write/no-claim posture.
+- Stable adapter manifest and backend-version refs plus uniform conformance artifact persistence under `.mechanism/adapters/<adapter>/`.
+- SQLite repair-index restoration for `adapter_manifests` and `backend_versions`.
+- Claim-bearing gate now blocks adapters whose manifest declares `claim_bearing.supported=false`.
+- Git LFS, DVC, and git-annex artifact pointer detection in `ArtifactRegistry`, recorded with `materialized=false`.
+- `mwb adapter conformance nnsight`, `pyvene`, and `neuronpedia` CLI commands.
+- `docs/ADAPTERS.md`, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run so far:
+
+```bash
+uv run pytest tests/test_phase24_adapter_expansion.py
+uv run pytest tests/test_phase3_adapters.py tests/test_phase1_domain.py
+uv run ruff check src/mwb/adapters src/mwb/artifacts.py src/mwb/sqlite_index.py src/mwb/cli.py tests/test_phase24_adapter_expansion.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+uv run mwb adapter conformance nnsight --model gpt2 --module-path transformer.h.0.mlp --device cpu --dry-run
+uv run mwb adapter conformance pyvene --model gpt2 --module-path transformer.h.0.mlp --intervention-kind resample_ablation --device cpu --dry-run
+uv run mwb adapter conformance neuronpedia --model-id gemma-2-2b --sae-id 20-gemmascope-res-16k --feature-index 123 --dry-run
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 24 RGR tests first failed on missing `mwb.adapters.neuronpedia`.
+- Focused Phase 24 adapter expansion suite passed, `8 passed`.
+- Focused adapter/domain regression suite passed, `19 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `119 passed, 3 skipped`.
+- TransformerLens conformance: passed with real model load and activation capture.
+- SAELens conformance: passed with real SAE load and feature ref round-trip.
+- Optional nnsight, pyvene, and Neuronpedia dry-run conformance: passed with `diagnostic_only` posture.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `adapter_manifests: 5`, `backend_versions: 5`.
+
+Known residual risk:
+- Optional nnsight and pyvene dependencies are not installed in the current QC environment. Their adapters therefore remain diagnostic-only unless a user installs/configures those backends and runs real conformance; this is deliberate and prevents fake support.

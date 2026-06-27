@@ -10,6 +10,9 @@ from IPython import start_ipython
 from IPython.core.interactiveshell import InteractiveShell
 from rich.console import Console
 
+from mwb.adapters.neuronpedia import NeuronpediaAdapter
+from mwb.adapters.nnsight import NNsightAdapter
+from mwb.adapters.pyvene import PyVeneAdapter
 from mwb.adapters.saelens import SAELensAdapter
 from mwb.adapters.transformer_lens import TransformerLensAdapter
 from mwb.bundle_audit import BundleAuditService
@@ -607,6 +610,83 @@ def conformance_saelens(
         release=release,
         sae_id=sae_id or hook,
         device=device,
+        output_dir=output_dir,
+        dry_run=dry_run,
+    )
+    console.print_json(json.dumps(result.model_dump(mode="json")))
+    if result.status == "fail":
+        raise typer.Exit(code=1)
+
+
+@conformance_app.command("nnsight")
+def conformance_nnsight(
+    model: Annotated[str, typer.Option("--model", help="Hugging Face model name.")],
+    module_path: Annotated[
+        str,
+        typer.Option("--module-path", help="NNsight module path to trace."),
+    ],
+    device: DeviceOption = "cpu",
+    dry_run: DryRunOption = False,
+) -> None:
+    """Run nnsight/nnterp adapter conformance."""
+    project = ProjectManager.discover_or_create()
+    output_dir = project.mechanism_dir / "adapters" / "nnsight"
+    result = NNsightAdapter().run_conformance(
+        model_name=model,
+        module_path=module_path,
+        device=device,
+        output_dir=output_dir,
+        dry_run=dry_run,
+    )
+    console.print_json(json.dumps(result.model_dump(mode="json")))
+    if result.status == "fail":
+        raise typer.Exit(code=1)
+
+
+@conformance_app.command("pyvene")
+def conformance_pyvene(
+    model: Annotated[str, typer.Option("--model", help="Hugging Face model name.")],
+    module_path: Annotated[
+        str,
+        typer.Option("--module-path", help="PyTorch module path for the intervention."),
+    ],
+    intervention_kind: Annotated[
+        str,
+        typer.Option("--intervention-kind", help="Workbench intervention kind."),
+    ] = "resample_ablation",
+    device: DeviceOption = "cpu",
+    dry_run: DryRunOption = False,
+) -> None:
+    """Run pyvene adapter conformance."""
+    project = ProjectManager.discover_or_create()
+    output_dir = project.mechanism_dir / "adapters" / "pyvene"
+    result = PyVeneAdapter().run_conformance(
+        model_name=model,
+        module_path=module_path,
+        intervention_kind=intervention_kind,
+        device=device,
+        output_dir=output_dir,
+        dry_run=dry_run,
+    )
+    console.print_json(json.dumps(result.model_dump(mode="json")))
+    if result.status == "fail":
+        raise typer.Exit(code=1)
+
+
+@conformance_app.command("neuronpedia")
+def conformance_neuronpedia(
+    model_id: Annotated[str, typer.Option("--model-id", help="Neuronpedia model id.")],
+    sae_id: Annotated[str, typer.Option("--sae-id", help="Neuronpedia SAE id.")],
+    feature_index: Annotated[int, typer.Option("--feature-index", help="Feature index.")],
+    dry_run: DryRunOption = False,
+) -> None:
+    """Run Neuronpedia read-only metadata adapter conformance."""
+    project = ProjectManager.discover_or_create()
+    output_dir = project.mechanism_dir / "adapters" / "neuronpedia"
+    result = NeuronpediaAdapter().run_conformance(
+        model_id=model_id,
+        sae_id=sae_id,
+        feature_index=feature_index,
         output_dir=output_dir,
         dry_run=dry_run,
     )

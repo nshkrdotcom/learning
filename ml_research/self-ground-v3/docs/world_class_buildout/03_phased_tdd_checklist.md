@@ -591,6 +591,8 @@ git push
 
 ## Phase 23: Adapter Expansion With Conformance
 
+Status: QC green in repo Phase 24; implementation commit pending.
+
 ### Required Reading
 
 - `0006.md` adapter strategy.
@@ -599,24 +601,24 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing conformance manifest tests before each adapter.
-- [ ] Add failing diagnostic-only tests for missing optional backends.
-- [ ] Add real integration tests only where backend is installed and configured.
-- [ ] Add tests that unsupported adapters cannot be claim-bearing.
+- [x] Add failing conformance manifest tests before each adapter.
+- [x] Add failing diagnostic-only tests for missing optional backends.
+- [x] Add real integration tests only where backend is installed and configured; no optional backend is installed in the current QC environment, so absent backends are covered by diagnostic-only tests.
+- [x] Add tests that unsupported adapters cannot be claim-bearing.
 
 ### Implementation
 
-- [ ] Add nnsight/nnterp adapter when dependency is available.
-- [ ] Add pyvene adapter when dependency is available.
-- [ ] Add Neuronpedia read-only metadata adapter.
-- [ ] Add DVC/git-annex/Git LFS artifact pointer support.
-- [ ] Keep optional deps optional.
+- [x] Add nnsight/nnterp adapter when dependency is available.
+- [x] Add pyvene adapter when dependency is available.
+- [x] Add Neuronpedia read-only metadata adapter.
+- [x] Add DVC/git-annex/Git LFS artifact pointer support.
+- [x] Keep optional deps optional.
 
 ### Docs
 
-- [ ] Add adapter guide.
-- [ ] Add conformance matrix.
-- [ ] Update phase ledger.
+- [x] Add adapter guide.
+- [x] Add conformance matrix.
+- [x] Update phase ledger.
 
 ### QC Gate
 
