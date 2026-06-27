@@ -14,7 +14,9 @@ Raw previous-occurrence attention was not enough. The same raw attention heads a
 
 ## What controlled patching showed
 
-The controlled patching follow-up patched 11 selected `attn_out` layer-level candidates on four families with eight examples per family. Patching was not head-specific. The overall positive mean effect size was `0.0522`, while the max control mean effect size was `0.1755`. Six candidates met the simple positive-specific rule, but the largest causal gap came from a random comparison head, not from a raw previous-occurrence attention candidate.
+The controlled patching follow-up patched 11 selected `attn_out` layer-level candidates on four families with eight examples per family. Patching was not head-specific. In seed 0, the overall positive mean effect size was `0.0522`, while the max control mean effect size was `0.1755`. Six candidates met the simple positive-specific rule, but the largest causal gap came from a random comparison head, not from a raw previous-occurrence attention candidate.
+
+The seed-1 replication mostly downgraded the result. The overall positive mean effect size dropped to `0.0127`, the max control mean effect size was `0.1397`, and the only positive-specific candidate was again a random comparison head. The raw positive-attention heads were nonspecific or no-effect under this tiny causal check.
 
 ## What I Learned
 
@@ -26,7 +28,7 @@ This prevents calling raw attention an induction head. It also prevents treating
 
 ## What I Would Test Next
 
-Run the same tiny workflow with a new prompt seed because at least one candidate met the simple positive-specific rule. If the random comparison head does not replicate, treat the current largest gap as a small-sample artifact.
+Inspect the two `controlled_patching_by_candidate.csv` files side by side and write down why raw attention did not survive the controlled causal check. If testing continues, use a narrower pre-registered candidate and metric rather than expanding the search.
 
 ## What I Will Not Claim
 

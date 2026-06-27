@@ -53,6 +53,22 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this does not show: no induction-head mechanism was discovered. Layer-level `attn_out` patching is not head-specific, and the result is limited to selected prompts, candidates, component scope, position, and target-logit metric.
 - Next step: write a short learning note, then run a small seed-1 replication because at least one candidate met the simple `positive_specific_candidate` rule.
 
+## 2026-06-26 GPT-2 Small Controlled Patching Seed-1 Replication
+
+- Run: `runs/20260626_150356_gpt2_small_induction_controls_seed1`
+- Config: `configs/gpt2_small_induction_controls_seed1.yaml`
+- Model: `gpt2-small`; run completed under the CUDA config without blockers.
+- Families: same four-family patching subset as seed 0, with eight examples per family.
+- Candidates patched: 11 selected candidates from the seed-1 attention artifacts.
+- Whether patching was head-specific or layer-level: not head-specific. All patching was `full_attn_out_layer` with `head_specific_patch=false`.
+- Positive mean effect size: `0.0127`.
+- Max control mean effect size: `0.1397`.
+- Best positive-minus-control causal gap: `0.0466` on `cand_008`, a random comparison L9H3 candidate.
+- Candidate specificity statuses: `positive_specific_candidate`: 1; `nonspecific_moves_controls`: 4; `no_positive_effect`: 6.
+- Replication result: the strong seed-0 gap did not replicate as a raw-attention-head result. The only seed-1 positive-specific candidate was again a random comparison head, and raw positive-attention heads L0H1/L0H5/L0H10/L0H4 were classified as `nonspecific_moves_controls`.
+- What this teaches: the current raw attention candidates are still false-positive-prone, and a small causal gap on a random comparison head should be treated as a prompt/sample artifact until a narrower replication says otherwise.
+- Next step: stop before adding a new task; inspect the two `controlled_patching_by_candidate.csv` files side by side and write down why raw attention did not survive the controlled causal check.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`
