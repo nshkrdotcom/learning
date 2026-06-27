@@ -390,7 +390,7 @@ git push
 
 ## Phase 19: Diagnosis Tree And Probe Materialization
 
-Status: implementation/docs complete in repo Phase 20; QC, commit, and push pending.
+Status: complete in repo Phase 20. Implementation commit: `9b9293d`; push pending.
 
 ### Required Reading
 
