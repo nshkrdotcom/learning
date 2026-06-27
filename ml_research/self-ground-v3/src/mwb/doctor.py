@@ -5,7 +5,7 @@ from pathlib import Path
 
 from mwb.events import read_events
 from mwb.project import PROJECT_DIRS, Project, ProjectManager
-from mwb.sqlite_index import SCHEMA_TABLES, existing_tables
+from mwb.sqlite_index import SCHEMA_TABLES, existing_tables, initialize_schema
 
 
 @dataclass(frozen=True)
@@ -48,6 +48,7 @@ def run_doctor(root: Path | None = None) -> DoctorReport:
         errors.append(str(exc))
 
     if project.sqlite_path.exists():
+        initialize_schema(project.sqlite_path)
         tables = existing_tables(project.sqlite_path)
         missing_tables = sorted(SCHEMA_TABLES - tables)
         if missing_tables:
@@ -57,4 +58,3 @@ def run_doctor(root: Path | None = None) -> DoctorReport:
 
     status = "ok" if not errors else "error"
     return DoctorReport(project=project, status=status, errors=errors, warnings=warnings)
-

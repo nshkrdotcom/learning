@@ -546,3 +546,628 @@ Observed result:
 
 Known residual risk:
 - The workbench still does not claim E004 proves a mechanism. The completed implementation enforces that boundary through blocker reports, MechanismCards, draft guard, and scientific debt records.
+
+## Phase 11: Canonical Archive Fundamental Review
+
+Status: complete
+Commit: `be3f691`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0001.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+
+Implemented:
+- Source-traced `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`.
+- Bounded stdout/stderr capture for IPython cells.
+- Canonical `mwb repair-index` alias for SQLite recovery.
+- SQLite lineage edges for cell-to-object and parent-to-object provenance.
+- Rebuild-index lineage reconstruction from file-backed namespace logs.
+- RGR coverage for stdout/stderr capture, repair-index, and lineage edges.
+- README and usage doc links to the fundamental checklist and repair alias.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase11_fundamental_review.py
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Phase 11 RGR tests first failed on missing stream refs, missing `repair-index`, and missing lineage edges.
+- Stream capture implementation passed.
+- `repair-index` alias passed.
+- Lineage edge writes passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed after implementation.
+
+Known residual risk:
+- The checklist intentionally excludes P1/P2 adapters, platform integration, dashboard-first UI, cloud sync, and raw tensor capture by default because the canonical archive marks those as later work or non-goals.
+
+## Phase 12: World-Class Source Mining Docset
+
+Status: complete
+Commit: `b3c740c`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/*.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/**/*.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0001.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+
+Implemented:
+- `docs/world_class_buildout/README.md` with source scope, scale, reading order, and scope rule.
+- `docs/world_class_buildout/00_source_mining_findings.md` with full file inventory, converged decisions, anti-patterns, source tensions, and immediate buildout implications.
+- `docs/world_class_buildout/01_target_architecture.md` with the target local-first research OS architecture, core subsystems, file layout, and authority boundary.
+- `docs/world_class_buildout/02_implementation_plan.md` with buildout streams, acceptance sources, rejected acceptance patterns, docs rules, QC gate, and commit/push discipline.
+- `docs/world_class_buildout/03_phased_tdd_checklist.md` with a source-resolved phased checklist for evidence graph, ledgers, hypothesis lifecycle, space typing, static compiler, exact verification, example geometry, diagnosis/probes, reference mechanisms, claim grammar, policy profiles, adapters, and release hardening.
+- `docs/world_class_buildout/04_qc_commit_push_protocol.md` with the mandatory TDD/RGR, QC-green, commit, and push protocol for each future phase.
+- README and usage-guide links to the buildout docset.
+
+Commands run:
+
+```bash
+find docs/world_class_buildout -maxdepth 1 -type f -print | sort
+wc -l docs/world_class_buildout/*.md
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Source inventory identified 31 tracker markdown files and 22 `mi_docs` markdown files.
+- Final docset totals 1,927 lines across 6 files.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `53 passed, 1 skipped`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok`.
+
+Known residual risk:
+- This phase is documentation and planning only. It intentionally does not implement the future buildout capabilities described in the checklist.
+
+## Phase 13: Evidence Graph Query Core
+
+Status: complete
+Commit: `e20d307`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` Evidence Core, persistence model, evidence graph, and SQLite schema sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md` object registration, artifact capture, lineage, and recovery sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` "Evidence as a typed causal graph".
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` SQLite-never-canonical and index rebuild sections.
+
+Implemented:
+- `EvidenceEdge` domain object with validated typed relations: `supports`, `contradicts`, `depends_on`, `derived_from`, `tested_by`, `confounded_by`, `fails_on`, `generalizes_to`, and `cited_by`.
+- `EvidenceGraphService` that rebuilds `.mechanism/graph/evidence_edges.jsonl` and `.mechanism/graph/graph_summary.json` from file-backed workbench records.
+- SQLite `evidence_edges` operational index.
+- `mwb graph rebuild`.
+- `mwb graph query claims-depending-on <ref>`.
+- `mwb graph query controls-contradicting <run-ref>`.
+- `mwb graph query cells-producing <artifact-ref>`.
+- `mwb graph query debt-blocking <claim-ref>`.
+- `mwb rebuild-index` / `mwb repair-index` restoration of `evidence_edges` from graph JSONL.
+- `docs/EVIDENCE_GRAPH.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase12_evidence_graph.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb graph rebuild
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 13 RGR tests first failed on missing `EvidenceEdge`, missing `EvidenceGraphService`, and missing `mwb graph`.
+- Focused Phase 13 test suite passed after implementation, `3 passed`.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `56 passed, 1 skipped`.
+- `uv run mwb graph rebuild`: passed and rebuilt 23 evidence edges across 16 nodes.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored 23 `evidence_edges`.
+
+Known residual risk:
+- The graph records declared provenance and evidence relationships. It does not upgrade evidence tiers or make a claim scientifically true by itself.
+
+## Phase 14: Git-Native Research Ledgers
+
+Status: complete
+Commit: `185b6e1`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` claim ledger, run ledger, decision log, research log, and SQLite-never-canonical sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0431_selfground_refactor.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0432_selfground_refactor.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0300_research_landscape_for_git_native_research_integrity_systems.md`
+
+Implemented:
+- Git-visible `research/` scaffold and committed ledger templates.
+- Claim ledger parser for H3 claim headings plus required YAML blocks.
+- Run ledger CSV schema validation with canonical column order.
+- Decision log parser for H2 decision headings plus required YAML blocks.
+- Research log parser for date entries plus required YAML blocks.
+- `mwb ledger validate` for parser validation and SQLite indexing.
+- `mwb ledger propose-run <run-ref>` with human-reviewable `run_ledger_row.csv` output.
+- `mwb ledger propose-claim <card-ref>` with human-reviewable Markdown and JSON proposal files.
+- `mwb rebuild-index` / `mwb repair-index` restoration of ledger rows from Git-visible files.
+- `docs/LEDGERS.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase14_research_ledgers.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb ledger validate
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 14 RGR tests first failed on missing `mwb.ledgers`, missing `mwb ledger`, and missing Git-visible research scaffold.
+- Focused Phase 14 test suite passed after implementation, `4 passed`.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `60 passed, 1 skipped`.
+- `uv run mwb ledger validate`: passed with `status: ok`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok`.
+
+Known residual risk:
+- Ledger validation proves structure and local traceability. It does not silently append proposals or promote claim status without human review.
+
+## Phase 15: Hypothesis Lifecycle And Alternative Explanations
+
+Status: complete
+Commit: `0dca227`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` research modes, hypothesis creation, next-probe, MechanismCard, and acceptance criteria sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` hypothesis state machine and alternative-explanation engine sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0020_critique_claude.md` critique of collapsed workflow state and epistemic status.
+
+Implemented:
+- `HypothesisState` domain object with workflow state, evidence tier, and claim status as separate fields.
+- `HypothesisTransitionReceipt` domain object.
+- `AlternativeExplanation` domain object.
+- `HypothesisLifecycleService` for valid transitions, transition receipt persistence, and alternative-explanation generation from blocker reports.
+- `mwb hypothesis transition <hypothesis-ref> --to-state <state>`.
+- `mwb hypothesis explain <run-ref>`.
+- Explicit `--approved-by` and `--decision-ref` requirements for `claimable` promotion.
+- SQLite indexing and rebuild/repair recovery for `hypothesis_states`, `hypothesis_transitions`, and `alternative_explanations`.
+- `docs/HYPOTHESIS_LIFECYCLE.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase15_hypothesis_lifecycle.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb hypothesis transition hyp_qc_phase15 --to-state triaged --evidence-tier association
+uv run mwb hypothesis explain latest
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 15 RGR tests first failed on missing `HypothesisState`, missing `mwb hypothesis`, and missing SQLite lifecycle recovery.
+- Focused Phase 15 test suite passed after implementation, `4 passed`.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `64 passed, 1 skipped`.
+- `uv run mwb hypothesis transition hyp_qc_phase15 --to-state triaged --evidence-tier association`: passed and wrote a transition receipt.
+- `uv run mwb hypothesis explain latest`: passed and generated a live `control_leaky` alternative from the latest run's blocker metrics.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `hypothesis_states`, `hypothesis_transitions`, and `alternative_explanations`.
+
+Known residual risk:
+- Lifecycle state and alternative explanations are deterministic workflow records. They do not create or accept paper claims without the separate ledger/proposal review path.
+
+## Phase 16: Mechanistic Space Type System
+
+Status: complete
+Commit: `b89d147`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` TensorSpace, MechanisticUnitRef, and invalid mechanistic operations sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` typed tensor spaces, mechanistic unit registry, compatibility rules, and valid/invalid operations.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` static compiler and space type system prerequisite sections.
+
+Implemented:
+- Expanded `TensorSpace` with backend, layer, stream kind, basis, normalization context, token-position semantics, and device fields.
+- Added `TensorRef`, `SpaceTransform`, `SpaceCompatibilityReport`, and expanded `MechanisticUnitRef`.
+- Added `MechanisticUnitRegistry` to enforce valid and invalid unit operations.
+- Added `SpaceTypeService` to fail closed on incompatible SAE dictionaries, missing source/target/unit spaces, pre-LN/post-LN mismatches without transforms, transforms without provenance, wrong-hook patching, and invalid unit operations.
+- Added `mwb space check <json>` with JSON output, nonzero exit on failure, `.mechanism/space_checks/latest_space_check.json` persistence, and SQLite indexing.
+- Added SQLite schema/index rebuild support for `tensor_refs`, `space_transforms`, and `space_checks`.
+- Updated `mwb doctor` to refresh rebuildable SQLite schema drift before checking table presence, so older workspaces upgrade cleanly without changing canonical evidence files.
+- Added `docs/SPACE_TYPES.md`, a valid fixture, README, usage-guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase16_space_types.py
+uv run ruff check src/mwb/space_types.py tests/test_phase16_space_types.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb space check docs/fixtures/space_check_valid.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 16 RGR tests first failed on missing `mwb.space_types`, missing `SpaceTransform`, missing expanded `TensorSpace` fields, and missing `mwb space`.
+- Added provenance and missing-space tests; the missing-space test first failed because unit-space validation was skipped when the target space was unknown, then passed after fail-closed validation moved outside the target-space branch.
+- Added a schema-drift regression test after QC surfaced that existing SQLite indexes from older phases lacked newly introduced tables until a writer refreshed schema.
+- Focused Phase 16 test suite passed, `8 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `72 passed, 1 skipped`.
+- `uv run mwb space check docs/fixtures/space_check_valid.json`: passed and wrote a `SpaceCompatibilityReport` with `status: pass`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `space_checks: 1`.
+
+Known residual risk:
+- Space checks are structural compatibility gates. A passing report does not establish causal evidence, validate controls, or promote a claim.
+
+## Phase 17: Static Mechanistic Compiler
+
+Status: complete
+Commit: `90253a9`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` static preflight, decoder-unembedding projection math, preflight statuses, blocker taxonomy, and required command sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` compiler, direct-effect attribution, dictionary geometry diagnostics, and weakest-link plausibility gate sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` typed algebra compiler, static checks, live alternatives, and static compile usage sections.
+
+Implemented:
+- `StaticCheckResult` and `StaticCompilationReport` domain objects.
+- `StaticCompiler` with a check registry for decoder-unembedding projection, dictionary neighbor interference, and activation density.
+- Real L2 cosine projection over provided decoder vectors and target-vs-foil unembedding vectors.
+- Dictionary neighbor geometry scan with fail/warn thresholds.
+- Activation density warning check using symmetric target/control ratios.
+- Weakest-link plausibility gate aggregation: `PASS`, `WEAK`, or `FAIL`.
+- Claim-bearing verification blocking when static compiler input is missing or the static gate fails.
+- `mwb compile hypothesis <json>` with report persistence under `.mechanism/static_compiler/` and SQLite indexing.
+- SQLite repair recovery for static compiler reports and per-check rows.
+- Optional real-adapter integration test that builds compiler input from TransformerLens unembedding weights and SAELens decoder vectors.
+- `docs/STATIC_COMPILER.md`, README, usage-guide, fixture, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase17_static_compiler.py
+uv run pytest tests/test_phase17_static_compiler.py tests/test_static_compiler_integration.py
+uv run ruff check src/mwb/static_compiler.py src/mwb/workflows/preflight.py src/mwb/workflows/verify.py src/mwb/cli.py tests/test_phase17_static_compiler.py
+uv run pytest tests/test_phase5_workflow.py tests/test_phase17_static_compiler.py
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
+uv sync
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_static_compiler_integration.py -m integration
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 17 RGR tests first failed on missing `mwb.static_compiler`, missing `mwb compile`, and claim-bearing verification ignoring failed static gates.
+- Focused compiler tests passed, `6 passed`.
+- Optional integration file is skipped by default unless `MWB_RUN_REAL_ADAPTER_TESTS=1`.
+- Existing preflight/verify workflow tests still pass with static compiler integration.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `78 passed, 2 skipped`.
+- `MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_static_compiler_integration.py -m integration`: passed, `1 passed`; warnings were upstream deprecations from TransformerLens/SAELens imports.
+- `uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json`: passed and wrote a `StaticCompilationReport` with `plausibility_gate: PASS`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `static_compiler_reports: 1` and `static_check_results: 3`.
+
+Known residual risk:
+- Static compiler reports are structural plausibility evidence only. They cannot produce causal evidence or claim promotion without subsequent prediction-locked causal verification.
+
+## Phase 18: Exact Causal Verification Operations
+
+Status: complete pending commit and push
+Commit: `430ac2f`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` causal verification operations, required outputs, verification metrics, blocker taxonomy, and required verification tests.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` causal engine, research taste policies, noising/denoising, resample ablation, and telemetry guidance.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0010_mechinterp_tracker_gpt.md` activation patching variants, supported operations, telemetry, and ablation/amplification artifact requirements.
+
+Implemented:
+- `InterventionReceipt` and `TelemetryReport` domain objects.
+- `CausalVerificationService` for exact verification runs, metrics, receipts, telemetry, policy downgrades, and artifact persistence.
+- Resample-ablation receipts with target/control metric calculation.
+- Distinct noising and denoising receipts with causal direction.
+- Feature amplification receipts with coefficients.
+- KL drift and activation norm drift telemetry with `off_manifold_intervention` blockers.
+- Zero-ablation claim ceiling policy that downgrades claim-bearing attempts to `diagnostic_only` unless policy changes.
+- Real TransformerLens/SAELens resample-ablation path: clean/corrupt activation cache, SAE encode/decode delta, hook patch, and logit rerun.
+- `mwb verify` artifact-writing integration.
+- SQLite schema and repair-index recovery for verification runs, verification results, intervention receipts, and telemetry reports.
+- `docs/CAUSAL_VERIFICATION.md`, fixture, README, usage-guide, MechanismCard evidence examples, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase18_causal_verification.py
+uv run pytest tests/test_phase18_causal_verification.py tests/test_causal_verification_integration.py
+uv run ruff check src/mwb/causal_verification.py src/mwb/cli.py src/mwb/domain/objects.py src/mwb/domain/__init__.py src/mwb/sqlite_index.py tests/test_phase18_causal_verification.py tests/test_causal_verification_integration.py
+uv run pytest tests/test_phase5_workflow.py tests/test_phase18_causal_verification.py
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+uv sync
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 18 RGR tests first failed on missing `mwb.causal_verification` and `mwb verify` not writing run artifacts.
+- Focused Phase 18 artifact suite passed, `6 passed`.
+- Existing Phase 5 preflight/verify workflow tests still pass with artifact-writing verification.
+- Real Pythia/SAE resample-ablation integration first reached the TransformerLens hook path and failed on hook signature, then passed after the hook accepted TransformerLens' keyword argument.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `84 passed, 3 skipped`.
+- `MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration`: passed, `1 passed`; warnings were upstream TransformerLens/SAELens deprecations.
+- `uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run`: passed and wrote a diagnostic run directory with one planned resample-ablation operation.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `verification_runs: 2`, `intervention_receipts: 3`, `verification_results: 3`, and `telemetry_reports: 1`.
+
+Known residual risk:
+- Exact verification receipts are intervention evidence, but mechanism-level claims still require clean controls, generalization, mediation where applicable, and claim-ledger review.
+
+## Phase 19: Example Geometry And Control Audits
+
+Status: complete pending commit and push
+Commit: `e8801ac`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` control blockers, next-probe inputs, and density/control failure taxonomy.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` first-class example geometry, bundle audit, contamination, and balancing sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0070_revised.md` baseline calibration, control condition taxonomy, and specificity metrics.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0180_revised_v5.md` candidate claim requirements for token validation, matched controls, baseline calibration, and telemetry.
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/forensics/forensics_summary.md` and related E004 forensics tables.
+
+Implemented:
+- `ExampleGeometryReport`, `ControlContaminationReport`, and `BundleRebalanceProposal` domain objects.
+- `BundleAuditService` for token validity, role balance, control contamination, baseline margin, heldout-template, and heldout-vocabulary checks.
+- `mwb bundle audit <bundle>`.
+- `mwb bundle rebalance --dry-run`.
+- Persistence under `.mechanism/bundle_audits/` and `.mechanism/bundle_rebalance/`.
+- SQLite schema and repair-index recovery for geometry reports, contamination reports, and rebalance proposals.
+- SELF-GROUND E004 forensics links in bundle audit outputs when local artifacts are present.
+- `docs/EXAMPLE_GEOMETRY.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase19_example_geometry.py
+uv run ruff check src/mwb/bundle_audit.py src/mwb/cli.py src/mwb/domain/objects.py src/mwb/domain/__init__.py src/mwb/project.py src/mwb/sqlite_index.py tests/test_phase19_example_geometry.py
+uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb bundle rebalance --dry-run
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb bundle rebalance --dry-run
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 19 RGR tests first failed on missing `mwb.bundle_audit` and missing `mwb bundle`.
+- Focused Phase 19 test suite passed, `6 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `90 passed, 3 skipped`.
+- `uv run mwb bundle audit negation_phase3_calibrated`: passed with `status: warn`, no blockers, role-balance and missing-baseline warnings, and a SELF-GROUND E004 forensics link.
+- `uv run mwb bundle rebalance --dry-run`: passed and produced control-family, heldout-template, and heldout-vocabulary proposals.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `example_geometry_reports: 1`, `control_contamination_reports: 1`, and `bundle_rebalance_proposals: 1`.
+
+Known residual risk:
+- Bundle audits identify geometric and control-design risks. They do not automatically rewrite source bundles or prove behavioral validity under a live tokenizer/model.
+
+## Phase 20: Diagnosis Tree And Probe Materialization
+
+Status: complete
+Commit: `9b9293d`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` next-probe planning, materialized probe requirements, and blocker provenance sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` mechanistic debugger, diagnosis tree, probe synthesis, and implemented-probe execution sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` scientific debt, negative evidence, and unresolved blocker treatment.
+
+Implemented:
+- `DiagnosisTree` and `MaterializedProbe` domain objects.
+- `DiagnosisService` for run-local diagnosis trees, materialized probes, and implemented probe execution.
+- Deterministic `ProbeRegistry` with implemented `sweep_axis_extension` and `switch_patch_mode` probe kinds.
+- Blocked materialized probes for unsupported recommendations with `runnable: false` and no command.
+- Source-provenance propagation from `run_manifest.json`, `control_metrics.json`, `blocker_report.json`, and `scientific_debt.json` into diagnosis/probe artifacts.
+- `mwb diagnose <run>`.
+- `mwb next-probe <run> --materialize`.
+- `mwb run-probe <probe.yaml>` for implemented probes only.
+- SQLite schema and repair-index recovery for `diagnosis_trees` and `materialized_probes`.
+- `docs/DIAGNOSIS_AND_PROBES.md`, README, usage guide, fundamental checklist, target architecture, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase20_diagnosis_probes.py
+uv run ruff check src/mwb/workflows/diagnosis.py src/mwb/workflows/next_probe.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase20_diagnosis_probes.py
+uv run mwb diagnose latest
+uv run mwb next-probe latest --materialize
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb diagnose latest
+uv run mwb next-probe latest --materialize
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 20 RGR tests first failed on missing `mwb.workflows.diagnosis`.
+- Focused Phase 20 diagnosis/probe suite passed, `6 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `96 passed, 3 skipped`.
+- `uv run mwb diagnose latest`: passed and wrote a `DiagnosisTree` for `run_9815cd2998d6f99b` with primary blocker `insufficient_effect_size`.
+- `uv run mwb next-probe latest --materialize`: passed and wrote a blocked materialized probe for unsupported `heldout_generalization`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `diagnosis_trees: 1` and `materialized_probes: 1`.
+
+Known residual risk:
+- The implemented probe runner intentionally covers only sweep axis extension and patch-mode switching. Other recommendation kinds remain recorded as blocked materialized probes until a concrete workflow runner exists.
+
+## Phase 21: Reference Mechanism Suite
+
+Status: complete
+Commit: `79bbe4c`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` reference tasks with known ground truth, toy circuits, planted features, synthetic SAE dictionaries, and negative controls.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` Tracr ground-truth circuits, calibration loop, empirical nulls, and FDR correction sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/BEST_EVALS_github.md` eval registry structure, deterministic assertions, contribution standards, and CI-oriented benchmark patterns.
+
+Implemented:
+- `ReferenceTask` and `ReferenceBenchmarkReport` domain objects.
+- `ReferenceBenchmarkService` with a deterministic built-in `toy` suite.
+- Planted residual-direction fixture requiring exact-effect recovery of `unit_direct_writer`.
+- Negative-control surface-confound fixture that blocks the tempting high-proxy non-causal unit.
+- Synthetic SAE split/absorption fixture with deterministic artifact detection.
+- Empirical-null p-values, Benjamini-Hochberg q-values, proxy-vs-exact correlation, null seed counts, and calibration summary fields.
+- `mwb benchmark framework`.
+- Benchmark report persistence under `.mechanism/benchmarks/`.
+- SQLite schema and repair-index recovery for `benchmark_reports` and `reference_tasks`.
+- `docs/REFERENCE_MECHANISMS.md`, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase21_reference_mechanisms.py
+uv run ruff check src/mwb/reference_benchmarks.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase21_reference_mechanisms.py
+uv run mwb benchmark framework
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb benchmark framework
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 21 RGR tests first failed on missing `mwb.reference_benchmarks`.
+- Focused Phase 21 reference benchmark suite passed, `4 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `100 passed, 3 skipped`.
+- `uv run mwb benchmark framework`: passed with `status: pass`, `task_count: 3`, planted mechanism recovery, false-positive blocking, and synthetic SAE artifact detection.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `benchmark_reports: 1` and `reference_tasks: 3`.
+
+Known residual risk:
+- The built-in `toy` suite is deterministic and CI-friendly. It does not replace future optional heavy integrations with Tracr, ACDC/EAP, SAEBench/RAVEL, or live backend reference circuits.
+
+## Phase 22: Rich Claim Grammar
+
+Status: complete
+Commit: `9ed966c`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` evidence tiers, claim atoms, blocker-to-claim mapping, Draft Guard behavior, caveats, and scientific debt.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mech_specs.md` richer claim types and mechanism evidence requirements.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md` claim-bearing gate and non-upgrading override requirements.
+
+Implemented:
+- `ClaimGrammarReport` domain object.
+- `ClaimGrammarService` with deterministic claim-intent matching.
+- Evidence requirement resolution for association, projection, causal necessity, causal sufficiency, mediation, generalization, and mechanism claims.
+- Blocker and unresolved scientific-debt handling for blocked and caveated claims.
+- Visible inline override records that cannot upgrade blocked claims.
+- `mwb claim check <claim-json>`.
+- Draft Guard integration that runs typed claim grammar before the older phrase fallback while preserving legacy `blocked_terms`.
+- SQLite schema and repair-index recovery for `claim_grammar_reports`.
+- `docs/CLAIM_GRAMMAR.md`, fixture, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase22_claim_grammar.py
+uv run ruff check src/mwb/claim_grammar.py src/mwb/workflows/draft_guard.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase22_claim_grammar.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb draft-check docs/fixture_draft.md
+uv run mwb claim check docs/fixtures/claim_association.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 22 RGR tests first failed on missing `mwb.claim_grammar`.
+- Focused Phase 22 claim grammar suite passed, `6 passed`.
+- Focused Draft Guard plus claim grammar regression suite passed, `9 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `106 passed, 3 skipped`.
+- `uv run mwb draft-check docs/fixture_draft.md`: passed with `status: allowed`.
+- `uv run mwb claim check docs/fixtures/claim_association.json`: passed with `status: allowed`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `claim_grammar_reports: 1`.
+
+Known residual risk:
+- The grammar is deterministic and local. It does not parse arbitrary scientific prose perfectly; claims should use explicit `[CLAIM:<ref>]` tags or JSON fixtures for paper-facing enforcement.

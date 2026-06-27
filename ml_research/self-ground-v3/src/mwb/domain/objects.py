@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -9,6 +9,35 @@ from mwb.hashing import sha256_text
 from mwb.time import utc_now
 
 JsonDict = dict[str, Any]
+EvidenceRelation = Literal[
+    "supports",
+    "contradicts",
+    "depends_on",
+    "derived_from",
+    "tested_by",
+    "confounded_by",
+    "fails_on",
+    "generalizes_to",
+    "cited_by",
+]
+HypothesisWorkflowState = Literal[
+    "noticed",
+    "triaged",
+    "structurally_plausible",
+    "cheap_proxy_supported",
+    "exact_patch_supported",
+    "control_clean",
+    "generalized",
+    "claimable",
+    "structurally_impossible",
+    "proxy_false_positive",
+    "control_leaky",
+    "self_repair_confounded",
+    "off_manifold",
+    "task_artifact",
+    "dictionary_artifact",
+    "abandoned",
+]
 
 
 @runtime_checkable
@@ -103,21 +132,67 @@ class DictionaryIdentity(WorkbenchObject):
 class TensorSpace(WorkbenchObject):
     wb_type: str = "TensorSpace"
     model_ref: str
+    backend: str | None = None
     hook_point: str
+    layer: int | None = None
+    stream_kind: str | None = None
+    basis: str = "model_native"
+    normalization_context: str | None = None
     axis_names: list[str]
+    token_position_semantics: str | None = None
     dtype: str
     shape: list[int | None]
     layernorm_context: str | None = None
+    device: str | None = None
+
+
+class TensorRef(WorkbenchObject):
+    wb_type: str = "TensorRef"
+    tensor_space_ref: str
+    producer_ref: str | None = None
+    role: str
+    dtype: str
+    shape: list[int | None]
+
+
+class SpaceTransform(WorkbenchObject):
+    wb_type: str = "SpaceTransform"
+    from_space_ref: str
+    to_space_ref: str
+    transform_kind: str
+    provenance_ref: str
+    status: str = "declared"
+
+
+class SpaceCompatibilityReport(WorkbenchObject):
+    wb_type: str = "SpaceCompatibilityReport"
+    operation: str
+    status: str
+    source_space_ref: str | None = None
+    target_space_ref: str | None = None
+    unit_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    transform_refs: list[str] = Field(default_factory=list)
+    required_transform: str | None = None
 
 
 class MechanisticUnitRef(WorkbenchObject):
     wb_type: str = "MechanisticUnitRef"
+    uri: str | None = None
     unit_kind: str
     model_ref: str
     tensor_space_ref: str
+    read_space_ref: str | None = None
+    write_space_ref: str | None = None
     dictionary_ref: str | None = None
+    layer: int | None = None
+    head: int | None = None
     feature_index: int | None = None
     hook_point: str | None = None
+    direction_hash: str | None = None
+    external_aliases: list[str] = Field(default_factory=list)
+    valid_operations: list[str] = Field(default_factory=list)
+    invalid_operations: list[str] = Field(default_factory=list)
 
 
 class ExampleBundle(WorkbenchObject):
@@ -136,6 +211,34 @@ class ControlBundle(WorkbenchObject):
     control_families: dict[str, list[JsonDict]]
     source: str
     bundle_hash: str | None = None
+
+
+class ControlContaminationReport(WorkbenchObject):
+    wb_type: str = "ControlContaminationReport"
+    bundle_name: str
+    status: str
+    contaminated_count: int
+    rows: list[JsonDict] = Field(default_factory=list)
+
+
+class ExampleGeometryReport(WorkbenchObject):
+    wb_type: str = "ExampleGeometryReport"
+    bundle_name: str
+    status: str
+    checks: list[JsonDict]
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    proposals: list[JsonDict] = Field(default_factory=list)
+    contamination_report: JsonDict = Field(default_factory=dict)
+    source_links: JsonDict = Field(default_factory=dict)
+
+
+class BundleRebalanceProposal(WorkbenchObject):
+    wb_type: str = "BundleRebalanceProposal"
+    bundle_name: str
+    dry_run: bool
+    proposals: list[JsonDict]
+    source_report_ref: str | None = None
 
 
 class DomainBundle(WorkbenchObject):
@@ -179,6 +282,40 @@ class Hypothesis(WorkbenchObject):
     requested_evidence_tier: str = "causal_necessity"
 
 
+class HypothesisState(WorkbenchObject):
+    wb_type: str = "HypothesisState"
+    hypothesis_ref: str
+    state: HypothesisWorkflowState
+    evidence_tier: str = "none"
+    claim_status: str | None = None
+    approved_by: str | None = None
+    decision_ref: str | None = None
+
+
+class HypothesisTransitionReceipt(WorkbenchObject):
+    wb_type: str = "HypothesisTransitionReceipt"
+    hypothesis_ref: str
+    from_state: HypothesisWorkflowState
+    to_state: HypothesisWorkflowState
+    evidence_tier: str = "none"
+    claim_status: str | None = None
+    approved_by: str | None = None
+    decision_ref: str | None = None
+    reason: str | None = None
+
+
+class AlternativeExplanation(WorkbenchObject):
+    wb_type: str = "AlternativeExplanation"
+    hypothesis_ref: str
+    explanation_id: str
+    source_ref: str
+    blocker: str
+    evidence_for: list[str] = Field(default_factory=list)
+    evidence_against: list[str] = Field(default_factory=list)
+    next_test: str
+    status: str = "live"
+
+
 class PredictionLock(WorkbenchObject):
     wb_type: str = "PredictionLock"
     hypothesis_ref: str
@@ -199,10 +336,58 @@ class InterventionSpec(WorkbenchObject):
     metrics: list[str]
 
 
+class InterventionReceipt(WorkbenchObject):
+    wb_type: str = "InterventionReceipt"
+    run_ref: str
+    hypothesis_ref: str
+    operation: str
+    unit_ref: str | None = None
+    patch_mode: str
+    patch_source: str | None = None
+    patch_target: str | None = None
+    coefficient: float = 1.0
+    backend_executed: bool
+    causal_direction: str | None = None
+    metric_results: JsonDict = Field(default_factory=dict)
+    telemetry_ref: str | None = None
+
+
+class TelemetryReport(WorkbenchObject):
+    wb_type: str = "TelemetryReport"
+    run_ref: str
+    receipt_ref: str
+    operation: str
+    kl_drift: float
+    activation_norm_drift: float
+    status: str
+    thresholds: JsonDict = Field(default_factory=dict)
+
+
 class PreflightReport(WorkbenchObject):
     wb_type: str = "PreflightReport"
     hypothesis_ref: str
     status: str
+    checks: list[JsonDict]
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class StaticCheckResult(WorkbenchObject):
+    wb_type: str = "StaticCheckResult"
+    hypothesis_ref: str
+    check_name: str
+    status: str
+    score: float | None = None
+    metrics: JsonDict = Field(default_factory=dict)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class StaticCompilationReport(WorkbenchObject):
+    wb_type: str = "StaticCompilationReport"
+    hypothesis_ref: str
+    status: str
+    plausibility_gate: str
     checks: list[JsonDict]
     blockers: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
@@ -236,6 +421,51 @@ class NextProbePlan(WorkbenchObject):
     missing_fields: list[str] = Field(default_factory=list)
 
 
+class DiagnosisTree(WorkbenchObject):
+    wb_type: str = "DiagnosisTree"
+    source_run_ref: str
+    status: str
+    primary_blocker: str
+    nodes: list[JsonDict]
+    source_refs: list[JsonDict] = Field(default_factory=list)
+    negative_evidence: list[JsonDict] = Field(default_factory=list)
+    scientific_debt: list[JsonDict] = Field(default_factory=list)
+
+
+class MaterializedProbe(WorkbenchObject):
+    wb_type: str = "MaterializedProbe"
+    source_run_ref: str
+    next_probe_ref: str
+    diagnosis_tree_ref: str
+    template_id: str
+    probe_kind: str
+    status: str
+    runnable: bool
+    command: list[str] = Field(default_factory=list)
+    parameters: JsonDict = Field(default_factory=dict)
+    provenance: list[JsonDict] = Field(default_factory=list)
+
+
+class ReferenceTask(WorkbenchObject):
+    wb_type: str = "ReferenceTask"
+    suite: str
+    task_id: str
+    task_kind: str
+    ground_truth: JsonDict
+    fixture: JsonDict = Field(default_factory=dict)
+
+
+class ReferenceBenchmarkReport(WorkbenchObject):
+    wb_type: str = "ReferenceBenchmarkReport"
+    suite: str
+    status: str
+    tasks: list[JsonDict]
+    summary: JsonDict
+    calibration: JsonDict
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class MechanismCard(WorkbenchObject):
     wb_type: str = "MechanismCard"
     title: str
@@ -255,6 +485,46 @@ class Claim(WorkbenchObject):
     status: str
 
 
+class ClaimGrammarReport(WorkbenchObject):
+    wb_type: str = "ClaimGrammarReport"
+    claim_ref: str
+    claim_type: str
+    status: str
+    requested_text: str
+    evidence_tier: str
+    policy_profile: str = "strict"
+    supported_claim_type: str
+    missing_requirements: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    blocking_debt: list[JsonDict] = Field(default_factory=list)
+    required_caveats: list[str] = Field(default_factory=list)
+    allowed_verbs: list[str] = Field(default_factory=list)
+    blocked_verbs: list[str] = Field(default_factory=list)
+    suggested_replacements: list[str] = Field(default_factory=list)
+    override: JsonDict = Field(default_factory=dict)
+
+
+class PolicyEvaluationReport(WorkbenchObject):
+    wb_type: str = "PolicyEvaluationReport"
+    policy_profile: str
+    status: str
+    mode: str
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    claim_ceiling: str | None = None
+    checks: list[JsonDict] = Field(default_factory=list)
+    profile: JsonDict = Field(default_factory=dict)
+
+
+class EvidenceEdge(WorkbenchObject):
+    wb_type: str = "EvidenceEdge"
+    src_ref: str
+    dst_ref: str
+    relation: EvidenceRelation
+    source_ref: str | None = None
+    source_path: str | None = None
+
+
 _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
     cls.model_fields["wb_type"].default: cls
     for cls in [
@@ -263,22 +533,42 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         CellEvent,
         ModelIdentity,
         DictionaryIdentity,
+        DiagnosisTree,
         TensorSpace,
+        TensorRef,
+        SpaceTransform,
+        SpaceCompatibilityReport,
         MechanisticUnitRef,
         ExampleBundle,
         ControlBundle,
+        ControlContaminationReport,
+        ExampleGeometryReport,
+        BundleRebalanceProposal,
         DomainBundle,
         ActivationSet,
         FeatureRanking,
         Hypothesis,
+        HypothesisState,
+        HypothesisTransitionReceipt,
+        AlternativeExplanation,
         PredictionLock,
         InterventionSpec,
+        InterventionReceipt,
+        TelemetryReport,
         PreflightReport,
+        StaticCheckResult,
+        StaticCompilationReport,
         VerificationRun,
         BlockerReport,
         NextProbePlan,
+        MaterializedProbe,
+        ReferenceTask,
+        ReferenceBenchmarkReport,
         MechanismCard,
         Claim,
+        ClaimGrammarReport,
+        PolicyEvaluationReport,
+        EvidenceEdge,
     ]
 }
 

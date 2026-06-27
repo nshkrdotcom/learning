@@ -14,26 +14,47 @@ SCHEMA_TABLES = {
     "objects",
     "object_versions",
     "tensor_spaces",
+    "tensor_refs",
+    "space_transforms",
+    "space_checks",
+    "static_compiler_reports",
+    "static_check_results",
     "mechanistic_units",
     "example_bundles",
     "control_bundles",
+    "example_geometry_reports",
+    "control_contamination_reports",
+    "bundle_rebalance_proposals",
+    "reference_tasks",
+    "benchmark_reports",
     "artifacts",
     "artifact_versions",
     "lineage_edges",
+    "evidence_edges",
     "runs",
     "run_events",
     "metrics",
     "hypotheses",
+    "hypothesis_states",
+    "hypothesis_transitions",
+    "alternative_explanations",
     "prediction_locks",
     "preflight_reports",
     "verification_runs",
+    "verification_results",
+    "intervention_receipts",
+    "telemetry_reports",
     "blocker_reports",
     "next_probe_plans",
+    "diagnosis_trees",
+    "materialized_probes",
     "mechanism_cards",
     "claims",
+    "claim_grammar_reports",
     "claim_evidence",
     "draft_claim_links",
     "decisions",
+    "research_log_entries",
     "scientific_debt",
     "adapter_manifests",
     "backend_versions",
@@ -199,16 +220,26 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
                 insert_payload(sqlite_path, "artifacts", str(ref), artifact)
                 counts["artifacts"] += 1
 
+    indexed_alternative_refs: set[str] = set()
     runs_dir = project.mechanism_dir / "runs"
     for run_dir in sorted(runs_dir.glob("*")) if runs_dir.exists() else []:
         if not run_dir.is_dir():
             continue
         counts["runs"] += _insert_json_file(sqlite_path, run_dir / "run_manifest.json", "runs")
+        counts["verification_runs"] += _insert_json_file(
+            sqlite_path, run_dir / "verification_run.json", "verification_runs"
+        )
         counts["blocker_reports"] += _insert_json_file(
             sqlite_path, run_dir / "blocker_report.json", "blocker_reports"
         )
         counts["next_probe_plans"] += _insert_json_file(
             sqlite_path, run_dir / "next_probe.json", "next_probe_plans"
+        )
+        counts["diagnosis_trees"] += _insert_json_file(
+            sqlite_path, run_dir / "diagnosis_tree.json", "diagnosis_trees"
+        )
+        counts["materialized_probes"] += _insert_json_file(
+            sqlite_path, run_dir / "probe.json", "materialized_probes"
         )
         counts["mechanism_cards"] += _insert_json_file(
             sqlite_path, run_dir / "mechanism_card.json", "mechanism_cards"
@@ -219,6 +250,126 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         counts["scientific_debt"] += _insert_json_file(
             sqlite_path, run_dir / "scientific_debt.json", "scientific_debt"
         )
+        for receipt in _read_jsonl(run_dir / "intervention_receipts.jsonl"):
+            ref = receipt.get("wb_ref") or receipt.get("receipt_ref")
+            if ref:
+                insert_payload(sqlite_path, "intervention_receipts", str(ref), receipt)
+                counts["intervention_receipts"] += 1
+        for result in _read_jsonl(run_dir / "verification_results.jsonl"):
+            ref = result.get("wb_ref") or result.get("result_ref")
+            if ref:
+                insert_payload(sqlite_path, "verification_results", str(ref), result)
+                counts["verification_results"] += 1
+        for telemetry in _read_jsonl(run_dir / "telemetry.jsonl"):
+            ref = telemetry.get("wb_ref") or telemetry.get("telemetry_ref")
+            if ref:
+                insert_payload(sqlite_path, "telemetry_reports", str(ref), telemetry)
+                counts["telemetry_reports"] += 1
+        counts["alternative_explanations"] += _insert_json_file_once(
+            sqlite_path,
+            run_dir / "alternative_explanations.json",
+            "alternative_explanations",
+            indexed_alternative_refs,
+        )
+
+    hypotheses_dir = project.mechanism_dir / "hypotheses"
+    for path in sorted(hypotheses_dir.glob("*.json")) if hypotheses_dir.exists() else []:
+        if path.name.endswith("_lifecycle.json"):
+            counts["hypothesis_states"] += _insert_json_file(
+                sqlite_path, path, "hypothesis_states"
+            )
+        elif path.name.endswith("_alternatives.json"):
+            counts["alternative_explanations"] += _insert_json_file_once(
+                sqlite_path,
+                path,
+                "alternative_explanations",
+                indexed_alternative_refs,
+            )
+        else:
+            counts["hypotheses"] += _insert_json_file(sqlite_path, path, "hypotheses")
+    transition_paths = (
+        sorted(hypotheses_dir.glob("*_transitions.jsonl")) if hypotheses_dir.exists() else []
+    )
+    for path in transition_paths:
+        for receipt in _read_jsonl(path):
+            ref = receipt.get("wb_ref") or receipt.get("receipt_ref")
+            if ref:
+                insert_payload(sqlite_path, "hypothesis_transitions", str(ref), receipt)
+                counts["hypothesis_transitions"] += 1
+
+    claims_dir = project.mechanism_dir / "claims"
+    claim_report_paths = (
+        sorted(claims_dir.glob("*_grammar_report.json")) if claims_dir.exists() else []
+    )
+    for path in claim_report_paths:
+        counts["claim_grammar_reports"] += _insert_json_file(
+            sqlite_path,
+            path,
+            "claim_grammar_reports",
+        )
+
+    space_checks_dir = project.mechanism_dir / "space_checks"
+    for path in sorted(space_checks_dir.glob("*.json")) if space_checks_dir.exists() else []:
+        counts["space_checks"] += _insert_json_file(sqlite_path, path, "space_checks")
+
+    static_compiler_dir = project.mechanism_dir / "static_compiler"
+    static_paths = (
+        sorted(static_compiler_dir.glob("*.json")) if static_compiler_dir.exists() else []
+    )
+    for path in static_paths:
+        restored = _insert_static_compiler_report(sqlite_path, path)
+        counts["static_compiler_reports"] += restored["reports"]
+        counts["static_check_results"] += restored["checks"]
+
+    bundle_audits_dir = project.mechanism_dir / "bundle_audits"
+    bundle_audit_paths = (
+        sorted(bundle_audits_dir.glob("*.json")) if bundle_audits_dir.exists() else []
+    )
+    for path in bundle_audit_paths:
+        restored = _insert_bundle_audit_report(sqlite_path, path)
+        counts["example_geometry_reports"] += restored["geometry"]
+        counts["control_contamination_reports"] += restored["contamination"]
+
+    bundle_rebalance_dir = project.mechanism_dir / "bundle_rebalance"
+    rebalance_paths = (
+        sorted(bundle_rebalance_dir.glob("*.json")) if bundle_rebalance_dir.exists() else []
+    )
+    for path in rebalance_paths:
+        counts["bundle_rebalance_proposals"] += _insert_json_file(
+            sqlite_path,
+            path,
+            "bundle_rebalance_proposals",
+        )
+
+    benchmarks_dir = project.mechanism_dir / "benchmarks"
+    benchmark_paths = sorted(benchmarks_dir.glob("*.json")) if benchmarks_dir.exists() else []
+    indexed_benchmark_refs: set[str] = set()
+    indexed_reference_task_refs: set[str] = set()
+    for path in benchmark_paths:
+        restored = _insert_benchmark_report(
+            sqlite_path,
+            path,
+            indexed_benchmark_refs,
+            indexed_reference_task_refs,
+        )
+        counts["benchmark_reports"] += restored["reports"]
+        counts["reference_tasks"] += restored["tasks"]
+
+    for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
+        ref = edge.get("wb_ref") or edge.get("edge_ref")
+        if ref:
+            insert_payload(sqlite_path, "evidence_edges", str(ref), edge)
+            counts["evidence_edges"] += 1
+
+    from mwb.ledgers import index_ledgers, parse_research_ledgers
+
+    parsed_ledgers = parse_research_ledgers(project.root / "research" / "logs")
+    if not parsed_ledgers["errors"]:
+        ledger_counts = index_ledgers(sqlite_path, parsed_ledgers)
+        counts["claims"] += ledger_counts["claims"]
+        counts["decisions"] += ledger_counts["decisions"]
+        counts["research_log_entries"] += ledger_counts["research_log_entries"]
+        counts["runs"] += ledger_counts["run_ledger_rows"]
 
     return {"status": "ok", "sqlite_path": str(sqlite_path), "counts": counts}
 
@@ -251,6 +402,89 @@ def _insert_json_file(sqlite_path: Path, path: Path, table: str) -> int:
         or path.parent.name
     )
     insert_payload(sqlite_path, table, str(ref), payload)
+    return 1
+
+
+def _insert_static_compiler_report(sqlite_path: Path, path: Path) -> dict[str, int]:
+    if not path.exists():
+        return {"reports": 0, "checks": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = payload.get("wb_ref") or payload.get("hypothesis_ref") or path.parent.name
+    insert_payload(sqlite_path, "static_compiler_reports", str(ref), payload)
+    checks = 0
+    for check in payload.get("checks", []):
+        check_ref = check.get("wb_ref")
+        if check_ref:
+            insert_payload(sqlite_path, "static_check_results", str(check_ref), check)
+            checks += 1
+    return {"reports": 1, "checks": checks}
+
+
+def _insert_bundle_audit_report(sqlite_path: Path, path: Path) -> dict[str, int]:
+    if not path.exists():
+        return {"geometry": 0, "contamination": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = payload.get("wb_ref") or payload.get("bundle_name") or path.parent.name
+    insert_payload(sqlite_path, "example_geometry_reports", str(ref), payload)
+    contamination = payload.get("contamination_report")
+    if isinstance(contamination, dict) and contamination.get("wb_ref"):
+        insert_payload(
+            sqlite_path,
+            "control_contamination_reports",
+            str(contamination["wb_ref"]),
+            contamination,
+        )
+        return {"geometry": 1, "contamination": 1}
+    return {"geometry": 1, "contamination": 0}
+
+
+def _insert_benchmark_report(
+    sqlite_path: Path,
+    path: Path,
+    seen_reports: set[str],
+    seen_tasks: set[str],
+) -> dict[str, int]:
+    if not path.exists():
+        return {"reports": 0, "tasks": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = str(payload.get("wb_ref") or path.stem)
+    reports = 0
+    if ref not in seen_reports:
+        insert_payload(sqlite_path, "benchmark_reports", ref, payload)
+        seen_reports.add(ref)
+        reports = 1
+    tasks = 0
+    for task in payload.get("tasks", []):
+        task_ref = task.get("task_ref")
+        if not task_ref or str(task_ref) in seen_tasks:
+            continue
+        insert_payload(sqlite_path, "reference_tasks", str(task_ref), task)
+        seen_tasks.add(str(task_ref))
+        tasks += 1
+    return {"reports": reports, "tasks": tasks}
+
+
+def _insert_json_file_once(
+    sqlite_path: Path,
+    path: Path,
+    table: str,
+    seen_refs: set[str],
+) -> int:
+    if not path.exists():
+        return 0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = (
+        payload.get("wb_ref")
+        or payload.get("run_ref")
+        or payload.get("source_run_ref")
+        or payload.get("mechanism_card_ref")
+        or path.parent.name
+    )
+    ref_text = str(ref)
+    if ref_text in seen_refs:
+        return 0
+    seen_refs.add(ref_text)
+    insert_payload(sqlite_path, table, ref_text, payload)
     return 1
 
 
