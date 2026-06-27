@@ -793,7 +793,7 @@ Known residual risk:
 
 Status: complete
 Commit: `b89d147`
-Pushed: pending
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` TensorSpace, MechanisticUnitRef, and invalid mechanistic operations sections.
@@ -842,9 +842,9 @@ Known residual risk:
 
 ## Phase 17: Static Mechanistic Compiler
 
-Status: complete pending commit and push
+Status: complete
 Commit: `90253a9`
-Pushed: pending
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` static preflight, decoder-unembedding projection math, preflight statuses, blocker taxonomy, and required command sections.
@@ -897,3 +897,62 @@ Observed result:
 
 Known residual risk:
 - Static compiler reports are structural plausibility evidence only. They cannot produce causal evidence or claim promotion without subsequent prediction-locked causal verification.
+
+## Phase 18: Exact Causal Verification Operations
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` causal verification operations, required outputs, verification metrics, blocker taxonomy, and required verification tests.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` causal engine, research taste policies, noising/denoising, resample ablation, and telemetry guidance.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0010_mechinterp_tracker_gpt.md` activation patching variants, supported operations, telemetry, and ablation/amplification artifact requirements.
+
+Implemented:
+- `InterventionReceipt` and `TelemetryReport` domain objects.
+- `CausalVerificationService` for exact verification runs, metrics, receipts, telemetry, policy downgrades, and artifact persistence.
+- Resample-ablation receipts with target/control metric calculation.
+- Distinct noising and denoising receipts with causal direction.
+- Feature amplification receipts with coefficients.
+- KL drift and activation norm drift telemetry with `off_manifold_intervention` blockers.
+- Zero-ablation claim ceiling policy that downgrades claim-bearing attempts to `diagnostic_only` unless policy changes.
+- Real TransformerLens/SAELens resample-ablation path: clean/corrupt activation cache, SAE encode/decode delta, hook patch, and logit rerun.
+- `mwb verify` artifact-writing integration.
+- SQLite schema and repair-index recovery for verification runs, verification results, intervention receipts, and telemetry reports.
+- `docs/CAUSAL_VERIFICATION.md`, fixture, README, usage-guide, MechanismCard evidence examples, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase18_causal_verification.py
+uv run pytest tests/test_phase18_causal_verification.py tests/test_causal_verification_integration.py
+uv run ruff check src/mwb/causal_verification.py src/mwb/cli.py src/mwb/domain/objects.py src/mwb/domain/__init__.py src/mwb/sqlite_index.py tests/test_phase18_causal_verification.py tests/test_causal_verification_integration.py
+uv run pytest tests/test_phase5_workflow.py tests/test_phase18_causal_verification.py
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+uv sync
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 18 RGR tests first failed on missing `mwb.causal_verification` and `mwb verify` not writing run artifacts.
+- Focused Phase 18 artifact suite passed, `6 passed`.
+- Existing Phase 5 preflight/verify workflow tests still pass with artifact-writing verification.
+- Real Pythia/SAE resample-ablation integration first reached the TransformerLens hook path and failed on hook signature, then passed after the hook accepted TransformerLens' keyword argument.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `84 passed, 3 skipped`.
+- `MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_causal_verification_integration.py -m integration`: passed, `1 passed`; warnings were upstream TransformerLens/SAELens deprecations.
+- `uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run`: passed and wrote a diagnostic run directory with one planned resample-ablation operation.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `verification_runs: 2`, `intervention_receipts: 3`, `verification_results: 3`, and `telemetry_reports: 1`.
+
+Known residual risk:
+- Exact verification receipts are intervention evidence, but mechanism-level claims still require clean controls, generalization, mediation where applicable, and claim-ledger review.

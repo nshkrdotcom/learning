@@ -36,6 +36,9 @@ SCHEMA_TABLES = {
     "prediction_locks",
     "preflight_reports",
     "verification_runs",
+    "verification_results",
+    "intervention_receipts",
+    "telemetry_reports",
     "blocker_reports",
     "next_probe_plans",
     "mechanism_cards",
@@ -215,6 +218,9 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         if not run_dir.is_dir():
             continue
         counts["runs"] += _insert_json_file(sqlite_path, run_dir / "run_manifest.json", "runs")
+        counts["verification_runs"] += _insert_json_file(
+            sqlite_path, run_dir / "verification_run.json", "verification_runs"
+        )
         counts["blocker_reports"] += _insert_json_file(
             sqlite_path, run_dir / "blocker_report.json", "blocker_reports"
         )
@@ -230,6 +236,21 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         counts["scientific_debt"] += _insert_json_file(
             sqlite_path, run_dir / "scientific_debt.json", "scientific_debt"
         )
+        for receipt in _read_jsonl(run_dir / "intervention_receipts.jsonl"):
+            ref = receipt.get("wb_ref") or receipt.get("receipt_ref")
+            if ref:
+                insert_payload(sqlite_path, "intervention_receipts", str(ref), receipt)
+                counts["intervention_receipts"] += 1
+        for result in _read_jsonl(run_dir / "verification_results.jsonl"):
+            ref = result.get("wb_ref") or result.get("result_ref")
+            if ref:
+                insert_payload(sqlite_path, "verification_results", str(ref), result)
+                counts["verification_results"] += 1
+        for telemetry in _read_jsonl(run_dir / "telemetry.jsonl"):
+            ref = telemetry.get("wb_ref") or telemetry.get("telemetry_ref")
+            if ref:
+                insert_payload(sqlite_path, "telemetry_reports", str(ref), telemetry)
+                counts["telemetry_reports"] += 1
         counts["alternative_explanations"] += _insert_json_file_once(
             sqlite_path,
             run_dir / "alternative_explanations.json",

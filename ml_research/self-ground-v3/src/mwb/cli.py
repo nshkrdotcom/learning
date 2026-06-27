@@ -12,6 +12,7 @@ from rich.console import Console
 
 from mwb.adapters.saelens import SAELensAdapter
 from mwb.adapters.transformer_lens import TransformerLensAdapter
+from mwb.causal_verification import CausalVerificationService
 from mwb.context import RunContext
 from mwb.doctor import run_doctor
 from mwb.evidence_graph import QUERY_KINDS, EvidenceGraphService
@@ -32,7 +33,6 @@ from mwb.workflows.preflight import run_preflight
 from mwb.workflows.runs import resolve_run_path
 from mwb.workflows.self_ground_ingest import ingest_self_ground_run
 from mwb.workflows.sweep import parse_axes, write_sweep_run
-from mwb.workflows.verify import run_verify
 
 app = typer.Typer(no_args_is_help=True, help="Mechanistic Workbench local CLI.")
 inspect_app = typer.Typer(help="Inspect local workbench state.")
@@ -308,9 +308,10 @@ def verify(
     dry_run: DryRunOption = False,
 ) -> None:
     """Plan or run causal verification for a hypothesis JSON file."""
+    project = ProjectManager.discover_or_create()
     payload = load_json_payload(hypothesis)
     lock_payload = load_json_payload(prediction_lock) if prediction_lock else None
-    result = run_verify(
+    result = CausalVerificationService(project).verify_payload(
         payload,
         prediction_lock=lock_payload,
         diagnostic_only=diagnostic_only,

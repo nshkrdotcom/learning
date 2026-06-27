@@ -285,6 +285,8 @@ git push
 
 ## Phase 17: Exact Causal Verification Operations
 
+Status: complete in repo Phase 18 pending final commit and push.
+
 ### Required Reading
 
 - `0005.md` causal verification.
@@ -293,27 +295,27 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for resample ablation receipts.
-- [ ] Add failing tests for noising and denoising distinction.
-- [ ] Add failing tests for feature amplification.
-- [ ] Add failing tests for telemetry drift checks.
-- [ ] Add failing tests that zero ablation has a lower claim ceiling unless policy allows it.
-- [ ] Add failing real integration test on Pythia-70M small bundle.
+- [x] Add failing tests for resample ablation receipts.
+- [x] Add failing tests for noising and denoising distinction.
+- [x] Add failing tests for feature amplification.
+- [x] Add failing tests for telemetry drift checks.
+- [x] Add failing tests that zero ablation has a lower claim ceiling unless policy allows it.
+- [x] Add failing real integration test on Pythia-70M small bundle.
 
 ### Implementation
 
-- [ ] Implement resample ablation through TransformerLens/SAELens path.
-- [ ] Implement noising/denoising receipts.
-- [ ] Implement feature amplification receipts.
-- [ ] Implement KL/norm drift telemetry.
-- [ ] Write verification artifacts.
-- [ ] Enforce PredictionLock for claim-bearing exact runs.
+- [x] Implement resample ablation through TransformerLens/SAELens path.
+- [x] Implement noising/denoising receipts.
+- [x] Implement feature amplification receipts.
+- [x] Implement KL/norm drift telemetry.
+- [x] Write verification artifacts.
+- [x] Enforce PredictionLock for claim-bearing exact runs.
 
 ### Docs
 
-- [ ] Add `docs/CAUSAL_VERIFICATION.md`.
-- [ ] Update MechanismCard evidence examples.
-- [ ] Update phase ledger.
+- [x] Add `docs/CAUSAL_VERIFICATION.md`.
+- [x] Update MechanismCard evidence examples.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -331,7 +333,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 17: add exact causal verification operations"
+git commit -m "phase 18: add exact causal verification operations"
 git push
 ```
 

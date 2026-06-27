@@ -308,6 +308,33 @@ class InterventionSpec(WorkbenchObject):
     metrics: list[str]
 
 
+class InterventionReceipt(WorkbenchObject):
+    wb_type: str = "InterventionReceipt"
+    run_ref: str
+    hypothesis_ref: str
+    operation: str
+    unit_ref: str | None = None
+    patch_mode: str
+    patch_source: str | None = None
+    patch_target: str | None = None
+    coefficient: float = 1.0
+    backend_executed: bool
+    causal_direction: str | None = None
+    metric_results: JsonDict = Field(default_factory=dict)
+    telemetry_ref: str | None = None
+
+
+class TelemetryReport(WorkbenchObject):
+    wb_type: str = "TelemetryReport"
+    run_ref: str
+    receipt_ref: str
+    operation: str
+    kl_drift: float
+    activation_norm_drift: float
+    status: str
+    thresholds: JsonDict = Field(default_factory=dict)
+
+
 class PreflightReport(WorkbenchObject):
     wb_type: str = "PreflightReport"
     hypothesis_ref: str
@@ -418,6 +445,8 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         AlternativeExplanation,
         PredictionLock,
         InterventionSpec,
+        InterventionReceipt,
+        TelemetryReport,
         PreflightReport,
         StaticCheckResult,
         StaticCompilationReport,

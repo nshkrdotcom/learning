@@ -155,6 +155,22 @@ uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
 
 The compiler writes `.mechanism/static_compiler/latest_static_compile.json`, indexes top-level reports plus per-check rows, and blocks claim-bearing verification when the gate is `FAIL`. See `docs/STATIC_COMPILER.md`.
 
+## Causal Verification
+
+Run exact verification operations and write receipts:
+
+```bash
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only
+```
+
+Dry-run verification remains non-claim-bearing:
+
+```bash
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+```
+
+Verification writes `.mechanism/runs/<run_ref>/verification_run.json`, `intervention_receipts.jsonl`, `verification_results.jsonl`, and `telemetry.jsonl`. Claim-bearing runs require a prediction lock and a passing static compiler gate. See `docs/CAUSAL_VERIFICATION.md`.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:
