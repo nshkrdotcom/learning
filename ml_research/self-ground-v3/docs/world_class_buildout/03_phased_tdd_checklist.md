@@ -591,7 +591,7 @@ git push
 
 ## Phase 23: Adapter Expansion With Conformance
 
-Status: complete in repo Phase 24. Implementation commit: `17d3045`; push pending.
+Status: complete in repo Phase 24. Implementation commit: `17d3045`; pushed.
 
 ### Required Reading
 

@@ -1228,7 +1228,7 @@ Known residual risk:
 
 Status: complete
 Commit: `17d3045`
-Pushed: pending
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md` adapter strategy, provenance archive, P1 acceptance, and no diagnostic-to-evidence promotion invariant.
