@@ -20,7 +20,13 @@ Held-out prompt construction is different from merely changing the random seed. 
 
 The held-out pass tested head-specific `hook_z` clean-to-corrupt patching, zero ablation, and mean ablation.
 
-Intervention variants matter because clean-to-corrupt patching and ablation answer different questions. A candidate that only works under one intervention is weaker than one that survives multiple causal checks.
+Intervention variants matter because clean-to-corrupt patching, zero ablation, and mean ablation answer different questions. A candidate that only works under one intervention is weaker than one that survives multiple causal checks.
+
+## What position variants tested
+
+The held-out pass tested `final` and `previous_occurrence` position variants. Final-position rows were available broadly, while previous-occurrence rows were often unavailable or insufficient for controls without meaningful source-position metadata.
+
+Position matters because final-position patching may not test the same causal role as source/previous-position intervention. In this run, final-only effects were downgraded rather than treated as robust.
 
 ## What survived
 
@@ -44,15 +50,17 @@ L7H0 was falsified. It did not produce a useful held-out positive effect.
 
 Controls must be causal controls, not just descriptive controls. The no-structure same-token controls and wrong-target controls showed that some interventions can move logits in ways that are not specific to the intended induction structure.
 
+## What negative controls revealed
+
 The negative-control heads were also useful. Some produced apparent survival rows, which made it easier to see that seed-level survival was too permissive by itself.
+
+Negative controls passing permissive seed-level rules means the rule is not specific enough.
 
 ## What I Learned About Robustness
 
 The useful result is not that a candidate was preserved. The useful result is that the robustness pass made the earlier candidate set harder to trust.
 
-Position matters because final-position patching may not test the same causal role as source/previous-position intervention. In this run, previous-occurrence rows were often unavailable or insufficient, so final-only effects were downgraded rather than treated as robust.
-
-A negative held-out result is useful. It prevents treating a local synthetic-generator result as a stronger MI finding.
+A negative or downgraded held-out result is useful. It prevents treating a local synthetic-generator result as a stronger MI finding.
 
 ## Mistakes This Prevents
 
@@ -71,6 +79,8 @@ If continuing with induction practice, I would build a smaller prompt set with c
 ## What I Will Not Claim
 
 I will not claim induction-head discovery.
+
+No induction-head discovery has been established.
 
 I will not claim a circuit.
 
