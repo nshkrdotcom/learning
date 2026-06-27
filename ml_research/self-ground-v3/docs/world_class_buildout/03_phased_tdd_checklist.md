@@ -72,6 +72,8 @@ git push
 
 ## Phase 13: Git-Native Research Ledgers
 
+Status: complete in repo Phase 14 pending final commit and push.
+
 ### Required Reading
 
 - `0430_revised_v6.md` claim ledger, run ledger, decision log, research log.
@@ -81,30 +83,30 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing parser tests for `research/logs/claim_ledger.md`.
-- [ ] Add failing parser tests for `research/logs/run_ledger.csv`.
-- [ ] Add failing parser tests for `research/logs/decision_log.md`.
-- [ ] Add failing tests for run-to-ledger proposal generation.
-- [ ] Add failing tests that SQLite rebuild does not lose ledger state.
+- [x] Add failing parser tests for `research/logs/claim_ledger.md`.
+- [x] Add failing parser tests for `research/logs/run_ledger.csv`.
+- [x] Add failing parser tests for `research/logs/decision_log.md`.
+- [x] Add failing tests for run-to-ledger proposal generation.
+- [x] Add failing tests that SQLite rebuild does not lose ledger state.
 
 ### Implementation
 
-- [ ] Add `research/` scaffold.
-- [ ] Add claim ledger schema.
-- [ ] Add run ledger schema.
-- [ ] Add decision log schema.
-- [ ] Add research log schema.
-- [ ] Add `mwb ledger validate`.
-- [ ] Add `mwb ledger propose-run <run-ref>`.
-- [ ] Add `mwb ledger propose-claim <card-ref>`.
-- [ ] Add human-reviewable proposal files.
+- [x] Add `research/` scaffold.
+- [x] Add claim ledger schema.
+- [x] Add run ledger schema.
+- [x] Add decision log schema.
+- [x] Add research log schema.
+- [x] Add `mwb ledger validate`.
+- [x] Add `mwb ledger propose-run <run-ref>`.
+- [x] Add `mwb ledger propose-claim <card-ref>`.
+- [x] Add human-reviewable proposal files.
 
 ### Docs
 
-- [ ] Add `docs/LEDGERS.md`.
-- [ ] Add templates under `research/`.
-- [ ] Update README/USAGE.
-- [ ] Update phase ledger.
+- [x] Add `docs/LEDGERS.md`.
+- [x] Add templates under `research/`.
+- [x] Update README/USAGE.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -121,7 +123,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 13: add git-native research ledgers"
+git commit -m "phase 14: add git-native research ledgers"
 git push
 ```
 

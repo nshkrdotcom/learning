@@ -35,6 +35,7 @@ SCHEMA_TABLES = {
     "claim_evidence",
     "draft_claim_links",
     "decisions",
+    "research_log_entries",
     "scientific_debt",
     "adapter_manifests",
     "backend_versions",
@@ -226,6 +227,16 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         if ref:
             insert_payload(sqlite_path, "evidence_edges", str(ref), edge)
             counts["evidence_edges"] += 1
+
+    from mwb.ledgers import index_ledgers, parse_research_ledgers
+
+    parsed_ledgers = parse_research_ledgers(project.root / "research" / "logs")
+    if not parsed_ledgers["errors"]:
+        ledger_counts = index_ledgers(sqlite_path, parsed_ledgers)
+        counts["claims"] += ledger_counts["claims"]
+        counts["decisions"] += ledger_counts["decisions"]
+        counts["research_log_entries"] += ledger_counts["research_log_entries"]
+        counts["runs"] += ledger_counts["run_ledger_rows"]
 
     return {"status": "ok", "sqlite_path": str(sqlite_path), "counts": counts}
 

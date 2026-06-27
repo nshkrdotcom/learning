@@ -102,6 +102,23 @@ uv run mwb graph query debt-blocking <claim-ref>
 
 Graph edges are written to `.mechanism/graph/evidence_edges.jsonl` and indexed in SQLite. See `docs/EVIDENCE_GRAPH.md` for the schema and claim boundary.
 
+## Research Ledgers
+
+Validate Git-visible ledgers and refresh their SQLite index rows:
+
+```bash
+uv run mwb ledger validate
+```
+
+Generate human-reviewable proposals from local artifacts:
+
+```bash
+uv run mwb ledger propose-run <run-ref>
+uv run mwb ledger propose-claim <card-ref>
+```
+
+Committed ledgers live under `research/logs/`. Proposal files stay under `.mechanism/` until reviewed. See `docs/LEDGERS.md` for schemas and parser rules.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

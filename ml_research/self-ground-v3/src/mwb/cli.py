@@ -16,6 +16,7 @@ from mwb.context import RunContext
 from mwb.doctor import run_doctor
 from mwb.evidence_graph import QUERY_KINDS, EvidenceGraphService
 from mwb.ipython.extension import start_workbench_ipython, unload_ipython_extension
+from mwb.ledgers import propose_claim_update, propose_run_ledger_row, validate_ledgers
 from mwb.project import ProjectManager
 from mwb.refs import stable_ref
 from mwb.session import SessionManager, latest_session
@@ -37,11 +38,13 @@ conformance_app = typer.Typer(help="Run adapter conformance checks.")
 demo_app = typer.Typer(help="Run built-in workbench demos.")
 ingest_app = typer.Typer(help="Ingest external research artifact sets.")
 graph_app = typer.Typer(help="Rebuild and query the local evidence graph.")
+ledger_app = typer.Typer(help="Validate Git-native research ledgers and proposals.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
 app.add_typer(ingest_app, name="ingest")
 app.add_typer(graph_app, name="graph")
+app.add_typer(ledger_app, name="ledger")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -76,6 +79,8 @@ GraphQueryKindArgument = Annotated[
     ),
 ]
 GraphRefArgument = Annotated[str, typer.Argument(help="Source or target ref for the graph query.")]
+RunRefArgument = Annotated[str, typer.Argument(help="Run ref or run directory.")]
+CardRefArgument = Annotated[str, typer.Argument(help="MechanismCard ref or JSON path.")]
 
 
 @app.command()
@@ -127,6 +132,32 @@ def graph_query(kind: GraphQueryKindArgument, ref: GraphRefArgument) -> None:
     if not service.edge_path.exists():
         raise typer.BadParameter("evidence graph is missing; run `mwb graph rebuild` first")
     console.print_json(json.dumps(service.query(kind, ref)))
+
+
+@ledger_app.command("validate")
+def ledger_validate() -> None:
+    """Validate and index Git-visible research ledgers."""
+    project = ProjectManager.discover_or_create()
+    report = validate_ledgers(project)
+    console.print_json(json.dumps(report))
+    if report["status"] != "ok":
+        raise typer.Exit(code=1)
+
+
+@ledger_app.command("propose-run")
+def ledger_propose_run(run_ref: RunRefArgument) -> None:
+    """Write a human-reviewable run ledger row proposal for a local run."""
+    project = ProjectManager.discover_or_create()
+    report = propose_run_ledger_row(project, run_ref)
+    console.print_json(json.dumps(report))
+
+
+@ledger_app.command("propose-claim")
+def ledger_propose_claim(card_ref: CardRefArgument) -> None:
+    """Write a human-reviewable claim ledger proposal from a MechanismCard."""
+    project = ProjectManager.discover_or_create()
+    report = propose_claim_update(project, card_ref)
+    console.print_json(json.dumps(report))
 
 
 @app.command()

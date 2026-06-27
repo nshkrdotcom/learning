@@ -140,7 +140,7 @@ class ProjectManager:
             )
             insert_event(sqlite_path, event)
 
-        return Project(
+        project = Project(
             root=repo_root,
             name=project_name,
             project_ref=project_ref,
@@ -149,6 +149,10 @@ class ProjectManager:
             events_path=events_path,
             schema_version=SCHEMA_VERSION,
         )
+        from mwb.ledgers import ensure_research_scaffold
+
+        ensure_research_scaffold(project)
+        return project
 
     @staticmethod
     def discover(start: Path | None = None) -> Project:

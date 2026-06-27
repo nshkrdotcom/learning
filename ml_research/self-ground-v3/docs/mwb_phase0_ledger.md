@@ -688,3 +688,53 @@ Observed result:
 
 Known residual risk:
 - The graph records declared provenance and evidence relationships. It does not upgrade evidence tiers or make a claim scientifically true by itself.
+
+## Phase 14: Git-Native Research Ledgers
+
+Status: complete pending QC and commit finalization
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` claim ledger, run ledger, decision log, research log, and SQLite-never-canonical sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0431_selfground_refactor.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0432_selfground_refactor.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0300_research_landscape_for_git_native_research_integrity_systems.md`
+
+Implemented:
+- Git-visible `research/` scaffold and committed ledger templates.
+- Claim ledger parser for H3 claim headings plus required YAML blocks.
+- Run ledger CSV schema validation with canonical column order.
+- Decision log parser for H2 decision headings plus required YAML blocks.
+- Research log parser for date entries plus required YAML blocks.
+- `mwb ledger validate` for parser validation and SQLite indexing.
+- `mwb ledger propose-run <run-ref>` with human-reviewable `run_ledger_row.csv` output.
+- `mwb ledger propose-claim <card-ref>` with human-reviewable Markdown and JSON proposal files.
+- `mwb rebuild-index` / `mwb repair-index` restoration of ledger rows from Git-visible files.
+- `docs/LEDGERS.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase14_research_ledgers.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb ledger validate
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 14 RGR tests first failed on missing `mwb.ledgers`, missing `mwb ledger`, and missing Git-visible research scaffold.
+- Focused Phase 14 test suite passed after implementation, `4 passed`.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `60 passed, 1 skipped`.
+- `uv run mwb ledger validate`: passed with `status: ok`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok`.
+
+Known residual risk:
+- Ledger validation proves structure and local traceability. It does not silently append proposals or promote claim status without human review.
