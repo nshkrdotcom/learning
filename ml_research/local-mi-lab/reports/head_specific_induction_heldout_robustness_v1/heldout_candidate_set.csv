@@ -1,0 +1,17 @@
+candidate_id,layer,head,candidate_group,source_reason,prior_mean_gap,prior_replication_status,prior_raw_attention_candidate,prior_random_comparison_candidate,include_in_main
+heldout_cand_000,7,7,random_comparison_replicated,Pre-registered replicated narrow candidate from prior multi-seed report.,0.0805959202384717,replicated_head_specific_candidate,False,True,True
+heldout_cand_001,9,11,replicated_candidate,Pre-registered replicated narrow candidate from prior multi-seed report.,0.0357487996863949,replicated_head_specific_candidate,False,False,True
+heldout_cand_002,7,11,replicated_candidate,Pre-registered replicated narrow candidate from prior multi-seed report.,0.0258679062407106,replicated_head_specific_candidate,False,False,True
+heldout_cand_003,7,0,replicated_candidate,Pre-registered replicated narrow candidate from prior multi-seed report.,0.0105255260489239,replicated_head_specific_candidate,False,False,True
+heldout_cand_004,0,8,replicated_candidate,Pre-registered replicated narrow candidate from prior multi-seed report.,0.0077378474511723,replicated_head_specific_candidate,False,False,True
+heldout_cand_005,0,1,prior_raw_attention_failed,Prior raw-attention candidate retained as a comparison head.,-0.1303535516255031,no_effect,True,False,True
+heldout_cand_006,0,5,prior_raw_attention_failed,Prior raw-attention candidate retained as a comparison head.,-0.0469168197545695,no_effect,True,False,True
+heldout_cand_007,0,10,prior_raw_attention_failed,Prior raw-attention candidate retained as a comparison head.,-0.1086183402862367,nonspecific,True,False,True
+heldout_cand_008,11,8,prior_raw_attention_failed,Prior raw-attention candidate retained as a comparison head.,0.0116061609532817,nonspecific,True,False,True
+heldout_cand_009,0,4,prior_raw_attention_failed,Prior raw-attention candidate retained as a comparison head.,-0.0180625711897544,no_effect,True,False,True
+heldout_cand_010,9,5,negative_control_no_effect,Deterministic no-effect negative control from prior multi-seed report.,0.0012581910935472,no_effect,False,False,True
+heldout_cand_011,11,0,negative_control_no_effect,Deterministic no-effect negative control from prior multi-seed report.,-0.0055540948178925,no_effect,False,False,True
+heldout_cand_012,4,1,negative_control_no_effect,Deterministic no-effect negative control from prior multi-seed report.,-0.0062110058364514,no_effect,False,True,True
+heldout_cand_013,4,9,negative_control_nonspecific,Deterministic nonspecific negative control from prior multi-seed report.,-3.622403276253335e-05,nonspecific,False,False,True
+heldout_cand_014,11,9,negative_control_nonspecific,Deterministic nonspecific negative control from prior multi-seed report.,0.0004556494440327,nonspecific,False,True,True
+heldout_cand_015,11,7,negative_control_nonspecific,Deterministic nonspecific negative control from prior multi-seed report.,0.0005153471815705,nonspecific,False,True,True
