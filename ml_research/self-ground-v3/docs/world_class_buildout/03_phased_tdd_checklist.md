@@ -642,7 +642,7 @@ git push
 
 ## Phase 24: Release Hardening
 
-Status: QC green in repo Phase 25; implementation commit pending.
+Status: complete in repo Phase 25. Implementation commit: `de686c6`; push pending.
 
 ### Required Reading
 

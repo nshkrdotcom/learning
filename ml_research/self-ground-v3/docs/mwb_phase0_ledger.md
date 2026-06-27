@@ -1284,8 +1284,8 @@ Known residual risk:
 
 ## Phase 25: Release Hardening
 
-Status: complete; implementation commit pending
-Commit: pending
+Status: complete
+Commit: `de686c6`
 Pushed: pending
 
 Required reading completed:
