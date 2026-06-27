@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from mwb.claim_grammar import ClaimGrammarService
+
 CLAIM_RE = re.compile(r"\[CLAIM:([A-Za-z0-9_\-]+)\]")
 
 
@@ -31,6 +33,16 @@ def check_draft_text(text: str, claim_cards: dict[str, dict[str, Any]]) -> dict[
             findings.append(
                 {"claim_ref": claim_ref, "status": "missing_card", "sentence": sentence}
             )
+            continue
+        grammar_report = ClaimGrammarService().check_claim(
+            {"claim_ref": claim_ref, "text": prose_sentence.strip(), "mechanism_card": card}
+        )
+        if grammar_report.status in {"blocked", "caveated"}:
+            finding = grammar_report.model_dump(mode="json")
+            finding["sentence"] = sentence
+            if grammar_report.status == "blocked":
+                finding["blocked_terms"] = list(grammar_report.blocked_verbs)
+            findings.append(finding)
             continue
         blocked_terms = [
             term

@@ -50,6 +50,7 @@ SCHEMA_TABLES = {
     "materialized_probes",
     "mechanism_cards",
     "claims",
+    "claim_grammar_reports",
     "claim_evidence",
     "draft_claim_links",
     "decisions",
@@ -295,6 +296,17 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
             if ref:
                 insert_payload(sqlite_path, "hypothesis_transitions", str(ref), receipt)
                 counts["hypothesis_transitions"] += 1
+
+    claims_dir = project.mechanism_dir / "claims"
+    claim_report_paths = (
+        sorted(claims_dir.glob("*_grammar_report.json")) if claims_dir.exists() else []
+    )
+    for path in claim_report_paths:
+        counts["claim_grammar_reports"] += _insert_json_file(
+            sqlite_path,
+            path,
+            "claim_grammar_reports",
+        )
 
     space_checks_dir = project.mechanism_dir / "space_checks"
     for path in sorted(space_checks_dir.glob("*.json")) if space_checks_dir.exists() else []:

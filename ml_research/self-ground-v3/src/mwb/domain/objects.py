@@ -485,6 +485,24 @@ class Claim(WorkbenchObject):
     status: str
 
 
+class ClaimGrammarReport(WorkbenchObject):
+    wb_type: str = "ClaimGrammarReport"
+    claim_ref: str
+    claim_type: str
+    status: str
+    requested_text: str
+    evidence_tier: str
+    supported_claim_type: str
+    missing_requirements: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    blocking_debt: list[JsonDict] = Field(default_factory=list)
+    required_caveats: list[str] = Field(default_factory=list)
+    allowed_verbs: list[str] = Field(default_factory=list)
+    blocked_verbs: list[str] = Field(default_factory=list)
+    suggested_replacements: list[str] = Field(default_factory=list)
+    override: JsonDict = Field(default_factory=dict)
+
+
 class EvidenceEdge(WorkbenchObject):
     wb_type: str = "EvidenceEdge"
     src_ref: str
@@ -535,6 +553,7 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         ReferenceBenchmarkReport,
         MechanismCard,
         Claim,
+        ClaimGrammarReport,
         EvidenceEdge,
     ]
 }

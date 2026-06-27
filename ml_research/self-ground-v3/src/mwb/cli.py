@@ -14,6 +14,7 @@ from mwb.adapters.saelens import SAELensAdapter
 from mwb.adapters.transformer_lens import TransformerLensAdapter
 from mwb.bundle_audit import BundleAuditService
 from mwb.causal_verification import CausalVerificationService
+from mwb.claim_grammar import ClaimGrammarService
 from mwb.context import RunContext
 from mwb.doctor import run_doctor
 from mwb.evidence_graph import QUERY_KINDS, EvidenceGraphService
@@ -50,6 +51,7 @@ space_app = typer.Typer(help="Check mechanistic tensor spaces and unit operation
 compile_app = typer.Typer(help="Compile static mechanistic plausibility checks.")
 bundle_app = typer.Typer(help="Audit and rebalance example/control bundles.")
 benchmark_app = typer.Typer(help="Run framework reference mechanism benchmarks.")
+claim_app = typer.Typer(help="Check paper-facing claim grammar.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -61,6 +63,7 @@ app.add_typer(space_app, name="space")
 app.add_typer(compile_app, name="compile")
 app.add_typer(bundle_app, name="bundle")
 app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(claim_app, name="claim")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -76,6 +79,7 @@ SessionRefArgument = Annotated[str, typer.Argument(help="Session ref or 'latest'
 DeviceOption = Annotated[str, typer.Option("--device", help="Execution device.")]
 DryRunOption = Annotated[bool, typer.Option("--dry-run", help="Validate without loading backend.")]
 HypothesisFileArgument = Annotated[Path, typer.Argument(help="Hypothesis JSON file.")]
+ClaimCheckFileArgument = Annotated[Path, typer.Argument(help="Claim check JSON file.")]
 AxisOption = Annotated[
     list[str] | None,
     typer.Option("--axis", help="Sweep axis in name=value[,value...] form."),
@@ -317,6 +321,18 @@ def benchmark_framework(suite: BenchmarkSuiteOption = "toy") -> None:
     service.write_report(report)
     console.print_json(json.dumps(report.model_dump(mode="json")))
     if report.status != "pass":
+        raise typer.Exit(code=1)
+
+
+@claim_app.command("check")
+def claim_check(path: ClaimCheckFileArgument) -> None:
+    """Check a paper-facing claim against typed evidence requirements."""
+    project = ProjectManager.discover_or_create()
+    service = ClaimGrammarService(project)
+    report = service.check_file(path)
+    service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status == "blocked":
         raise typer.Exit(code=1)
 
 

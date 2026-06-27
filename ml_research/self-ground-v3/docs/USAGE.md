@@ -159,6 +159,22 @@ uv run mwb hypothesis explain <run-ref>
 
 Promotion to `claimable` requires `--approved-by` and `--decision-ref`. See `docs/HYPOTHESIS_LIFECYCLE.md` for states, transition rules, and alternative-explanation outputs.
 
+## Claim Grammar
+
+Check a single paper-facing claim fixture:
+
+```bash
+uv run mwb claim check docs/fixtures/claim_association.json
+```
+
+Draft Guard runs typed claim grammar before the phrase fallback:
+
+```bash
+uv run mwb draft-check docs/fixture_draft.md
+```
+
+Claim checks write `.mechanism/claims/<claim_ref>_grammar_report.json` and block stronger language when evidence requirements, blockers, or unresolved scientific debt do not support the requested claim type. See `docs/CLAIM_GRAMMAR.md`.
+
 ## Space Types
 
 Check tensor-space and mechanistic-unit compatibility before a patch, projection, or comparison:

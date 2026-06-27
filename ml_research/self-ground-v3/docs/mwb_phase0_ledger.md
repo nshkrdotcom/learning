@@ -1118,3 +1118,56 @@ Observed result:
 
 Known residual risk:
 - The built-in `toy` suite is deterministic and CI-friendly. It does not replace future optional heavy integrations with Tracr, ACDC/EAP, SAEBench/RAVEL, or live backend reference circuits.
+
+## Phase 22: Rich Claim Grammar
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: no
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` evidence tiers, claim atoms, blocker-to-claim mapping, Draft Guard behavior, caveats, and scientific debt.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mech_specs.md` richer claim types and mechanism evidence requirements.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md` claim-bearing gate and non-upgrading override requirements.
+
+Implemented:
+- `ClaimGrammarReport` domain object.
+- `ClaimGrammarService` with deterministic claim-intent matching.
+- Evidence requirement resolution for association, projection, causal necessity, causal sufficiency, mediation, generalization, and mechanism claims.
+- Blocker and unresolved scientific-debt handling for blocked and caveated claims.
+- Visible inline override records that cannot upgrade blocked claims.
+- `mwb claim check <claim-json>`.
+- Draft Guard integration that runs typed claim grammar before the older phrase fallback while preserving legacy `blocked_terms`.
+- SQLite schema and repair-index recovery for `claim_grammar_reports`.
+- `docs/CLAIM_GRAMMAR.md`, fixture, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase22_claim_grammar.py
+uv run ruff check src/mwb/claim_grammar.py src/mwb/workflows/draft_guard.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase22_claim_grammar.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb draft-check docs/fixture_draft.md
+uv run mwb claim check docs/fixtures/claim_association.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 22 RGR tests first failed on missing `mwb.claim_grammar`.
+- Focused Phase 22 claim grammar suite passed, `6 passed`.
+- Focused Draft Guard plus claim grammar regression suite passed, `9 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `106 passed, 3 skipped`.
+- `uv run mwb draft-check docs/fixture_draft.md`: passed with `status: allowed`.
+- `uv run mwb claim check docs/fixtures/claim_association.json`: passed with `status: allowed`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `claim_grammar_reports: 1`.
+
+Known residual risk:
+- The grammar is deterministic and local. It does not parse arbitrary scientific prose perfectly; claims should use explicit `[CLAIM:<ref>]` tags or JSON fixtures for paper-facing enforcement.

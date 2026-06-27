@@ -491,6 +491,8 @@ git push
 
 ## Phase 21: Rich Claim Grammar
 
+Status: implementation/docs complete in repo Phase 22; QC, commit, and push pending.
+
 ### Required Reading
 
 - `0005.md` evidence tiers.
@@ -499,25 +501,25 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for observation claim requirements.
-- [ ] Add failing tests for static claim requirements.
-- [ ] Add failing tests for necessity/sufficiency/mediation/generalization/mechanism claim requirements.
-- [ ] Add failing tests for required caveats and unresolved debt.
-- [ ] Add failing tests for inline override visibility.
+- [x] Add failing tests for observation claim requirements.
+- [x] Add failing tests for static claim requirements.
+- [x] Add failing tests for necessity/sufficiency/mediation/generalization/mechanism claim requirements.
+- [x] Add failing tests for required caveats and unresolved debt.
+- [x] Add failing tests for inline override visibility.
 
 ### Implementation
 
-- [ ] Add claim grammar model.
-- [ ] Add deterministic claim-intent matcher.
-- [ ] Add evidence requirement resolver.
-- [ ] Add `mwb claim check`.
-- [ ] Upgrade `mwb draft-check` to use grammar before phrase fallback.
+- [x] Add claim grammar model.
+- [x] Add deterministic claim-intent matcher.
+- [x] Add evidence requirement resolver.
+- [x] Add `mwb claim check`.
+- [x] Upgrade `mwb draft-check` to use grammar before phrase fallback.
 
 ### Docs
 
-- [ ] Add `docs/CLAIM_GRAMMAR.md`.
-- [ ] Update Draft Guard docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/CLAIM_GRAMMAR.md`.
+- [x] Update Draft Guard docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -535,7 +537,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 21: add rich claim grammar"
+git commit -m "phase 22: add rich claim grammar"
 git push
 ```
 

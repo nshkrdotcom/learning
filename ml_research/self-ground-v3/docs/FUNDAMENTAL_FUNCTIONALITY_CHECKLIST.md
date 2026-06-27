@@ -157,6 +157,18 @@ Fundamental items must be:
 - [x] `mwb card` generates structured JSON and Markdown from run artifacts.
   - Source: `0005` MechanismCard.
   - Evidence: `tests/test_phase7_cards_draftguard.py`.
+- [x] `mwb claim check` maps paper-facing claim text to typed evidence requirements.
+  - Sources: `0005` claim atoms, `mech_specs` claim grammar.
+  - Evidence: `tests/test_phase22_claim_grammar.py`.
+- [x] Observation, projection, causal necessity, sufficiency, mediation, generalization, and mechanism claims have distinct requirements.
+  - Sources: `0005` claim grammar, `mech_specs` evidence requirements.
+  - Evidence: `tests/test_phase22_claim_grammar.py`.
+- [x] Unresolved scientific debt and blockers create blocked or caveated claim grammar reports.
+  - Sources: `0005` scientific debt and blocker-to-claim mapping.
+  - Evidence: `tests/test_phase22_claim_grammar.py`.
+- [x] Inline overrides are visible and cannot upgrade blocked claim language.
+  - Sources: `0430_revised_v6` deterministic draft policy, `0006` no override for claim-bearing gaps.
+  - Evidence: `tests/test_phase22_claim_grammar.py`.
 - [x] Evidence tiers exist for association, projection, causal necessity, causal sufficiency, mediation, generalization, and mechanism.
   - Source: `0005` evidence tiers.
   - Evidence: `tests/test_phase10_checklist_completion.py`.
