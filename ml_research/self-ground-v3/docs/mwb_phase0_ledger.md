@@ -546,3 +546,45 @@ Observed result:
 
 Known residual risk:
 - The workbench still does not claim E004 proves a mechanism. The completed implementation enforces that boundary through blocker reports, MechanismCards, draft guard, and scientific debt records.
+
+## Phase 11: Canonical Archive Fundamental Review
+
+Status: complete
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0001.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+
+Implemented:
+- Source-traced `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`.
+- Bounded stdout/stderr capture for IPython cells.
+- Canonical `mwb repair-index` alias for SQLite recovery.
+- SQLite lineage edges for cell-to-object and parent-to-object provenance.
+- Rebuild-index lineage reconstruction from file-backed namespace logs.
+- RGR coverage for stdout/stderr capture, repair-index, and lineage edges.
+- README and usage doc links to the fundamental checklist and repair alias.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase11_fundamental_review.py
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Phase 11 RGR tests first failed on missing stream refs, missing `repair-index`, and missing lineage edges.
+- Stream capture implementation passed.
+- `repair-index` alias passed.
+- Lineage edge writes passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed after implementation.
+
+Known residual risk:
+- The checklist intentionally excludes P1/P2 adapters, platform integration, dashboard-first UI, cloud sync, and raw tensor capture by default because the canonical archive marks those as later work or non-goals.

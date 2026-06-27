@@ -91,6 +91,12 @@ Rebuild a separate SQLite index from file-backed `.mechanism` records:
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
+The canonical recovery alias from the source archive is also available:
+
+```bash
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+```
+
 ## Quality Gate
 
 ```bash
@@ -99,3 +105,5 @@ uv run pytest
 MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
 uv run mwb doctor
 ```
+
+For the source-traced fundamental checklist, see `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`.
