@@ -1226,8 +1226,8 @@ Known residual risk:
 
 ## Phase 24: Adapter Expansion With Conformance
 
-Status: complete; implementation commit pending
-Commit: pending
+Status: complete
+Commit: `17d3045`
 Pushed: pending
 
 Required reading completed:
@@ -1246,7 +1246,7 @@ Implemented:
 - `mwb adapter conformance nnsight`, `pyvene`, and `neuronpedia` CLI commands.
 - `docs/ADAPTERS.md`, README, usage guide, fundamental checklist, and buildout checklist updates.
 
-Commands run so far:
+Commands run:
 
 ```bash
 uv run pytest tests/test_phase24_adapter_expansion.py
