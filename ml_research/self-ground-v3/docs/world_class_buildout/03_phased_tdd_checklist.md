@@ -339,7 +339,7 @@ git push
 
 ## Phase 18: Example Geometry And Control Audits
 
-Status: complete in repo Phase 19 pending final commit and push.
+Status: complete in repo Phase 19. Implementation commit: `e8801ac`; push pending.
 
 ### Required Reading
 

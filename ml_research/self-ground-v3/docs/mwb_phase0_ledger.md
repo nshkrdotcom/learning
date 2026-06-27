@@ -960,7 +960,7 @@ Known residual risk:
 ## Phase 19: Example Geometry And Control Audits
 
 Status: complete pending commit and push
-Commit: pending
+Commit: `e8801ac`
 Pushed: pending
 
 Required reading completed:
