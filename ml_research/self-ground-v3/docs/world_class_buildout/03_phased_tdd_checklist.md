@@ -441,7 +441,7 @@ git push
 
 ## Phase 20: Reference Mechanism Suite
 
-Status: complete in repo Phase 21. Implementation commit: `79bbe4c`; push pending.
+Status: complete in repo Phase 21. Implementation commit: `79bbe4c`; pushed.
 
 ### Required Reading
 
