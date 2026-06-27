@@ -11,8 +11,6 @@ from mwb.project import ProjectManager
 from mwb.sqlite_index import fetch_payload, rebuild_sqlite_index
 from mwb.workflows.cards import card_from_run
 
-from tests.test_phase18_causal_verification import base_hypothesis, operation, prediction_lock
-
 
 def init_git_repo(path: Path) -> None:
     subprocess.run(["git", "init", "-b", "main"], cwd=path, check=True, capture_output=True)
@@ -21,6 +19,78 @@ def init_git_repo(path: Path) -> None:
     (path / "README.md").write_text("# repo\n", encoding="utf-8")
     subprocess.run(["git", "add", "README.md"], cwd=path, check=True)
     subprocess.run(["git", "commit", "-m", "initial"], cwd=path, check=True, capture_output=True)
+
+
+def static_compiler_payload() -> dict:
+    return {
+        "tensor_space_ref": "space_resid_post",
+        "unembedding_space_ref": "space_resid_post",
+        "target_token_ids": [10],
+        "foil_token_ids": [20],
+        "decoder_vector": [1.0, 0.0],
+        "unembedding": {"10": [1.0, 0.0], "20": [0.0, 1.0]},
+        "dictionary": {
+            "feature_id": "unit_sae_123",
+            "decoder_vectors": {
+                "unit_sae_123": [1.0, 0.0],
+                "unit_clean_neighbor": [0.0, 1.0],
+            },
+        },
+        "activation_density": {"target": 0.1, "control": 0.1, "max_ratio": 1.5},
+    }
+
+
+def base_hypothesis(operations: list[dict]) -> dict:
+    return {
+        "wb_ref": "hyp_policy",
+        "title": "policy verification hypothesis",
+        "units": ["unit_sae_123"],
+        "example_bundle_ref": "bundle_1",
+        "control_bundle_ref": "ctrl_1",
+        "expected_effect": "target_delta > controls",
+        "required_controls": ["negation_removed"],
+        "metadata": {"tensor_space_compatible": True, "model_sae_hook_match": True},
+        "static_compiler": static_compiler_payload(),
+        "verification": {
+            "baseline": {
+                "target_logit": 2.0,
+                "control_logit": 1.0,
+                "logits": [2.0, 1.0],
+                "activation_norm": 1.0,
+            },
+            "operations": operations,
+            "telemetry_thresholds": {"kl_drift": 0.25, "norm_drift": 0.5},
+        },
+    }
+
+
+def operation(operation_name: str) -> dict:
+    return {
+        "operation": operation_name,
+        "unit_ref": "unit_sae_123",
+        "patch_mode": operation_name,
+        "patch_source": "matched_control",
+        "patch_target": "target_prompt",
+        "coefficient": 1.0,
+        "intervened": {
+            "target_logit": 1.2,
+            "control_logit": 0.9,
+            "logits": [1.2, 0.9],
+            "activation_norm": 0.95,
+        },
+    }
+
+
+def prediction_lock() -> dict:
+    return {
+        "wb_ref": "lock_policy",
+        "hypothesis_ref": "hyp_policy",
+        "hypothesis_spec_hash": "sha256:test",
+        "expected_direction": "target_delta_positive",
+        "expected_controls": {"negation_removed": "low_delta"},
+        "git_state": {"commit": "abc123"},
+        "environment": {"python": "3.12"},
+    }
 
 
 def mechanism_card_payload(*, profile: str = "strict") -> dict:

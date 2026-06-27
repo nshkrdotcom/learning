@@ -115,6 +115,12 @@ Fundamental items must be:
 - [x] Sweep planning writes non-claim-bearing run artifacts and receipts.
   - Source: `0005` verification outputs.
   - Evidence: `tests/test_phase10_checklist_completion.py`.
+- [x] Policy profiles enforce claim ceilings and research-taste gates for claim-bearing verification.
+  - Sources: `mechinterp_framework/0020_gpt` research taste policies, `0005` blockers.
+  - Evidence: `tests/test_phase23_policy_profiles.py`.
+- [x] Strict policy requires paired noising/denoising and caps zero-ablation evidence.
+  - Sources: `mechinterp_framework/0020_gpt` policy profile schema, `0430_revised_v6` debt policy.
+  - Evidence: `tests/test_phase23_policy_profiles.py`.
 
 ## Failure Diagnosis And Next Probe
 

@@ -19,7 +19,13 @@ def card_from_run(run_dir: Path) -> MechanismCard:
         blockers = diagnose_blockers(metrics, thresholds={"control_leaky_ratio": 0.8})["blockers"]
 
     status = manifest.get("status", "insufficient_evidence")
-    evidence_tier = _evidence_tier(status, blockers)
+    evidence_tier = _evidence_tier(status, _non_policy_blockers(blockers))
+    policy_report = manifest.get("policy_report", {})
+    if not policy_report and isinstance(manifest.get("metadata"), dict):
+        policy_report = manifest.get("metadata", {}).get("policy_report", {})
+    if isinstance(policy_report, dict):
+        blockers = _dedupe([*blockers, *[str(item) for item in policy_report.get("blockers", [])]])
+        evidence_tier = _apply_claim_ceiling(evidence_tier, policy_report.get("claim_ceiling"))
     allowed, blocked = language_for_tier(evidence_tier, blockers)
     claim_ref = f"claim_{slugify(str(run_ref))}"
     card = MechanismCard(
@@ -35,6 +41,12 @@ def card_from_run(run_dir: Path) -> MechanismCard:
             "blockers": blockers,
             "claim_ref": claim_ref,
             "control_metrics": metrics,
+            "policy_profile": (
+                str(policy_report.get("policy_profile", "strict"))
+                if isinstance(policy_report, dict)
+                else "strict"
+            ),
+            "policy_report": policy_report if isinstance(policy_report, dict) else {},
             "scientific_debt": scientific_debt_items(run_ref, blockers, status),
         },
         parents=[run_ref],
@@ -160,6 +172,28 @@ def _evidence_tier(status: str, blockers: list[str]) -> str:
     return "association"
 
 
+def _apply_claim_ceiling(evidence_tier: str, ceiling: Any) -> str:
+    if not ceiling or ceiling == "diagnostic_only":
+        return "association" if ceiling == "diagnostic_only" else evidence_tier
+    order = [
+        "association",
+        "projection",
+        "causal_necessity",
+        "causal_sufficiency",
+        "mediation",
+        "generalization",
+        "mechanism",
+    ]
+    ceiling_text = str(ceiling)
+    if evidence_tier not in order or ceiling_text not in order:
+        return evidence_tier
+    return order[min(order.index(evidence_tier), order.index(ceiling_text))]
+
+
+def _non_policy_blockers(blockers: list[str]) -> list[str]:
+    return [blocker for blocker in blockers if not blocker.startswith("policy_")]
+
+
 def scientific_debt_payload(card: MechanismCard) -> dict[str, Any]:
     return {
         "run_ref": card.run_ref,
@@ -214,3 +248,11 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _dedupe(values: list[str]) -> list[str]:
+    deduped: list[str] = []
+    for value in values:
+        if value not in deduped:
+            deduped.append(value)
+    return deduped

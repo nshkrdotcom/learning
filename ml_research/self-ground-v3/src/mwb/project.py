@@ -74,6 +74,9 @@ control_leaky_ratio = 0.8
 off_manifold_kl_drift = 0.1
 off_manifold_norm_drift = 0.5
 density_matching_max_ratio = 1.5
+
+[policy]
+profile = "strict"
 """
 
 

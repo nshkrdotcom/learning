@@ -1171,3 +1171,55 @@ Observed result:
 
 Known residual risk:
 - The grammar is deterministic and local. It does not parse arbitrary scientific prose perfectly; claims should use explicit `[CLAIM:<ref>]` tags or JSON fixtures for paper-facing enforcement.
+
+## Phase 23: Policy Profiles And Research Taste
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: no
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` research taste policies and configurable `PolicyProfile` schema.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` evidence tiers, blockers, and claim grammar boundaries.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` scientific debt visibility, waiver policy, and configurable debt/blocker handling.
+
+Implemented:
+- `PolicyEvaluationReport` domain object.
+- Built-in `strict` and `exploratory` policy profiles.
+- Default `[policy] profile = "strict"` in new project config, with strict fallback for older projects.
+- `PolicyProfileService` for project profile loading, profile evaluation, and claim-bearing verification policy checks.
+- Strict zero-ablation `diagnostic_only` claim ceiling.
+- Strict paired noising/denoising and resample-ablation requirements for claim-bearing candidate verification.
+- Policy-profile integration in claim grammar and Draft Guard.
+- Policy claim-ceiling integration in MechanismCard generation.
+- `mwb policy check`.
+- SQLite schema and repair-index recovery for `policy_evaluations`.
+- `docs/POLICY_PROFILES.md`, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase23_policy_profiles.py
+uv run ruff check src/mwb/policy_profiles.py src/mwb/claim_grammar.py src/mwb/causal_verification.py src/mwb/workflows/cards.py src/mwb/cli.py src/mwb/domain src/mwb/project.py src/mwb/sqlite_index.py tests/test_phase23_policy_profiles.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb policy check
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 23 RGR tests first failed on missing `mwb.policy_profiles`.
+- Focused Phase 23 policy profile suite passed, `5 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `111 passed, 3 skipped`.
+- `uv run mwb policy check`: passed with `policy_profile: strict` and `status: pass`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `policy_evaluations: 1`.
+
+Known residual risk:
+- Policy profiles encode deterministic local gates. They do not remove the need for human review of new lab standards, waivers, or domain-specific thresholds.

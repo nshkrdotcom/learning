@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from mwb.domain.objects import ClaimGrammarReport
+from mwb.policy_profiles import profile_for_name
 from mwb.project import Project
 from mwb.refs import stable_ref
 from mwb.sqlite_index import initialize_schema, insert_payload
@@ -107,6 +108,7 @@ BLOCKED_BY = {
     "dictionary_interference": ["mechanism"],
     "self_repair_suspected": ["mediation", "mechanism"],
     "insufficient_heldout_generalization": ["generalization", "mechanism"],
+    "policy_generalization_required": ["mechanism"],
 }
 CAVEATED_BY = {
     "control_leaky": ["causal_necessity", "causal_sufficiency", "mediation"],
@@ -135,12 +137,24 @@ class ClaimGrammarService:
         card = dict(payload.get("mechanism_card") or payload)
         claim_ref = str(payload.get("claim_ref") or card.get("claim_ref") or "claim_unknown")
         claim_type = str(payload.get("claim_type") or infer_claim_type(text))
+        policy_profile = profile_for_name(
+            str(payload.get("policy_profile") or card.get("policy_profile") or "strict")
+        )
         evidence_tier = str(card.get("evidence_tier") or card.get("status") or "association")
-        evidence = set(TIER_EVIDENCE.get(evidence_tier, []))
-        evidence.update(str(item) for item in card.get("evidence", []))
-        requirements = CLAIM_REQUIREMENTS[claim_type]
+        if "evidence" in card:
+            evidence = {str(item) for item in card.get("evidence", [])}
+        else:
+            evidence = set(TIER_EVIDENCE.get(evidence_tier, []))
+        requirements = _requirements_for_profile(claim_type, policy_profile.name)
         missing = [requirement for requirement in requirements if requirement not in evidence]
         blockers = _card_blockers(card)
+        if (
+            claim_type == "mechanism"
+            and policy_profile.require_generalization_for_mechanism_word
+            and "generalization_minimum" not in evidence
+            and "policy_generalization_required" not in blockers
+        ):
+            blockers.append("policy_generalization_required")
         blocking_blockers = [
             blocker for blocker in blockers if claim_type in BLOCKED_BY.get(blocker, [])
         ]
@@ -160,7 +174,12 @@ class ClaimGrammarService:
         else:
             status = "allowed"
 
-        supported_claim_type = supported_claim_type_for_evidence(evidence_tier, blockers, debt)
+        supported_claim_type = supported_claim_type_for_evidence(evidence, blockers, debt)
+        if policy_profile.require_generalization_for_mechanism_word:
+            supported_claim_type = _cap_mechanism_without_generalization(
+                supported_claim_type,
+                evidence,
+            )
         override = _override(payload.get("override"), status)
         report = ClaimGrammarReport(
             wb_ref=stable_ref(
@@ -179,6 +198,7 @@ class ClaimGrammarService:
             status=status,
             requested_text=text,
             evidence_tier=evidence_tier,
+            policy_profile=policy_profile.name,
             supported_claim_type=supported_claim_type,
             missing_requirements=missing,
             blockers=blocking_blockers or blockers,
@@ -223,11 +243,10 @@ def infer_claim_type(text: str) -> str:
 
 
 def supported_claim_type_for_evidence(
-    evidence_tier: str,
+    evidence: set[str],
     blockers: list[str],
     debt: list[JsonDict],
 ) -> str:
-    evidence = set(TIER_EVIDENCE.get(evidence_tier, []))
     supported = "association"
     for claim_type in CLAIM_ORDER:
         requirements = CLAIM_REQUIREMENTS[claim_type]
@@ -239,6 +258,26 @@ def supported_claim_type_for_evidence(
                 if not any(_debt_blocks_claim(item, claim_type) for item in debt):
                     return claim_type
     return "association"
+
+
+def _requirements_for_profile(claim_type: str, profile_name: str) -> list[str]:
+    requirements = list(CLAIM_REQUIREMENTS[claim_type])
+    if profile_name == "exploratory" and claim_type == "mechanism":
+        requirements = [
+            requirement
+            for requirement in requirements
+            if requirement != "generalization_minimum"
+        ]
+    return requirements
+
+
+def _cap_mechanism_without_generalization(
+    supported_claim_type: str,
+    evidence: set[str],
+) -> str:
+    if supported_claim_type != "mechanism" or "generalization_minimum" in evidence:
+        return supported_claim_type
+    return "causal_sufficiency" if "causal_sufficiency" in evidence else "causal_necessity"
 
 
 def _card_blockers(card: JsonDict) -> list[str]:

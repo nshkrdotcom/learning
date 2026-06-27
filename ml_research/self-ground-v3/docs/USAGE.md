@@ -175,6 +175,23 @@ uv run mwb draft-check docs/fixture_draft.md
 
 Claim checks write `.mechanism/claims/<claim_ref>_grammar_report.json` and block stronger language when evidence requirements, blockers, or unresolved scientific debt do not support the requested claim type. See `docs/CLAIM_GRAMMAR.md`.
 
+## Policy Profiles
+
+Evaluate the default research-taste profile:
+
+```bash
+uv run mwb policy check
+```
+
+Evaluate a named profile:
+
+```bash
+uv run mwb policy check --profile strict
+uv run mwb policy check --profile exploratory
+```
+
+Policy profiles control claim ceilings and research-taste gates such as zero-ablation ceilings, paired noising/denoising requirements, resample-ablation requirements, and generalization-before-mechanism wording. See `docs/POLICY_PROFILES.md`.
+
 ## Space Types
 
 Check tensor-space and mechanistic-unit compatibility before a patch, projection, or comparison:

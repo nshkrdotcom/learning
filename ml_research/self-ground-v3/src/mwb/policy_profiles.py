@@ -59,7 +59,9 @@ class PolicyProfileService:
         profile = BUILTIN_PROFILES.get(profile_name)
         if profile is None:
             expected = ", ".join(sorted(BUILTIN_PROFILES))
-            raise ValueError(f"unknown policy profile {profile_name!r}; expected one of: {expected}")
+            raise ValueError(
+                f"unknown policy profile {profile_name!r}; expected one of: {expected}"
+            )
         return profile
 
     def load_project_profile(self) -> PolicyProfile:

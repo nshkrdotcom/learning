@@ -11,6 +11,7 @@ from mwb.domain.objects import (
     TelemetryReport,
     VerificationRun,
 )
+from mwb.policy_profiles import PolicyProfileService
 from mwb.project import Project
 from mwb.refs import stable_ref
 from mwb.sqlite_index import initialize_schema, insert_payload
@@ -72,6 +73,9 @@ class CausalVerificationService:
         telemetry_reports: list[TelemetryReport] = []
         blockers: list[str] = []
         policy = verification.get("policy", {})
+        policy_profile_name = str(
+            policy.get("profile") or verification.get("policy_profile") or "strict"
+        )
 
         for index, operation in enumerate(operations):
             receipt, result, telemetry = self._execute_operation(
@@ -96,8 +100,16 @@ class CausalVerificationService:
             ):
                 blockers.append("zero_ablation_claim_ceiling")
 
+        policy_report = PolicyProfileService(self.project).evaluate_verification(
+            operations,
+            claim_bearing=not diagnostic_only and not dry_run,
+            profile_name=policy_profile_name,
+        )
+        if policy_report.blockers:
+            blockers.extend(policy_report.blockers)
+
         blockers = _dedupe([*gate_run.metadata.get("blockers", []), *blockers])
-        claim_ceiling = None
+        claim_ceiling = policy_report.claim_ceiling
         evidence_posture = gate_run.evidence_posture
         status = "dry_run" if dry_run else "candidate_evidence"
         if diagnostic_only:
@@ -117,6 +129,8 @@ class CausalVerificationService:
             "run_dir": str(run_dir),
             "operation_count": len(operations),
             "blockers": blockers,
+            "policy_profile": policy_report.policy_profile,
+            "policy_report": policy_report.model_dump(mode="json"),
         }
         if claim_ceiling:
             metadata["claim_ceiling"] = claim_ceiling
@@ -365,6 +379,8 @@ class CausalVerificationService:
             "status": run.status,
             "claim_bearing": claim_bearing,
             "evidence_posture": run.evidence_posture,
+            "policy_profile": run.metadata.get("policy_profile"),
+            "policy_report": run.metadata.get("policy_report", {}),
             "created_at": utc_now(),
         }
         _write_json(run_dir / "run_manifest.json", manifest)

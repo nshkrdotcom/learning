@@ -48,6 +48,7 @@ SCHEMA_TABLES = {
     "next_probe_plans",
     "diagnosis_trees",
     "materialized_probes",
+    "policy_evaluations",
     "mechanism_cards",
     "claims",
     "claim_grammar_reports",
@@ -354,6 +355,17 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         )
         counts["benchmark_reports"] += restored["reports"]
         counts["reference_tasks"] += restored["tasks"]
+
+    policy_dir = project.mechanism_dir / "policy"
+    policy_paths = sorted(policy_dir.glob("*.json")) if policy_dir.exists() else []
+    indexed_policy_refs: set[str] = set()
+    for path in policy_paths:
+        counts["policy_evaluations"] += _insert_json_file_once(
+            sqlite_path,
+            path,
+            "policy_evaluations",
+            indexed_policy_refs,
+        )
 
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")

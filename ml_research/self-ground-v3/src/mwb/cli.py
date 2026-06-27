@@ -21,6 +21,7 @@ from mwb.evidence_graph import QUERY_KINDS, EvidenceGraphService
 from mwb.hypothesis_lifecycle import HypothesisLifecycleService
 from mwb.ipython.extension import start_workbench_ipython, unload_ipython_extension
 from mwb.ledgers import propose_claim_update, propose_run_ledger_row, validate_ledgers
+from mwb.policy_profiles import PolicyProfileService
 from mwb.project import ProjectManager
 from mwb.reference_benchmarks import ReferenceBenchmarkService
 from mwb.refs import stable_ref
@@ -52,6 +53,7 @@ compile_app = typer.Typer(help="Compile static mechanistic plausibility checks."
 bundle_app = typer.Typer(help="Audit and rebalance example/control bundles.")
 benchmark_app = typer.Typer(help="Run framework reference mechanism benchmarks.")
 claim_app = typer.Typer(help="Check paper-facing claim grammar.")
+policy_app = typer.Typer(help="Evaluate project research-taste policy profiles.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -64,6 +66,7 @@ app.add_typer(compile_app, name="compile")
 app.add_typer(bundle_app, name="bundle")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(claim_app, name="claim")
+app.add_typer(policy_app, name="policy")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -128,6 +131,10 @@ BundleNameArgument = Annotated[
     typer.Argument(help="Built-in bundle name, e.g. negation_phase3_calibrated."),
 ]
 BenchmarkSuiteOption = Annotated[str, typer.Option("--suite", help="Reference suite name.")]
+PolicyProfileOption = Annotated[
+    str | None,
+    typer.Option("--profile", help="Policy profile name."),
+]
 MaterializeProbeOption = Annotated[
     bool,
     typer.Option("--materialize", help="Also write probe.yaml/probe.json for runnable probes."),
@@ -333,6 +340,22 @@ def claim_check(path: ClaimCheckFileArgument) -> None:
     service.write_report(report)
     console.print_json(json.dumps(report.model_dump(mode="json")))
     if report.status == "blocked":
+        raise typer.Exit(code=1)
+
+
+@policy_app.command("check")
+def policy_check(profile: PolicyProfileOption = None) -> None:
+    """Evaluate and persist a project policy profile report."""
+    project = ProjectManager.discover_or_create()
+    service = PolicyProfileService(project)
+    try:
+        report = service.evaluate_profile(profile)
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status == "fail":
         raise typer.Exit(code=1)
 
 

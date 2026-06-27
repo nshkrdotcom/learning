@@ -543,6 +543,8 @@ git push
 
 ## Phase 22: Policy Profiles And Research Taste
 
+Status: implementation/docs complete in repo Phase 23; QC, commit, and push pending.
+
 ### Required Reading
 
 - `mechinterp_framework/0020_gpt.md` research taste policies.
@@ -551,23 +553,23 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for policy profiles changing claim ceilings.
-- [ ] Add failing tests for zero-ablation ceiling.
-- [ ] Add failing tests for required noising/denoising policy.
-- [ ] Add failing tests for generalization-before-mechanism policy.
+- [x] Add failing tests for policy profiles changing claim ceilings.
+- [x] Add failing tests for zero-ablation ceiling.
+- [x] Add failing tests for required noising/denoising policy.
+- [x] Add failing tests for generalization-before-mechanism policy.
 
 ### Implementation
 
-- [ ] Add policy profile schema.
-- [ ] Add default strict profile.
-- [ ] Add project config policy selection.
-- [ ] Apply policy to verification, cards, and draft guard.
+- [x] Add policy profile schema.
+- [x] Add default strict profile.
+- [x] Add project config policy selection.
+- [x] Apply policy to verification, cards, and draft guard.
 
 ### Docs
 
-- [ ] Add `docs/POLICY_PROFILES.md`.
-- [ ] Update project config docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/POLICY_PROFILES.md`.
+- [x] Update project config docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -583,7 +585,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 22: add policy profiles"
+git commit -m "phase 23: add policy profiles"
 git push
 ```
 
