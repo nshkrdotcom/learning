@@ -691,9 +691,9 @@ Known residual risk:
 
 ## Phase 14: Git-Native Research Ledgers
 
-Status: complete pending QC and commit finalization
-Commit: pending
-Pushed: pending
+Status: complete
+Commit: `185b6e1`
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` claim ledger, run ledger, decision log, research log, and SQLite-never-canonical sections.

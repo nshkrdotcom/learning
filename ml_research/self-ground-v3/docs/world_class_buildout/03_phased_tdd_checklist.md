@@ -72,7 +72,7 @@ git push
 
 ## Phase 13: Git-Native Research Ledgers
 
-Status: complete in repo Phase 14 pending final commit and push.
+Status: complete in repo Phase 14 commit `185b6e1`, pushed yes.
 
 ### Required Reading
 
