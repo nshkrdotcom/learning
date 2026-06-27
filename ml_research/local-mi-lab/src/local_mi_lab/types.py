@@ -30,6 +30,10 @@ class PromptRecord:
     wrong_or_control_token: str = ""
     heldout_family_type: str = ""
     heldout_construction_note: str = ""
+    distractor_position_hint: int | None = None
+    characterization_axis: str = ""
+    sequence_length_bucket: str = ""
+    token_domain: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -87,6 +91,10 @@ class PromptRecord:
             wrong_or_control_token=wrong_or_control_token,
             heldout_family_type=str(row.get("heldout_family_type") or ""),
             heldout_construction_note=str(row.get("heldout_construction_note") or ""),
+            distractor_position_hint=_parse_optional_int(row.get("distractor_position_hint")),
+            characterization_axis=str(row.get("characterization_axis") or ""),
+            sequence_length_bucket=str(row.get("sequence_length_bucket") or ""),
+            token_domain=str(row.get("token_domain") or ""),
         )
 
 

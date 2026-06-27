@@ -1,0 +1,37 @@
+experiment:
+  name: gpt2_small_candidate_characterization_seed21
+  seed: 21
+
+model:
+  name: gpt2-small
+  backend: transformer_lens
+  device: cuda
+  dtype: float32
+  use_inference_mode: true
+
+resources:
+  max_disk_cache_gb: 100
+  max_activation_cache_gb_per_run: 20
+  max_ram_gb_per_run: 64
+  max_gpu_vram_fraction: 0.80
+  max_examples_initial: 240
+  max_examples_full: 1024
+  batch_size_auto: true
+
+task:
+  name: candidate_characterization
+  prompt_style: candidate_characterization_repeated_token_sequences
+  n_examples_initial_per_family: 12
+  families:
+    - char_symbolic_short
+    - char_symbolic_long
+    - char_word_short
+    - char_word_long
+    - char_number_short
+    - char_number_long
+    - char_multi_distractor
+    - char_reversed_control
+    - char_target_swap_control
+
+outputs:
+  run_root: runs

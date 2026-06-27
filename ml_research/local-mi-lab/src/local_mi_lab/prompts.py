@@ -32,6 +32,10 @@ PROMPT_COLUMNS = [
     "wrong_or_control_token",
     "heldout_family_type",
     "heldout_construction_note",
+    "distractor_position_hint",
+    "characterization_axis",
+    "sequence_length_bucket",
+    "token_domain",
 ]
 
 CONTROL_FAMILIES = [
