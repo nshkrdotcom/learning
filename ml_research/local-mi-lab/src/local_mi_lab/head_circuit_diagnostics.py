@@ -23,6 +23,16 @@ DEFAULT_DIAGNOSTIC_FAMILIES = [
     "heldout_double_repeat",
 ]
 
+DEFAULT_CHARACTERIZATION_DIAGNOSTIC_FAMILIES = [
+    "char_symbolic_short",
+    "char_symbolic_long",
+    "char_word_short",
+    "char_word_long",
+    "char_number_short",
+    "char_number_long",
+    "char_multi_distractor",
+]
+
 
 def ov_margin_from_logits(
     logits: torch.Tensor,
@@ -106,9 +116,10 @@ def run_head_circuit_diagnostics(
     output_root.mkdir(parents=True, exist_ok=True)
     seed = int(config["experiment"].get("seed", 0))
     records = _records_for_config(config, seed)
+    selected_families = families or _default_diagnostic_families(config)
     selected_records = _selected_positive_records(
         records,
-        families=families or DEFAULT_DIAGNOSTIC_FAMILIES,
+        families=selected_families,
         examples_per_family=examples_per_family,
         seed=seed,
     )
@@ -189,6 +200,17 @@ def _records_for_config(config: dict[str, Any], seed: int) -> list[PromptRecord]
         families=list(config["task"]["families"]),
         seed=seed,
     )
+
+
+def _default_diagnostic_families(config: dict[str, Any]) -> list[str]:
+    if config["task"]["name"] == "candidate_characterization":
+        configured = set(config["task"].get("families", []))
+        return [
+            family
+            for family in DEFAULT_CHARACTERIZATION_DIAGNOSTIC_FAMILIES
+            if family in configured
+        ]
+    return DEFAULT_DIAGNOSTIC_FAMILIES
 
 
 def compute_ov_copy_diagnostic(

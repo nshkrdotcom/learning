@@ -3,6 +3,7 @@ from __future__ import annotations
 import torch
 
 from local_mi_lab.head_circuit_diagnostics import (
+    _default_diagnostic_families,
     classify_ov_status,
     classify_qk_status,
     ov_margin_from_logits,
@@ -62,3 +63,22 @@ def test_qk_missing_source_is_unavailable_shape() -> None:
 
     assert result["qk_source_margin"] is None
     assert classify_qk_status(result["qk_source_margin"]) == "qk_unavailable"
+
+
+def test_candidate_characterization_default_diagnostic_families_are_positive() -> None:
+    config = {
+        "task": {
+            "name": "candidate_characterization",
+            "families": [
+                "char_symbolic_short",
+                "char_word_long",
+                "char_reversed_control",
+                "char_target_swap_control",
+            ],
+        }
+    }
+
+    assert _default_diagnostic_families(config) == [
+        "char_symbolic_short",
+        "char_word_long",
+    ]
