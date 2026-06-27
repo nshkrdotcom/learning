@@ -48,7 +48,7 @@ WORD_LONG = [
     ("red", "blue", "green", "yellow", "black", "white"),
     ("spring", "summer", "autumn", "winter", "dawn", "night"),
     ("circle", "square", "triangle", "star", "line", "point"),
-    ("alpha", "beta", "gamma", "delta", "theta", "lambda"),
+    ("alpha", "beta", "gamma", "delta", "omega", "lambda"),
 ]
 
 NUMBER_SHORT = [

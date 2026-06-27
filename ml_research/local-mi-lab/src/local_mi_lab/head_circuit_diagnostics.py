@@ -105,11 +105,7 @@ def run_head_circuit_diagnostics(
     output_root = resolve_repo_path(output_dir)
     output_root.mkdir(parents=True, exist_ok=True)
     seed = int(config["experiment"].get("seed", 0))
-    records = generate_heldout_induction_prompts(
-        n_examples_per_family=int(config["task"]["n_examples_initial_per_family"]),
-        families=list(config["task"]["families"]),
-        seed=seed,
-    )
+    records = _records_for_config(config, seed)
     selected_records = _selected_positive_records(
         records,
         families=families or DEFAULT_DIAGNOSTIC_FAMILIES,
@@ -177,6 +173,22 @@ def _diagnose_example(model: Any, candidate: Any, record: PromptRecord) -> dict[
         "qk_status": classify_qk_status(qk["qk_source_margin"]),
         "diagnostic_error": "",
     }
+
+
+def _records_for_config(config: dict[str, Any], seed: int) -> list[PromptRecord]:
+    if config["task"]["name"] == "candidate_characterization":
+        from local_mi_lab.characterization_prompts import generate_characterization_prompts
+
+        return generate_characterization_prompts(
+            n_examples_per_family=int(config["task"]["n_examples_initial_per_family"]),
+            families=list(config["task"]["families"]),
+            seed=seed,
+        )
+    return generate_heldout_induction_prompts(
+        n_examples_per_family=int(config["task"]["n_examples_initial_per_family"]),
+        families=list(config["task"]["families"]),
+        seed=seed,
+    )
 
 
 def compute_ov_copy_diagnostic(
