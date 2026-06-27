@@ -103,6 +103,49 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this does not show: one seed is not enough. A seed-0 positive candidate is not a replicated induction head, and the raw previous-occurrence attention heads still failed this stricter causal check.
 - Next step: run seed 1 and seed 2 head-specific replications.
 
+## 2026-06-26 Head-Specific Induction Causality Seed 1
+
+- Run: `runs/20260626_152840_gpt2_small_head_specific_induction_seed1`
+- Source run: `runs/20260626_150356_gpt2_small_induction_controls_seed1`
+- Head-specific hook used: `blocks.<layer>.attn.hook_z`
+- Was patching truly head-specific? Yes. Artifacts record `head_specific_patch=true` and `actual_patch_scope=single_head_z`.
+- Metric: `true_vs_control_logit_diff`
+- Intervention: `head_clean_to_corrupt_patch`
+- Families: `positive_repeat_sequence`, `distractor_repeat_control`, `random_expected_token_control`, and `same_token_frequency_control`
+- Examples per family: 8
+- Heads tested: 72 heads across layers `[0, 2, 4, 7, 9, 11]`
+- Positive mean effect: `0.0025`
+- Max control mean effect: `1.5706`
+- Best positive-minus-control causal gap: `0.0893`
+- Top heads by seed-1 gap: L7H7 `0.0893`, L7H3 `0.0819` but with `no_positive_effect`, L9H11 `0.0364`, L11H8 `0.0190`, L2H0 `0.0148`
+- Specificity statuses: `head_specific_positive_candidate`: 14; `nonspecific_moves_controls`: 26; `no_positive_effect`: 32
+- Did raw attention heads survive? Mostly no. L0H1, L0H4, and L0H5 had `no_positive_effect`; L0H10 was `nonspecific_moves_controls`; L11H8 was `head_specific_positive_candidate` for this seed.
+- What this shows: the seed-1 replication again produced small head-specific positive-minus-control gaps for a subset of heads, with L7H7 matching the top seed-0 head.
+- What this does not show: this still does not establish an induction head. Control effects remain large in aggregate, and a replicated-looking head needs the pre-registered multi-seed classification before any stronger interpretation.
+- Next step: run seed 2 and then compare all seeds jointly.
+
+## 2026-06-26 Head-Specific Induction Causality Seed 2
+
+- Run: `runs/20260626_153044_gpt2_small_head_specific_induction_seed2`
+- Source run: `runs/20260626_152722_gpt2_small_induction_controls_seed2`
+- Generated source controls: `configs/gpt2_small_induction_controls_seed2.yaml` was used to build prompts, baseline behavior, selected activations, logit lens, and attention-pattern artifacts for seed 2.
+- Head-specific hook used: `blocks.<layer>.attn.hook_z`
+- Was patching truly head-specific? Yes. Artifacts record `head_specific_patch=true` and `actual_patch_scope=single_head_z`.
+- Metric: `true_vs_control_logit_diff`
+- Intervention: `head_clean_to_corrupt_patch`
+- Families: `positive_repeat_sequence`, `distractor_repeat_control`, `random_expected_token_control`, and `same_token_frequency_control`
+- Examples per family: 8
+- Heads tested: 72 heads across layers `[0, 2, 4, 7, 9, 11]`
+- Positive mean effect: `0.0022`
+- Max control mean effect: `0.2855`
+- Best positive-minus-control causal gap: `0.0641`
+- Top heads by seed-2 gap: L7H7 `0.0641`, L11H4 `0.0608`, L11H8 `0.0422`, L9H11 `0.0328`, L11H6 `0.0314`
+- Specificity statuses: `head_specific_positive_candidate`: 20; `nonspecific_moves_controls`: 19; `no_positive_effect`: 33
+- Did raw attention heads survive? Mostly no. L0H1, L0H4, and L0H5 had `no_positive_effect`; L0H10 was `nonspecific_moves_controls`; L11H8 was `head_specific_positive_candidate` for this seed.
+- What this shows: seed 2 again put L7H7 at the top under the stricter head-specific metric, while most original layer-0 raw-attention heads did not survive.
+- What this does not show: seed-specific status is not a circuit claim. The consolidated report must compare controls and seeds before deciding whether any head is merely interesting enough for manual inspection.
+- Next step: run the pre-registered multi-seed comparison and write the consolidated result.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`
