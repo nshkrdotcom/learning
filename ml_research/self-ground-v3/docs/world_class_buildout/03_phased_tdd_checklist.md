@@ -180,7 +180,7 @@ git push
 
 ## Phase 15: Mechanistic Space Type System
 
-Status: complete in repo Phase 16 pending final commit and push.
+Status: complete in repo Phase 16. Implementation commit: `b89d147`; push pending.
 
 ### Required Reading
 

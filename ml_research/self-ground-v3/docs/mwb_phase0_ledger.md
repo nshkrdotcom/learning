@@ -791,8 +791,8 @@ Known residual risk:
 
 ## Phase 16: Mechanistic Space Type System
 
-Status: complete pending commit and push
-Commit: pending
+Status: complete
+Commit: `b89d147`
 Pushed: pending
 
 Required reading completed:
