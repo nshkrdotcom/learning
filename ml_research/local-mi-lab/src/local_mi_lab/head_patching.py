@@ -552,11 +552,17 @@ def resolve_position_index_for_record(
 ) -> tuple[int | None, str]:
     if position_label == "final":
         return seq_len - 1, "ok"
-    if position_label in {"source", "previous_occurrence"}:
+    if position_label in {"source", "source_position", "previous_occurrence"}:
         if record.expected_source_position_hint is None:
             return None, "unavailable_for_family"
         bos_offset = max(seq_len - len(record.prompt_tokens_text), 0)
         return int(record.expected_source_position_hint) + bos_offset, "ok"
+    if position_label == "distractor_position":
+        distractor_position = getattr(record, "distractor_position_hint", None)
+        if distractor_position is None:
+            return None, "unavailable_for_family"
+        bos_offset = max(seq_len - len(record.prompt_tokens_text), 0)
+        return int(distractor_position) + bos_offset, "ok"
     if position_label == "all_prompt_positions":
         raise ValueError("all_prompt_positions is supported only by the sweep job expander")
     raise ValueError(f"Unsupported position label {position_label!r}")
