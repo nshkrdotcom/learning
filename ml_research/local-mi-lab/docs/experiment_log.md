@@ -69,6 +69,17 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this teaches: the current raw attention candidates are still false-positive-prone, and a small causal gap on a random comparison head should be treated as a prompt/sample artifact until a narrower replication says otherwise.
 - Next step: stop before adding a new task; inspect the two `controlled_patching_by_candidate.csv` files side by side and write down why raw attention did not survive the controlled causal check.
 
+## 2026-06-26 GPT-2 Small Head Hook Inspection
+
+- Run: `runs/20260626_151637_head_hook_inspection`
+- Model: `gpt2-small`
+- Prompt: `A B C D A B C`
+- Result: head-specific patching is supported through `blocks.0.attn.hook_z`.
+- Hook shapes: `hook_z` captured as `[1, 8, 12, 64]` with head axis 2 and sequence axis 1; `hook_result` captured as `[1, 8, 12, 768]`; `hook_attn_out` captured as `[1, 8, 768]` and is layer-level only.
+- GPU: CUDA available on NVIDIA GeForce RTX 5060 Ti in the inspection artifact.
+- Blockers: none. A prior failed attempt created an empty inspection run because the code initially used `.get` on `ActivationCache`; this was fixed before the recorded inspection.
+- Next step: implement head-specific `hook_z` patching and ablation. Do not label `hook_attn_out` fallback as head-specific.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`
