@@ -285,7 +285,7 @@ git push
 
 ## Phase 17: Exact Causal Verification Operations
 
-Status: complete in repo Phase 18 pending final commit and push.
+Status: complete in repo Phase 18. Implementation commit: `430ac2f`; push pending.
 
 ### Required Reading
 
