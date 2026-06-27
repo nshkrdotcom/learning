@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
@@ -9,6 +9,17 @@ from mwb.hashing import sha256_text
 from mwb.time import utc_now
 
 JsonDict = dict[str, Any]
+EvidenceRelation = Literal[
+    "supports",
+    "contradicts",
+    "depends_on",
+    "derived_from",
+    "tested_by",
+    "confounded_by",
+    "fails_on",
+    "generalizes_to",
+    "cited_by",
+]
 
 
 @runtime_checkable
@@ -255,6 +266,15 @@ class Claim(WorkbenchObject):
     status: str
 
 
+class EvidenceEdge(WorkbenchObject):
+    wb_type: str = "EvidenceEdge"
+    src_ref: str
+    dst_ref: str
+    relation: EvidenceRelation
+    source_ref: str | None = None
+    source_path: str | None = None
+
+
 _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
     cls.model_fields["wb_type"].default: cls
     for cls in [
@@ -279,6 +299,7 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         NextProbePlan,
         MechanismCard,
         Claim,
+        EvidenceEdge,
     ]
 }
 

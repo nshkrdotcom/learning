@@ -22,6 +22,7 @@ PROJECT_DIRS = [
     "exports",
     "cache",
     "adapters",
+    "graph",
     "logs",
     "redactions",
 ]
@@ -176,4 +177,3 @@ class ProjectManager:
             return ProjectManager.discover(start)
         except FileNotFoundError:
             return ProjectManager.init(start, name=name)
-

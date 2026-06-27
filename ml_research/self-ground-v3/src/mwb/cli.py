@@ -14,6 +14,7 @@ from mwb.adapters.saelens import SAELensAdapter
 from mwb.adapters.transformer_lens import TransformerLensAdapter
 from mwb.context import RunContext
 from mwb.doctor import run_doctor
+from mwb.evidence_graph import EvidenceGraphService, QUERY_KINDS
 from mwb.ipython.extension import start_workbench_ipython, unload_ipython_extension
 from mwb.project import ProjectManager
 from mwb.refs import stable_ref
@@ -35,10 +36,12 @@ adapter_app = typer.Typer(help="Adapter manifests and conformance checks.")
 conformance_app = typer.Typer(help="Run adapter conformance checks.")
 demo_app = typer.Typer(help="Run built-in workbench demos.")
 ingest_app = typer.Typer(help="Ingest external research artifact sets.")
+graph_app = typer.Typer(help="Rebuild and query the local evidence graph.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
 app.add_typer(ingest_app, name="ingest")
+app.add_typer(graph_app, name="graph")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -63,6 +66,11 @@ OutputPathOption = Annotated[
     Path | None,
     typer.Option("--output", help="Output SQLite path for rebuilt index."),
 ]
+GraphQueryKindArgument = Annotated[
+    str,
+    typer.Argument(help="Query kind: claims-depending-on, controls-contradicting, cells-producing, debt-blocking."),
+]
+GraphRefArgument = Annotated[str, typer.Argument(help="Source or target ref for the graph query.")]
 
 
 @app.command()
@@ -93,6 +101,27 @@ def rebuild_index(output: OutputPathOption = None) -> None:
     project = ProjectManager.discover()
     report = rebuild_sqlite_index(project, output_path=output)
     console.print_json(json.dumps(report))
+
+
+@graph_app.command("rebuild")
+def graph_rebuild() -> None:
+    """Rebuild evidence graph JSONL and SQLite edges from file-backed records."""
+    project = ProjectManager.discover_or_create()
+    report = EvidenceGraphService(project).rebuild()
+    console.print_json(json.dumps(report))
+
+
+@graph_app.command("query")
+def graph_query(kind: GraphQueryKindArgument, ref: GraphRefArgument) -> None:
+    """Query graph answers needed for claim, control, cell, and debt review."""
+    if kind not in QUERY_KINDS:
+        expected = ", ".join(sorted(QUERY_KINDS))
+        raise typer.BadParameter(f"unknown graph query kind {kind!r}; expected one of: {expected}")
+    project = ProjectManager.discover()
+    service = EvidenceGraphService(project)
+    if not service.edge_path.exists():
+        raise typer.BadParameter("evidence graph is missing; run `mwb graph rebuild` first")
+    console.print_json(json.dumps(service.query(kind, ref)))
 
 
 @app.command()
