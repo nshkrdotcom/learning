@@ -229,3 +229,24 @@ def plot_head_specific_gaps(by_head_df: Any, path: Path, top_k: int = 24) -> Non
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
+
+
+def plot_status_counts(by_head_df: Any, path: Path, title: str = "Status counts") -> None:
+    if by_head_df.empty or "specificity_status" not in by_head_df:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "No status rows", ha="center", va="center")
+        ax.axis("off")
+        fig.tight_layout()
+        fig.savefig(path, dpi=160)
+        plt.close(fig)
+        return
+    counts = by_head_df["specificity_status"].value_counts()
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.bar(counts.index, counts.values, color="#0b6e4f")
+    ax.set_ylabel("Count")
+    ax.set_title(title)
+    ax.tick_params(axis="x", rotation=35)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
