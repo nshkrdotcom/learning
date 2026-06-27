@@ -189,6 +189,54 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this does not show: seed 10 does not establish a robust candidate. Negative controls and prior comparison heads also showed apparent survival under the seed-level rule, so the multi-seed report must be conservative.
 - Next step: run held-out robustness seeds 11 and 12 without changing decision rules.
 
+## 2026-06-26 Held-Out Induction Robustness Seed 11
+
+- Run: `runs/20260626_162154_gpt2_small_induction_heldout_seed11`
+- Baseline run: `runs/20260626_162134_gpt2_small_induction_heldout_seed11`
+- Candidate set: `reports/head_specific_induction_heldout_robustness_v1/heldout_candidate_set.csv`
+- Prompt families: `heldout_symbolic_longer`, `heldout_word_sequences`, `heldout_number_sequences`, `heldout_double_repeat`, `heldout_wrong_target_same_prompt`, and `heldout_no_structure_same_tokens`
+- Interventions: `head_clean_to_corrupt_patch`, `head_zero_ablation`, and `head_mean_ablation`
+- Positions: `final` and `previous_occurrence`
+- Examples per family: 12
+- Primary metric: `true_vs_control_logit_diff`
+- Candidates tested: 16 fixed candidates.
+- Status counts: `heldout_survives_seed`: 13; `downgraded_weak_family_specific`: 1; `falsified_no_positive_effect`: 24; `falsified_controls_move`: 10; `insufficient_valid_examples`: 48.
+- L7H7 status: final clean-to-corrupt patching had a small positive gap but was classified `falsified_no_positive_effect`; final zero ablation was classified `heldout_survives_seed`. This remains a random-comparison candidate until the multi-seed report downgrades or confirms it.
+- L9H11 status: final mean ablation was classified `heldout_survives_seed`; final clean-to-corrupt and zero ablation were control-moving or no-positive-effect failures.
+- L7H11 status: final zero ablation had a large positive-minus-control gap but still had `falsified_no_positive_effect`; clean-to-corrupt and mean ablation were negative.
+- L7H0 status: final clean-to-corrupt was `falsified_no_positive_effect`; ablations were also no-positive-effect.
+- L0H8 status: final clean-to-corrupt and mean ablation were classified `heldout_survives_seed`; zero ablation was no-positive-effect.
+- Prior raw-attention heads status: L0H1 and L0H5 satisfied some final-position seed-level survival rows; L0H10 had a large zero-ablation gap but no positive effect. This again shows the seed-level rule is not specific enough by itself.
+- Negative controls status: negative-control L11H0 had the largest positive-minus-control gap in the seed under final zero ablation, so negative controls clearly expose false-positive risk.
+- Descriptive artifacts skipped: cache, logit-lens, and attention were not run for this seed because the robustness runner and planned consolidation use the causal robustness artifacts directly.
+- What this shows: seed 11 completed the full fixed matrix with true head-specific `hook_z` interventions.
+- What this does not show: seed 11 does not support a clean candidate. Comparison heads and negative controls also produced apparent survival rows.
+- Next step: run seed 12 with the same fixed candidate set and unchanged decision rules.
+
+## 2026-06-26 Held-Out Induction Robustness Seed 12
+
+- Run: `runs/20260626_162753_gpt2_small_induction_heldout_seed12`
+- Baseline run: `runs/20260626_162728_gpt2_small_induction_heldout_seed12`
+- Candidate set: `reports/head_specific_induction_heldout_robustness_v1/heldout_candidate_set.csv`
+- Prompt families: `heldout_symbolic_longer`, `heldout_word_sequences`, `heldout_number_sequences`, `heldout_double_repeat`, `heldout_wrong_target_same_prompt`, and `heldout_no_structure_same_tokens`
+- Interventions: `head_clean_to_corrupt_patch`, `head_zero_ablation`, and `head_mean_ablation`
+- Positions: `final` and `previous_occurrence`
+- Examples per family: 12
+- Primary metric: `true_vs_control_logit_diff`
+- Candidates tested: 16 fixed candidates.
+- Status counts: `heldout_survives_seed`: 14; `falsified_no_positive_effect`: 25; `falsified_controls_move`: 9; `insufficient_valid_examples`: 48.
+- L7H7 status: final zero ablation was classified `heldout_survives_seed`; final clean-to-corrupt patching had no positive effect and mean ablation was control-moving. This is intervention-specific and should be downgraded unless the consolidated report finds stronger support.
+- L9H11 status: final clean-to-corrupt, zero ablation, and mean ablation were all classified `heldout_survives_seed`, with the largest primary-candidate seed-12 gap under zero ablation.
+- L7H11 status: no final-position intervention produced a survival classification.
+- L7H0 status: no final-position intervention produced a survival classification.
+- L0H8 status: final clean-to-corrupt and mean ablation were classified `heldout_survives_seed`; zero ablation was no-positive-effect.
+- Prior raw-attention heads status: L0H1, L0H4, L0H5, and L0H10 all satisfied at least one seed-level survival row. This reinforces that prior raw-attention heads can still pass permissive held-out rows without being specific induction candidates.
+- Negative controls status: negative controls again produced survival rows, including L11H0 for final clean-to-corrupt patching, while L11H0 also had the largest raw gap under zero ablation despite being no-positive-effect by status.
+- Descriptive artifacts skipped: cache, logit-lens, and attention were not run for this seed because the robustness runner and planned consolidation use the causal robustness artifacts directly.
+- What this shows: seed 12 completed the full fixed held-out robustness matrix.
+- What this does not show: seed 12 alone does not validate the prior candidates. Apparent survival remains mixed across interventions and is not specific to primary candidates.
+- Next step: run the consolidated held-out robustness comparison across seeds 10, 11, and 12.
+
 ## Template
 
 - Date:
