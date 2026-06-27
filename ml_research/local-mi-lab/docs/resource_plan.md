@@ -28,3 +28,5 @@ First-pass defaults:
 Attention pattern CSVs are small for GPT-2 small selected-layer runs, but they should stay scoped to the current prompt set and selected layers. Do not cache every attention pattern for every layer and prompt by default.
 
 The controls workflow uses 192 initial examples by default, balanced across six families. This is still a small GPT-2 small run and should remain selected-layer/final-token by default.
+
+The controlled patching follow-up should stay tiny by default: selected candidates only, four prompt families, eight examples per family, at most twelve candidates, and final-position patching. Candidate rows may request heads, but the first pass can patch full layer-level `attn_out`; in that case artifacts must record that the patch was not head-specific. Do not expand this into path patching or an exhaustive component search.

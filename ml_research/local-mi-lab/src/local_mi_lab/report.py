@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,13 @@ def read_json_if_present(path: Path) -> dict[str, Any] | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def read_csv_rows_if_present(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    with path.open("r", newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
 def generate_run_summary(run_dir: str | Path) -> str:
     root = resolve_repo_path(run_dir)
     config = read_json_if_present(root / "capability_report.json")
@@ -29,6 +37,7 @@ def generate_run_summary(run_dir: str | Path) -> str:
     logit_lens = read_json_if_present(root / "logit_lens_summary.json")
     attention = read_json_if_present(root / "attention_summary.json")
     patching_metadata = read_json_if_present(root / "patching_metadata.json")
+    controlled_patching = read_json_if_present(root / "controlled_patching_summary.json")
     files = relative_files(root) if root.exists() else []
 
     lines = [
@@ -78,9 +87,25 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "",
         _patching_text(root, patching_metadata),
         "",
+        "## Controlled patching",
+        "",
+        _controlled_patching_text(controlled_patching),
+        "",
+        "## Controlled patching by family",
+        "",
+        _controlled_patching_family_text(root),
+        "",
+        "## Candidate specificity",
+        "",
+        _candidate_specificity_text(root, controlled_patching),
+        "",
         "## False positives and controls",
         "",
         _false_positive_text(attention),
+        "",
+        "## False-positive lesson",
+        "",
+        _controlled_false_positive_lesson(controlled_patching),
         "",
         "## What this shows",
         "",
@@ -89,6 +114,14 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "## What this suggests",
         "",
         _suggests_text(root, baseline, attention),
+        "",
+        "## What causal patching changes",
+        "",
+        _what_causal_patching_changes(controlled_patching),
+        "",
+        "## What causal patching does not show",
+        "",
+        _what_causal_patching_does_not_show(),
         "",
         "## What this does not show",
         "",
@@ -258,6 +291,41 @@ def _patching_text(root: Path, metadata: dict[str, Any] | None) -> str:
     return "Patching results present, but metadata is missing."
 
 
+def _controlled_patching_text(summary: dict[str, Any] | None) -> str:
+    if summary is None:
+        return "Missing: `controlled_patching_summary.json` was not found."
+    return (
+        "Controlled patching summary present. Controlled patching asks whether causal effects "
+        "separate positives from controls. "
+        f"Candidates patched: {summary.get('n_candidates')}. "
+        f"Positive mean effect size: {summary.get('positive_mean_effect_size')}. "
+        f"Max control mean effect size: {summary.get('max_control_mean_effect_size')}. "
+        f"Best positive-minus-control causal gap: {summary.get('best_positive_minus_control_effect_gap')}."
+    )
+
+
+def _controlled_patching_family_text(root: Path) -> str:
+    rows = read_csv_rows_if_present(root / "controlled_patching_by_family.csv")
+    if not rows:
+        return "Missing: `controlled_patching_by_family.csv` was not found."
+    families = sorted({row["family"] for row in rows})
+    return f"Controlled patching family table present for families: {', '.join(families)}."
+
+
+def _candidate_specificity_text(root: Path, summary: dict[str, Any] | None) -> str:
+    if not (root / "controlled_patching_by_candidate.csv").exists():
+        return "Missing: `controlled_patching_by_candidate.csv` was not found."
+    counts = (summary or {}).get("specificity_status_counts", {})
+    return (
+        f"Candidate specificity statuses: {counts}. "
+        "A candidate that moves controls as much as positives is nonspecific. "
+        "A candidate with positive-minus-control causal gap is more interesting than a raw "
+        "attention candidate, but still not a mechanism claim. "
+        "Layer-level attn_out patching is not head-specific unless the artifact explicitly says "
+        "head_specific_patch=true."
+    )
+
+
 def _false_positive_text(summary: dict[str, Any] | None) -> str:
     base = (
         "A head that attends to previous occurrences on positive prompts but also attends strongly "
@@ -270,6 +338,23 @@ def _false_positive_text(summary: dict[str, Any] | None) -> str:
     if not control_heads:
         return f"{base} No control-firing head summary was found."
     return f"{base} Strongest control-firing heads include: {_format_raw_heads(control_heads[:5])}."
+
+
+def _controlled_false_positive_lesson(summary: dict[str, Any] | None) -> str:
+    if summary is None:
+        return "Controlled patching has not run yet, so the causal false-positive lesson is pending."
+    counts = summary.get("specificity_status_counts", {})
+    if counts.get("nonspecific_moves_controls", 0):
+        return (
+            "Controlled patching found at least one candidate where controls moved as much as "
+            "positives. That is a nonspecific causal pattern, not an induction-head result."
+        )
+    if counts.get("positive_specific_candidate", 0):
+        return (
+            "Controlled patching found at least one positive-specific candidate. This is worth "
+            "manual inspection and small replication, not a mechanism claim."
+        )
+    return "Controlled patching did not identify a clear positive-specific causal pattern."
 
 
 def _suggests_text(
@@ -288,6 +373,24 @@ def _suggests_text(
     )
 
 
+def _what_causal_patching_changes(summary: dict[str, Any] | None) -> str:
+    if summary is None:
+        return "Causal patching has not been run for this controlled artifact set."
+    return (
+        "Causal patching changes the evidence type from descriptive attention/logit-lens patterns "
+        "to an intervention on selected components. It only tests the selected examples, candidate "
+        "sites, component scope, position, and metric."
+    )
+
+
+def _what_causal_patching_does_not_show() -> str:
+    return (
+        "Controlled patching does not identify a full circuit by itself. Layer-level attn_out "
+        "patching is not head-specific unless `head_specific_patch=true` is recorded. A positive "
+        "causal gap is still only a practice candidate until replicated and inspected manually."
+    )
+
+
 def _next_step_text(root: Path) -> str:
     if not (root / "prompts.csv").exists():
         return "Build induction_controls prompts."
@@ -297,7 +400,18 @@ def _next_step_text(root: Path) -> str:
         return "Run attention-pattern controls."
     if not (root / "logit_lens_by_family.csv").exists():
         return "Run logit lens by family."
-    return "Inspect false positives and decide whether to run a tiny controlled patching pass."
+    if not (root / "controlled_patching_candidates.csv").exists():
+        return "Run select_controlled_patching_candidates.py, then run_controlled_patching.py."
+    if not (root / "controlled_patching_summary.json").exists():
+        return "Run controlled patching on selected candidates."
+    summary = read_json_if_present(root / "controlled_patching_summary.json") or {}
+    counts = summary.get("specificity_status_counts", {})
+    if counts.get("positive_specific_candidate", 0):
+        return (
+            "Inspect the candidate manually and run a smaller replication with a new seed before "
+            "any stronger claim."
+        )
+    return "Write a learning note explaining the false-positive pattern before adding new tasks."
 
 
 def _format_raw_heads(heads: list[dict[str, Any]]) -> str:

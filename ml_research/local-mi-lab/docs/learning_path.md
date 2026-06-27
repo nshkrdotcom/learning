@@ -44,10 +44,10 @@ This is a six-stage path for local mechanistic-interpretability practice. Keep e
 
 ## Stage 6: Small Original Question
 
-- What to learn: how to ask one narrow question that can be tested locally with behavior, descriptive analysis, and a causal intervention.
-- Script/notebook to run: adapt the existing scripts rather than creating a new framework.
+- What to learn: first, how to run a tiny controlled causal follow-up on the false positives found in Stage 5; then how to ask one narrow question that can be tested locally with behavior, descriptive analysis, and a causal intervention.
+- Script/notebook to run: `scripts/select_controlled_patching_candidates.py`, `scripts/run_controlled_patching.py`, `scripts/summarize_run.py`, and `notebooks/004_activation_patching.ipynb`.
 - Result to inspect: one short Markdown run summary plus the CSV/JSON/PNG artifacts needed to audit it.
-- Mistake to avoid: starting with a broad claim about how the model works.
-- Completion: a short report says what was tested, what moved, what did not move, and what remains unknown.
+- Mistake to avoid: treating a raw attention candidate as causal, or treating a layer-level `attn_out` patch as head-specific.
+- Completion: a short report says whether causal effects separate positives from controls, what moved, what did not move, and what remains unknown. Only after that should you start a small original question.
 
 Attention-pattern evidence is descriptive. It can suggest where to inspect, but it is not causal evidence by itself. Residual/logit-lens artifacts are descriptive. Patching is causal only for the selected prompt pair, component, position, and metric. No broad mechanism claim is allowed.

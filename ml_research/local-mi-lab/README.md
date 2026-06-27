@@ -38,6 +38,26 @@ uv run python scripts/summarize_run.py --run runs/<run_id>
 
 Failure is useful. If controls also score highly, the current prompt family or metric is not specific enough.
 
+## Tiny Controlled Patching Follow-up
+
+Use this only after the controls workflow has produced `baseline_by_family.csv`, `attention_by_family.csv`, and `logit_lens_by_family.csv`. This is tiny causal practice, not full induction-head discovery. Controls are the point: if controls move too, the candidate is nonspecific.
+
+```bash
+uv run python scripts/select_controlled_patching_candidates.py \
+  --run runs/<controlled_run_id>
+
+uv run python scripts/run_controlled_patching.py \
+  --config configs/gpt2_small_induction_controls.yaml \
+  --run runs/<controlled_run_id> \
+  --candidates runs/<controlled_run_id>/controlled_patching_candidates.csv \
+  --examples-per-family 8
+
+uv run python scripts/summarize_run.py \
+  --run runs/<controlled_run_id>
+```
+
+Layer-level `attn_out` patching is not head-specific unless the artifact explicitly records `head_specific_patch=true`.
+
 Activation patching is separate and should be run only after baseline behavior, activation capture, logit lens, and attention-pattern inspection are working:
 
 ```bash

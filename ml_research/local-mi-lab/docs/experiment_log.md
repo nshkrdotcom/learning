@@ -26,6 +26,15 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - Limitation: this is still practice work. These controls are simple and not a publication-quality induction-head benchmark.
 - Next step: inspect `attention_by_family.csv`, then design a tiny controlled patching pass that compares a small number of positive examples against the high-scoring control families.
 
+## 2026-06-26 Controlled Patching Follow-up Plan
+
+- Source run: `runs/20260626_144001_gpt2_small_induction_controls`
+- Question: when selected raw attention candidates are patched, do positives move more than the high-scoring controls?
+- Candidate selection: read `attention_summary.json` and `attention_by_family.csv`, then select top raw-positive heads, top control-firing heads, any positive-gap heads, and a few deterministic comparison heads.
+- Patching scope: tiny by default, selected candidates only, four families, eight examples per family, final position, and layer-level `attn_out` unless head-specific patching is explicitly recorded.
+- Expected useful result: a candidate may be positive-specific, nonspecific, no-effect, insufficient, or denominator-problem. Nonspecific movement is a valid learning result.
+- Next step: run candidate selection and controlled patching, then update this log with actual artifacts and effect sizes.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`
