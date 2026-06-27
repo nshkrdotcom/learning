@@ -135,6 +135,16 @@ uv run mwb hypothesis explain <run-ref>
 
 Promotion to `claimable` requires `--approved-by` and `--decision-ref`. See `docs/HYPOTHESIS_LIFECYCLE.md` for states, transition rules, and alternative-explanation outputs.
 
+## Space Types
+
+Check tensor-space and mechanistic-unit compatibility before a patch, projection, or comparison:
+
+```bash
+uv run mwb space check docs/fixtures/space_check_valid.json
+```
+
+Space checks write `.mechanism/space_checks/latest_space_check.json` and block incompatible dictionaries, pre-LN/post-LN mismatches without transforms, wrong-hook patches, and invalid unit operations. See `docs/SPACE_TYPES.md`.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

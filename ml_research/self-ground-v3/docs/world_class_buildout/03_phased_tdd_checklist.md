@@ -180,6 +180,8 @@ git push
 
 ## Phase 15: Mechanistic Space Type System
 
+Status: complete in repo Phase 16 pending final commit and push.
+
 ### Required Reading
 
 - `0003.md` TensorSpace and MechanisticUnitRef.
@@ -188,26 +190,26 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for incompatible SAE dictionary comparisons.
-- [ ] Add failing tests for pre-LN/post-LN projection mismatch.
-- [ ] Add failing tests for wrong-hook patch target.
-- [ ] Add failing tests for explicit transform provenance.
-- [ ] Add failing tests for MechanisticUnit valid/invalid operation registry.
+- [x] Add failing tests for incompatible SAE dictionary comparisons.
+- [x] Add failing tests for pre-LN/post-LN projection mismatch.
+- [x] Add failing tests for wrong-hook patch target.
+- [x] Add failing tests for explicit transform provenance.
+- [x] Add failing tests for MechanisticUnit valid/invalid operation registry.
 
 ### Implementation
 
-- [ ] Add `TensorRef`.
-- [ ] Expand `TensorSpace`.
-- [ ] Add `SpaceCompatibilityReport`.
-- [ ] Add transform registry.
-- [ ] Add `MechanisticUnitRegistry`.
-- [ ] Add `mwb space check`.
+- [x] Add `TensorRef`.
+- [x] Expand `TensorSpace`.
+- [x] Add `SpaceCompatibilityReport`.
+- [x] Add transform registry.
+- [x] Add `MechanisticUnitRegistry`.
+- [x] Add `mwb space check`.
 
 ### Docs
 
-- [ ] Add `docs/SPACE_TYPES.md`.
-- [ ] Update adapter docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/SPACE_TYPES.md`.
+- [x] Update adapter docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -224,7 +226,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 15: add mechanistic space type system"
+git commit -m "phase 16: add mechanistic space type system"
 git push
 ```
 

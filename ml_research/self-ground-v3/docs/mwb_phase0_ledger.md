@@ -788,3 +788,54 @@ Observed result:
 
 Known residual risk:
 - Lifecycle state and alternative explanations are deterministic workflow records. They do not create or accept paper claims without the separate ledger/proposal review path.
+
+## Phase 16: Mechanistic Space Type System
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` TensorSpace, MechanisticUnitRef, and invalid mechanistic operations sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` typed tensor spaces, mechanistic unit registry, compatibility rules, and valid/invalid operations.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` static compiler and space type system prerequisite sections.
+
+Implemented:
+- Expanded `TensorSpace` with backend, layer, stream kind, basis, normalization context, token-position semantics, and device fields.
+- Added `TensorRef`, `SpaceTransform`, `SpaceCompatibilityReport`, and expanded `MechanisticUnitRef`.
+- Added `MechanisticUnitRegistry` to enforce valid and invalid unit operations.
+- Added `SpaceTypeService` to fail closed on incompatible SAE dictionaries, missing source/target/unit spaces, pre-LN/post-LN mismatches without transforms, transforms without provenance, wrong-hook patching, and invalid unit operations.
+- Added `mwb space check <json>` with JSON output, nonzero exit on failure, `.mechanism/space_checks/latest_space_check.json` persistence, and SQLite indexing.
+- Added SQLite schema/index rebuild support for `tensor_refs`, `space_transforms`, and `space_checks`.
+- Updated `mwb doctor` to refresh rebuildable SQLite schema drift before checking table presence, so older workspaces upgrade cleanly without changing canonical evidence files.
+- Added `docs/SPACE_TYPES.md`, a valid fixture, README, usage-guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase16_space_types.py
+uv run ruff check src/mwb/space_types.py tests/test_phase16_space_types.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb space check docs/fixtures/space_check_valid.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 16 RGR tests first failed on missing `mwb.space_types`, missing `SpaceTransform`, missing expanded `TensorSpace` fields, and missing `mwb space`.
+- Added provenance and missing-space tests; the missing-space test first failed because unit-space validation was skipped when the target space was unknown, then passed after fail-closed validation moved outside the target-space branch.
+- Added a schema-drift regression test after QC surfaced that existing SQLite indexes from older phases lacked newly introduced tables until a writer refreshed schema.
+- Focused Phase 16 test suite passed, `8 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `72 passed, 1 skipped`.
+- `uv run mwb space check docs/fixtures/space_check_valid.json`: passed and wrote a `SpaceCompatibilityReport` with `status: pass`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `space_checks: 1`.
+
+Known residual risk:
+- Space checks are structural compatibility gates. A passing report does not establish causal evidence, validate controls, or promote a claim.

@@ -14,6 +14,9 @@ SCHEMA_TABLES = {
     "objects",
     "object_versions",
     "tensor_spaces",
+    "tensor_refs",
+    "space_transforms",
+    "space_checks",
     "mechanistic_units",
     "example_bundles",
     "control_bundles",
@@ -256,6 +259,10 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
             if ref:
                 insert_payload(sqlite_path, "hypothesis_transitions", str(ref), receipt)
                 counts["hypothesis_transitions"] += 1
+
+    space_checks_dir = project.mechanism_dir / "space_checks"
+    for path in sorted(space_checks_dir.glob("*.json")) if space_checks_dir.exists() else []:
+        counts["space_checks"] += _insert_json_file(sqlite_path, path, "space_checks")
 
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")

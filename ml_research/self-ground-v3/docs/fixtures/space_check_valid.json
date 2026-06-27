@@ -1,0 +1,44 @@
+{
+  "operation": "ablate",
+  "source_space_ref": "space_resid_post",
+  "target_space_ref": "space_resid_post",
+  "spaces": [
+    {
+      "wb_ref": "space_resid_post",
+      "wb_type": "TensorSpace",
+      "wb_version": "1",
+      "model_ref": "model_pythia",
+      "backend": "TransformerLens",
+      "hook_point": "blocks.2.hook_resid_post",
+      "layer": 2,
+      "stream_kind": "residual_stream",
+      "basis": "model_native",
+      "normalization_context": "post_ln",
+      "axis_names": ["batch", "position", "d_model"],
+      "token_position_semantics": "all",
+      "dtype": "float32",
+      "shape": [null, null, 512],
+      "parents": [],
+      "metadata": {}
+    }
+  ],
+  "units": [
+    {
+      "wb_ref": "unit_sae_123",
+      "wb_type": "MechanisticUnitRef",
+      "wb_version": "1",
+      "unit_kind": "sae_feature",
+      "model_ref": "model_pythia",
+      "tensor_space_ref": "space_resid_post",
+      "read_space_ref": "space_resid_post",
+      "write_space_ref": "space_resid_post",
+      "dictionary_ref": "dict_pythia_blocks2",
+      "feature_index": 123,
+      "hook_point": "blocks.2.hook_resid_post",
+      "valid_operations": ["observe_activation", "ablate", "resample_ablate", "amplify"],
+      "invalid_operations": ["attention_pattern_patch"],
+      "parents": [],
+      "metadata": {}
+    }
+  ]
+}

@@ -21,6 +21,7 @@ from mwb.ledgers import propose_claim_update, propose_run_ledger_row, validate_l
 from mwb.project import ProjectManager
 from mwb.refs import stable_ref
 from mwb.session import SessionManager, latest_session
+from mwb.space_types import SpaceTypeService
 from mwb.sqlite_index import rebuild_sqlite_index
 from mwb.workflows.cards import card_from_run, write_card
 from mwb.workflows.draft_guard import check_draft_text, load_claim_cards
@@ -41,6 +42,7 @@ ingest_app = typer.Typer(help="Ingest external research artifact sets.")
 graph_app = typer.Typer(help="Rebuild and query the local evidence graph.")
 ledger_app = typer.Typer(help="Validate Git-native research ledgers and proposals.")
 hypothesis_app = typer.Typer(help="Manage hypothesis lifecycle and alternatives.")
+space_app = typer.Typer(help="Check mechanistic tensor spaces and unit operations.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -48,6 +50,7 @@ app.add_typer(ingest_app, name="ingest")
 app.add_typer(graph_app, name="graph")
 app.add_typer(ledger_app, name="ledger")
 app.add_typer(hypothesis_app, name="hypothesis")
+app.add_typer(space_app, name="space")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -103,6 +106,7 @@ DecisionRefOption = Annotated[
     typer.Option("--decision-ref", help="Decision ref required for claimable promotion."),
 ]
 ReasonOption = Annotated[str | None, typer.Option("--reason", help="Transition rationale.")]
+SpaceCheckFileArgument = Annotated[Path, typer.Argument(help="Space check JSON file.")]
 
 
 @app.command()
@@ -220,6 +224,18 @@ def hypothesis_explain(run_ref: RunRefArgument) -> None:
         console.print(f"error: {exc}")
         raise typer.Exit(code=1) from exc
     console.print_json(json.dumps(report))
+
+
+@space_app.command("check")
+def space_check(path: SpaceCheckFileArgument) -> None:
+    """Validate tensor-space compatibility and mechanistic unit operations."""
+    project = ProjectManager.discover_or_create()
+    service = SpaceTypeService(project)
+    report = service.check_file(path)
+    service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status == "fail":
+        raise typer.Exit(code=1)
 
 
 @app.command()

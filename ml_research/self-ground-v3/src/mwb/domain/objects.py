@@ -132,21 +132,67 @@ class DictionaryIdentity(WorkbenchObject):
 class TensorSpace(WorkbenchObject):
     wb_type: str = "TensorSpace"
     model_ref: str
+    backend: str | None = None
     hook_point: str
+    layer: int | None = None
+    stream_kind: str | None = None
+    basis: str = "model_native"
+    normalization_context: str | None = None
     axis_names: list[str]
+    token_position_semantics: str | None = None
     dtype: str
     shape: list[int | None]
     layernorm_context: str | None = None
+    device: str | None = None
+
+
+class TensorRef(WorkbenchObject):
+    wb_type: str = "TensorRef"
+    tensor_space_ref: str
+    producer_ref: str | None = None
+    role: str
+    dtype: str
+    shape: list[int | None]
+
+
+class SpaceTransform(WorkbenchObject):
+    wb_type: str = "SpaceTransform"
+    from_space_ref: str
+    to_space_ref: str
+    transform_kind: str
+    provenance_ref: str
+    status: str = "declared"
+
+
+class SpaceCompatibilityReport(WorkbenchObject):
+    wb_type: str = "SpaceCompatibilityReport"
+    operation: str
+    status: str
+    source_space_ref: str | None = None
+    target_space_ref: str | None = None
+    unit_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    transform_refs: list[str] = Field(default_factory=list)
+    required_transform: str | None = None
 
 
 class MechanisticUnitRef(WorkbenchObject):
     wb_type: str = "MechanisticUnitRef"
+    uri: str | None = None
     unit_kind: str
     model_ref: str
     tensor_space_ref: str
+    read_space_ref: str | None = None
+    write_space_ref: str | None = None
     dictionary_ref: str | None = None
+    layer: int | None = None
+    head: int | None = None
     feature_index: int | None = None
     hook_point: str | None = None
+    direction_hash: str | None = None
+    external_aliases: list[str] = Field(default_factory=list)
+    valid_operations: list[str] = Field(default_factory=list)
+    invalid_operations: list[str] = Field(default_factory=list)
 
 
 class ExampleBundle(WorkbenchObject):
@@ -336,6 +382,9 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         ModelIdentity,
         DictionaryIdentity,
         TensorSpace,
+        TensorRef,
+        SpaceTransform,
+        SpaceCompatibilityReport,
         MechanisticUnitRef,
         ExampleBundle,
         ControlBundle,

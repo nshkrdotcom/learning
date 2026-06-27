@@ -25,6 +25,7 @@ PROJECT_DIRS = [
     "graph",
     "logs",
     "redactions",
+    "space_checks",
 ]
 
 
