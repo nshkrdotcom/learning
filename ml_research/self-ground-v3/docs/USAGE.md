@@ -107,3 +107,5 @@ uv run mwb doctor
 ```
 
 For the source-traced fundamental checklist, see `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`.
+
+For the mined world-class buildout docset, including findings, target architecture, phased TDD/RGR checklist, and QC/commit/push protocol, see `docs/world_class_buildout/README.md`.

@@ -588,3 +588,53 @@ Observed result:
 
 Known residual risk:
 - The checklist intentionally excludes P1/P2 adapters, platform integration, dashboard-first UI, cloud sync, and raw tensor capture by default because the canonical archive marks those as later work or non-goals.
+
+## Phase 12: World-Class Source Mining Docset
+
+Status: complete pending commit finalization
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/*.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/**/*.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0001.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+
+Implemented:
+- `docs/world_class_buildout/README.md` with source scope, scale, reading order, and scope rule.
+- `docs/world_class_buildout/00_source_mining_findings.md` with full file inventory, converged decisions, anti-patterns, source tensions, and immediate buildout implications.
+- `docs/world_class_buildout/01_target_architecture.md` with the target local-first research OS architecture, core subsystems, file layout, and authority boundary.
+- `docs/world_class_buildout/02_implementation_plan.md` with buildout streams, acceptance sources, rejected acceptance patterns, docs rules, QC gate, and commit/push discipline.
+- `docs/world_class_buildout/03_phased_tdd_checklist.md` with a source-resolved phased checklist for evidence graph, ledgers, hypothesis lifecycle, space typing, static compiler, exact verification, example geometry, diagnosis/probes, reference mechanisms, claim grammar, policy profiles, adapters, and release hardening.
+- `docs/world_class_buildout/04_qc_commit_push_protocol.md` with the mandatory TDD/RGR, QC-green, commit, and push protocol for each future phase.
+- README and usage-guide links to the buildout docset.
+
+Commands run:
+
+```bash
+find docs/world_class_buildout -maxdepth 1 -type f -print | sort
+wc -l docs/world_class_buildout/*.md
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Source inventory identified 31 tracker markdown files and 22 `mi_docs` markdown files.
+- Final docset totals 1,927 lines across 6 files.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `53 passed, 1 skipped`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok`.
+
+Known residual risk:
+- This phase is documentation and planning only. It intentionally does not implement the future buildout capabilities described in the checklist.

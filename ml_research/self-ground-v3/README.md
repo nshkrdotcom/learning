@@ -25,4 +25,4 @@ uv run mwb draft-check docs/fixture_draft.md
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
-See `docs/USAGE.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed Phase 0 workflow and dogfood evidence boundary.
+See `docs/USAGE.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed Phase 0 workflow, source-traced buildout plan, and dogfood evidence boundary.
