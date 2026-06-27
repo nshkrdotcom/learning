@@ -22,6 +22,9 @@ SCHEMA_TABLES = {
     "mechanistic_units",
     "example_bundles",
     "control_bundles",
+    "example_geometry_reports",
+    "control_contamination_reports",
+    "bundle_rebalance_proposals",
     "artifacts",
     "artifact_versions",
     "lineage_edges",
@@ -296,6 +299,26 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         counts["static_compiler_reports"] += restored["reports"]
         counts["static_check_results"] += restored["checks"]
 
+    bundle_audits_dir = project.mechanism_dir / "bundle_audits"
+    bundle_audit_paths = (
+        sorted(bundle_audits_dir.glob("*.json")) if bundle_audits_dir.exists() else []
+    )
+    for path in bundle_audit_paths:
+        restored = _insert_bundle_audit_report(sqlite_path, path)
+        counts["example_geometry_reports"] += restored["geometry"]
+        counts["control_contamination_reports"] += restored["contamination"]
+
+    bundle_rebalance_dir = project.mechanism_dir / "bundle_rebalance"
+    rebalance_paths = (
+        sorted(bundle_rebalance_dir.glob("*.json")) if bundle_rebalance_dir.exists() else []
+    )
+    for path in rebalance_paths:
+        counts["bundle_rebalance_proposals"] += _insert_json_file(
+            sqlite_path,
+            path,
+            "bundle_rebalance_proposals",
+        )
+
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")
         if ref:
@@ -359,6 +382,24 @@ def _insert_static_compiler_report(sqlite_path: Path, path: Path) -> dict[str, i
             insert_payload(sqlite_path, "static_check_results", str(check_ref), check)
             checks += 1
     return {"reports": 1, "checks": checks}
+
+
+def _insert_bundle_audit_report(sqlite_path: Path, path: Path) -> dict[str, int]:
+    if not path.exists():
+        return {"geometry": 0, "contamination": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = payload.get("wb_ref") or payload.get("bundle_name") or path.parent.name
+    insert_payload(sqlite_path, "example_geometry_reports", str(ref), payload)
+    contamination = payload.get("contamination_report")
+    if isinstance(contamination, dict) and contamination.get("wb_ref"):
+        insert_payload(
+            sqlite_path,
+            "control_contamination_reports",
+            str(contamination["wb_ref"]),
+            contamination,
+        )
+        return {"geometry": 1, "contamination": 1}
+    return {"geometry": 1, "contamination": 0}
 
 
 def _insert_json_file_once(

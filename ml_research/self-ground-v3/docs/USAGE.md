@@ -171,6 +171,17 @@ uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-r
 
 Verification writes `.mechanism/runs/<run_ref>/verification_run.json`, `intervention_receipts.jsonl`, `verification_results.jsonl`, and `telemetry.jsonl`. Claim-bearing runs require a prediction lock and a passing static compiler gate. See `docs/CAUSAL_VERIFICATION.md`.
 
+## Example Geometry
+
+Audit target/control bundle geometry:
+
+```bash
+uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb bundle rebalance --dry-run
+```
+
+The audit checks token validity, role balance, contaminated controls, and baseline margins, then proposes heldout/control-balance improvements. See `docs/EXAMPLE_GEOMETRY.md`.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

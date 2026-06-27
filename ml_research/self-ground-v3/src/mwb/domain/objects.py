@@ -213,6 +213,34 @@ class ControlBundle(WorkbenchObject):
     bundle_hash: str | None = None
 
 
+class ControlContaminationReport(WorkbenchObject):
+    wb_type: str = "ControlContaminationReport"
+    bundle_name: str
+    status: str
+    contaminated_count: int
+    rows: list[JsonDict] = Field(default_factory=list)
+
+
+class ExampleGeometryReport(WorkbenchObject):
+    wb_type: str = "ExampleGeometryReport"
+    bundle_name: str
+    status: str
+    checks: list[JsonDict]
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    proposals: list[JsonDict] = Field(default_factory=list)
+    contamination_report: JsonDict = Field(default_factory=dict)
+    source_links: JsonDict = Field(default_factory=dict)
+
+
+class BundleRebalanceProposal(WorkbenchObject):
+    wb_type: str = "BundleRebalanceProposal"
+    bundle_name: str
+    dry_run: bool
+    proposals: list[JsonDict]
+    source_report_ref: str | None = None
+
+
 class DomainBundle(WorkbenchObject):
     wb_type: str = "DomainBundle"
     name: str
@@ -436,6 +464,9 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         MechanisticUnitRef,
         ExampleBundle,
         ControlBundle,
+        ControlContaminationReport,
+        ExampleGeometryReport,
+        BundleRebalanceProposal,
         DomainBundle,
         ActivationSet,
         FeatureRanking,

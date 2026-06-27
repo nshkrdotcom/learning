@@ -12,6 +12,7 @@ from rich.console import Console
 
 from mwb.adapters.saelens import SAELensAdapter
 from mwb.adapters.transformer_lens import TransformerLensAdapter
+from mwb.bundle_audit import BundleAuditService
 from mwb.causal_verification import CausalVerificationService
 from mwb.context import RunContext
 from mwb.doctor import run_doctor
@@ -45,6 +46,7 @@ ledger_app = typer.Typer(help="Validate Git-native research ledgers and proposal
 hypothesis_app = typer.Typer(help="Manage hypothesis lifecycle and alternatives.")
 space_app = typer.Typer(help="Check mechanistic tensor spaces and unit operations.")
 compile_app = typer.Typer(help="Compile static mechanistic plausibility checks.")
+bundle_app = typer.Typer(help="Audit and rebalance example/control bundles.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -54,6 +56,7 @@ app.add_typer(ledger_app, name="ledger")
 app.add_typer(hypothesis_app, name="hypothesis")
 app.add_typer(space_app, name="space")
 app.add_typer(compile_app, name="compile")
+app.add_typer(bundle_app, name="bundle")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -111,6 +114,10 @@ DecisionRefOption = Annotated[
 ReasonOption = Annotated[str | None, typer.Option("--reason", help="Transition rationale.")]
 SpaceCheckFileArgument = Annotated[Path, typer.Argument(help="Space check JSON file.")]
 CompileHypothesisFileArgument = Annotated[Path, typer.Argument(help="Hypothesis JSON file.")]
+BundleNameArgument = Annotated[
+    str,
+    typer.Argument(help="Built-in bundle name, e.g. negation_phase3_calibrated."),
+]
 
 
 @app.command()
@@ -252,6 +259,39 @@ def compile_hypothesis(path: CompileHypothesisFileArgument) -> None:
     console.print_json(json.dumps(report.model_dump(mode="json")))
     if report.status == "fail":
         raise typer.Exit(code=1)
+
+
+@bundle_app.command("audit")
+def bundle_audit(name: BundleNameArgument) -> None:
+    """Audit token validity, role balance, contamination, and baseline margins."""
+    project = ProjectManager.discover_or_create()
+    service = BundleAuditService(project)
+    try:
+        report = service.audit_bundle(name)
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status == "fail":
+        raise typer.Exit(code=1)
+
+
+@bundle_app.command("rebalance")
+def bundle_rebalance(
+    name: BundleNameArgument = "negation_phase3_calibrated",
+    dry_run: DryRunOption = False,
+) -> None:
+    """Generate heldout and control-family bundle improvement proposals."""
+    project = ProjectManager.discover_or_create()
+    service = BundleAuditService(project)
+    try:
+        proposal = service.rebalance_bundle(name, dry_run=dry_run)
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    service.write_rebalance(proposal)
+    console.print_json(json.dumps(proposal.model_dump(mode="json")))
 
 
 @app.command()

@@ -27,6 +27,8 @@ PROJECT_DIRS = [
     "redactions",
     "space_checks",
     "static_compiler",
+    "bundle_audits",
+    "bundle_rebalance",
 ]
 
 

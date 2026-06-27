@@ -339,6 +339,8 @@ git push
 
 ## Phase 18: Example Geometry And Control Audits
 
+Status: complete in repo Phase 19 pending final commit and push.
+
 ### Required Reading
 
 - `0005.md` controls and blockers.
@@ -347,25 +349,25 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for token validity audit.
-- [ ] Add failing tests for role balance.
-- [ ] Add failing tests for contaminated controls.
-- [ ] Add failing tests for baseline margin checks.
-- [ ] Add failing tests for heldout/control bundle proposal generation.
+- [x] Add failing tests for token validity audit.
+- [x] Add failing tests for role balance.
+- [x] Add failing tests for contaminated controls.
+- [x] Add failing tests for baseline margin checks.
+- [x] Add failing tests for heldout/control bundle proposal generation.
 
 ### Implementation
 
-- [ ] Add `ExampleGeometryReport`.
-- [ ] Add `ControlContaminationReport`.
-- [ ] Add `mwb bundle audit`.
-- [ ] Add `mwb bundle rebalance --dry-run`.
-- [ ] Add ingest links from SELF-GROUND forensics to bundle audit outputs.
+- [x] Add `ExampleGeometryReport`.
+- [x] Add `ControlContaminationReport`.
+- [x] Add `mwb bundle audit`.
+- [x] Add `mwb bundle rebalance --dry-run`.
+- [x] Add ingest links from SELF-GROUND forensics to bundle audit outputs.
 
 ### Docs
 
-- [ ] Add `docs/EXAMPLE_GEOMETRY.md`.
-- [ ] Update bundle docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/EXAMPLE_GEOMETRY.md`.
+- [x] Update bundle docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -382,7 +384,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 18: add example geometry audits"
+git commit -m "phase 19: add example geometry audits"
 git push
 ```
 

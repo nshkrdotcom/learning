@@ -956,3 +956,58 @@ Observed result:
 
 Known residual risk:
 - Exact verification receipts are intervention evidence, but mechanism-level claims still require clean controls, generalization, mediation where applicable, and claim-ledger review.
+
+## Phase 19: Example Geometry And Control Audits
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` control blockers, next-probe inputs, and density/control failure taxonomy.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` first-class example geometry, bundle audit, contamination, and balancing sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0070_revised.md` baseline calibration, control condition taxonomy, and specificity metrics.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0180_revised_v5.md` candidate claim requirements for token validation, matched controls, baseline calibration, and telemetry.
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/forensics/forensics_summary.md` and related E004 forensics tables.
+
+Implemented:
+- `ExampleGeometryReport`, `ControlContaminationReport`, and `BundleRebalanceProposal` domain objects.
+- `BundleAuditService` for token validity, role balance, control contamination, baseline margin, heldout-template, and heldout-vocabulary checks.
+- `mwb bundle audit <bundle>`.
+- `mwb bundle rebalance --dry-run`.
+- Persistence under `.mechanism/bundle_audits/` and `.mechanism/bundle_rebalance/`.
+- SQLite schema and repair-index recovery for geometry reports, contamination reports, and rebalance proposals.
+- SELF-GROUND E004 forensics links in bundle audit outputs when local artifacts are present.
+- `docs/EXAMPLE_GEOMETRY.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase19_example_geometry.py
+uv run ruff check src/mwb/bundle_audit.py src/mwb/cli.py src/mwb/domain/objects.py src/mwb/domain/__init__.py src/mwb/project.py src/mwb/sqlite_index.py tests/test_phase19_example_geometry.py
+uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb bundle rebalance --dry-run
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb bundle rebalance --dry-run
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 19 RGR tests first failed on missing `mwb.bundle_audit` and missing `mwb bundle`.
+- Focused Phase 19 test suite passed, `6 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `90 passed, 3 skipped`.
+- `uv run mwb bundle audit negation_phase3_calibrated`: passed with `status: warn`, no blockers, role-balance and missing-baseline warnings, and a SELF-GROUND E004 forensics link.
+- `uv run mwb bundle rebalance --dry-run`: passed and produced control-family, heldout-template, and heldout-vocabulary proposals.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `example_geometry_reports: 1`, `control_contamination_reports: 1`, and `bundle_rebalance_proposals: 1`.
+
+Known residual risk:
+- Bundle audits identify geometric and control-design risks. They do not automatically rewrite source bundles or prove behavioral validity under a live tokenizer/model.
