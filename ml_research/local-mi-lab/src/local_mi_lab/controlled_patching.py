@@ -272,12 +272,19 @@ def controlled_patching_summary(
         if not by_candidate.empty
         else None
     )
+    actual_scopes = (
+        sorted(str(scope) for scope in results["actual_patch_scope"].dropna().unique())
+        if not results.empty
+        else []
+    )
+    actual_scope = actual_scopes[0] if len(actual_scopes) == 1 else "mixed_patch_scopes"
     return {
         "n_result_rows": int(len(results)),
         "families": families,
         "n_candidates": int(results["candidate_id"].nunique()) if not results.empty else 0,
         "head_specific_patch": False,
-        "actual_patch_scope": "full_attn_out_layer_or_resid_stream",
+        "actual_patch_scope": actual_scope,
+        "actual_patch_scopes": actual_scopes,
         "positive_mean_effect_size": positive_mean,
         "max_control_mean_effect_size": max_control,
         "best_positive_minus_control_effect_gap": best_gap,

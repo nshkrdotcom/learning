@@ -35,6 +35,24 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - Expected useful result: a candidate may be positive-specific, nonspecific, no-effect, insufficient, or denominator-problem. Nonspecific movement is a valid learning result.
 - Next step: run candidate selection and controlled patching, then update this log with actual artifacts and effect sizes.
 
+## 2026-06-26 GPT-2 Small Controlled Patching Follow-up
+
+- Run: `runs/20260626_144001_gpt2_small_induction_controls`
+- Model: `gpt2-small`; GPU path had already been verified for this workflow on CUDA, and the controlled patching command loaded the TransformerLens model under the CUDA config without blockers.
+- Candidate-selection artifact: `runs/20260626_144001_gpt2_small_induction_controls/controlled_patching_candidates.csv`
+- Controlled-patching artifacts: `controlled_patching_results.csv`, `controlled_patching_by_family.csv`, `controlled_patching_by_candidate.csv`, `controlled_patching_summary.json`, `controlled_patching_notes.md`, `figures/controlled_patching_by_family.png`, and `figures/controlled_patching_candidate_gap.png`
+- Families patched: `positive_repeat_sequence`, `distractor_repeat_control`, `random_expected_token_control`, and `same_token_frequency_control`; eight examples per family.
+- Candidates patched: 11 selected candidates, including top raw-positive attention heads, one top control-firing head, and deterministic comparison heads.
+- Whether patching was head-specific or layer-level: not head-specific. All candidate rows were patched as `full_attn_out_layer` with `head_specific_patch=false`.
+- Positive mean effect size: `0.0522`.
+- Hardest control family by patching effect: `same_token_frequency_control`, with max control mean effect size `0.1755` on candidate `cand_010`.
+- Best positive-minus-control causal gap: `0.5102` on `cand_009` (random comparison L9H6), not a raw attention candidate.
+- Candidate specificity statuses: `positive_specific_candidate`: 6; `no_positive_effect`: 5.
+- Did controls move as much as positives? Across the run, the max control mean effect (`0.1755`) exceeded the overall positive mean effect (`0.0522`). For the simple per-candidate rule, six candidates had positive effects larger than their max control effect, but the largest gap came from a random comparison candidate.
+- What this teaches: controlled patching can separate descriptive attention false positives from causal practice candidates, but the first interesting causal gap did not come from the raw previous-occurrence attention heads.
+- What this does not show: no induction-head mechanism was discovered. Layer-level `attn_out` patching is not head-specific, and the result is limited to selected prompts, candidates, component scope, position, and target-logit metric.
+- Next step: write a short learning note, then run a small seed-1 replication because at least one candidate met the simple `positive_specific_candidate` rule.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`

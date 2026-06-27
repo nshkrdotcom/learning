@@ -90,6 +90,8 @@ def test_candidate_summary_schema() -> None:
     assert summary["n_candidates"] == 1
     assert "specificity_status_counts" in summary
     assert summary["head_specific_patch"] is False
+    assert summary["actual_patch_scope"] == "full_attn_out_layer"
+    assert summary["actual_patch_scopes"] == ["full_attn_out_layer"]
 
 
 def test_dry_run_job_selection_does_not_require_model() -> None:
