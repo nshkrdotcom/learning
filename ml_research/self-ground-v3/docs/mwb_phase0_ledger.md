@@ -961,7 +961,7 @@ Known residual risk:
 
 Status: complete pending commit and push
 Commit: `e8801ac`
-Pushed: pending
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` control blockers, next-probe inputs, and density/control failure taxonomy.
