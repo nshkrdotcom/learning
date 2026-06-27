@@ -1,0 +1,15 @@
+{
+  "model": "gpt2-small",
+  "layers": [0, 2, 4],
+  "n_examples": 2,
+  "files": [
+    {
+      "layer": 0,
+      "hook_name": "blocks.0.hook_resid_post",
+      "path": "activations/layer_00_resid_post.pt",
+      "shape": [2, 768],
+      "dtype": "torch.float16",
+      "file_size_bytes": 4096
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+experiment:
+  name: gpt2_small_ioi_tiny
+  seed: 0
+
+model:
+  name: gpt2-small
+  backend: transformer_lens
+  device: cuda
+  dtype: float32
+  use_inference_mode: true
+
+resources:
+  max_disk_cache_gb: 100
+  max_activation_cache_gb_per_run: 20
+  max_ram_gb_per_run: 64
+  max_gpu_vram_fraction: 0.80
+  max_examples_initial: 32
+  max_examples_full: 128
+  batch_size_auto: true
+
+task:
+  name: ioi_tiny
+  prompt_style: clean_corrupt_pair
+  patching:
+    clean_prompt: "When John and Mary went to the store, John gave a drink to Mary"
+    corrupt_prompt: "When John and Mary went to the store, Mary gave a drink to John"
+    target_token: " Mary"
+    metric: target_logit
+    component: resid_post
+    positions: [final]
+
+activations:
+  cache_strategy: selected_layers
+  token_positions: [final]
+  layers: auto_even_6
+
+outputs:
+  run_root: runs

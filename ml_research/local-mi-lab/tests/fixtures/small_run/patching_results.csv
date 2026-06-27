@@ -1,0 +1,2 @@
+clean_prompt,corrupt_prompt,target_token,metric,patched_layer,patched_component,patched_position,baseline_clean_score,baseline_corrupt_score,patched_score,effect_size
+"A B C A B","A B C A X"," C",target_logit,0,resid_post,4,3.0,1.0,2.0,0.5

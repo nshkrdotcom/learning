@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Generated experiment artifacts. Keep placeholder directories in git.
+data/*
+!data/.gitkeep
+runs/*
+!runs/.gitkeep
+reports/*
+!reports/.gitkeep
+
+# Local caches and large model artifacts.
+.cache/
+hf_cache/
+*.pt
+*.safetensors
+
+# Notebook runtime outputs can be regenerated from scripts.
+.ipynb_checkpoints/
