@@ -1,0 +1,25 @@
+wb_ref: next_7762133b8de864dc
+wb_type: NextProbePlan
+wb_version: '1'
+created_at: '2026-06-27T03:11:09Z'
+parents:
+- run_fixture_control_leaky
+metadata: {}
+source_run_ref: run_fixture_control_leaky
+status: insufficient_evidence
+diagnosis:
+  primary: control_leaky
+  secondary: []
+recommendation:
+  kind: smallest_axis_extension
+  rationale: Controls moved too much; try the smallest untried adjacent layer 
+    axis.
+  command: uv run mwb sweep run_fixture_control_leaky --axis layer=0 --dry-run
+claim_implication:
+  specificity: blocked
+  mechanism: blocked
+  allowed_language:
+  - candidate associated with
+  blocked_language:
+  - implements
+missing_fields: []

@@ -1,0 +1,101 @@
+# Mechanistic Workbench Usage
+
+This is the accepted Phase 0 local workflow for the `self-ground-v3` repository.
+
+## Setup
+
+```bash
+uv sync
+uv run mwb init --name self-ground
+uv run mwb doctor
+```
+
+Runtime state is written under `.mechanism/`. That directory is intentionally ignored by Git.
+
+## Scratch Work
+
+Launch IPython with Workbench context:
+
+```bash
+uv run mwb ipython
+```
+
+Run a captured one-cell session:
+
+```bash
+uv run mwb ipython --execute "bundle = ctx.domains.negation.load('phase3_calibrated')"
+uv run mwb inspect session latest
+```
+
+Resume from an existing captured session:
+
+```bash
+uv run mwb ipython --resume <session-ref> --execute "note = ctx.note('resumed work')"
+```
+
+`ctx.note(...)` creates a typed note object, and `ctx.record(obj, name=...)` returns a labeled typed object copy that is captured when bound in IPython.
+
+## Sweep Artifacts
+
+Dry-run sweeps write a full non-claim-bearing artifact set under `.mechanism/runs/<run_ref>/`:
+
+```bash
+uv run mwb sweep docs/fixtures/hypothesis_phase5.json \
+  --axis layer=0,1 \
+  --axis feature_selection_mode=top-absolute \
+  --axis operation=ablate \
+  --axis patch_mode=direct \
+  --axis amplification_factor=1.0 \
+  --axis control_family=negation_removed \
+  --dry-run
+```
+
+The emitted files include `sweep_config.json`, `run_manifest.json`, `verification_results.jsonl`, `intervention_receipts.jsonl`, `control_metrics.json`, and `blocker_report.json`.
+
+## Backend Checks
+
+```bash
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+```
+
+## SELF-GROUND Dogfood
+
+Run the built-in negation demo:
+
+```bash
+uv run mwb demo negation --model EleutherAI/pythia-70m-deduped --device cpu
+```
+
+Ingest the E004 artifact set:
+
+```bash
+uv run mwb ingest self-ground /home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix
+```
+
+Inspect the latest generated evidence hygiene outputs:
+
+```bash
+uv run mwb card latest
+uv run mwb next-probe latest
+uv run mwb draft-check docs/fixture_draft.md
+```
+
+The accepted E004 posture is `insufficient_evidence` with `control_leaky` as the primary blocker. The workbench preserves that boundary in the generated card and draft guard.
+
+## Rebuild Check
+
+Rebuild a separate SQLite index from file-backed `.mechanism` records:
+
+```bash
+uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
+```
+
+## Quality Gate
+
+```bash
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
+uv run mwb doctor
+```

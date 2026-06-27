@@ -1,0 +1,17 @@
+{
+  "wb_ref": "hyp_fixture_phase5",
+  "title": "Fixture-only hypothesis for Phase 5 workflow QC",
+  "units": ["unit_fixture"],
+  "example_bundle_ref": "bundle_fixture",
+  "control_bundle_ref": "ctrl_fixture",
+  "expected_effect": "target_delta > matched_control_delta",
+  "required_controls": ["negation_removed"],
+  "alternative_explanations": ["control_leaky"],
+  "metadata": {
+    "fixture_only": true,
+    "claim_bearing": false,
+    "tensor_space_compatible": true,
+    "model_sae_hook_match": true,
+    "decoder_unembed_projection_score": 0.04
+  }
+}

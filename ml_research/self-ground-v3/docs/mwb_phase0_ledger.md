@@ -1,0 +1,548 @@
+# Mechanistic Workbench Phase 0 Ledger
+
+## Phase -1: Repo Preflight And Baseline
+
+Status: complete
+Commit: `f8f4e36`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/README.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/00_context_and_decisions.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0001.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/MECHINTERP_CLAUDE.md`
+
+Preflight:
+- Requested target `/home/home/p/g/n/learning/ml_research/self-ground-v3` was absent.
+- The implementation repo was created at the requested path.
+- A local bare Git remote was created at `../self-ground-v3-origin.git` so phase pushes are real Git pushes.
+- Package layout decision: new `src/mwb` package following the implementation docset.
+
+Commands planned:
+
+```bash
+uv sync
+uv run ruff check .
+uv run pytest
+git status --short --branch
+```
+
+Observed result:
+- `uv sync`: passed; created `.venv` with Python 3.12.2 and installed `mechanistic-workbench==0.1.0`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `1 passed`.
+- `git status --short --branch`: clean except the initial files staged for the Phase -1 commit.
+
+Known residual risk:
+- This repo was created during implementation because the requested path did not exist locally.
+
+## Phase 0: Package Skeleton, CLI, And Project Init
+
+Status: complete
+Commit: `345ad93`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/02_architecture_contracts.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/06_qc_commit_push_protocol.md`
+
+Implemented:
+- `mwb` package and Typer CLI entrypoint.
+- `uv run mwb --help`.
+- `uv run mwb init`.
+- `.mechanism/` layout creation.
+- Project discovery and `project.toml` validation.
+- Append-only `events.jsonl`.
+- Git state snapshot without committing.
+- SQLite schema initialization.
+- Read-only `uv run mwb doctor`.
+- Tests for init idempotency, event append, SQLite schema, Git dirty state, and CLI init/doctor.
+
+Commands run:
+
+```bash
+uv run mwb --help
+uv run mwb init --name self-ground
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- `uv run mwb --help`: passed.
+- `uv run mwb init --name self-ground`: passed.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `6 passed`.
+
+Known residual risk:
+- `.mechanism/` is runtime project state and is intentionally ignored by Git in this implementation repo.
+
+## Phase 1: Domain Refs, Typed Objects, And Artifact Registry
+
+Status: complete
+Commit: `a9a66d7`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/02_architecture_contracts.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/03_ipython_capture_impl.md`
+
+Implemented:
+- Deterministic `stable_ref`.
+- Workbench object protocol and pydantic-backed typed objects.
+- Domain models for sessions, cells, model identity, dictionary identity, TensorSpace, units, bundles, hypotheses, locks, interventions, reports, plans, cards, and claims.
+- Canonical JSON serialization and type-based deserialization.
+- Artifact registry with sha256, byte count, MIME type, role, parent refs, creator ref, and SQLite indexing.
+- Generic SQLite payload insert/fetch helpers.
+
+Commands run:
+
+```bash
+uv run mwb init --name self-ground
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- `uv run mwb init --name self-ground`: passed.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `12 passed`.
+
+Known residual risk:
+- Phase 1 defines domain identity and artifact indexing but does not yet capture IPython cells; that starts in Phase 2.
+
+## Phase 2: Session Manager And IPython Extension Crux
+
+Status: complete
+Commit: `b8c547b`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/MECHINTERP_CLAUDE.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/03_ipython_capture_impl.md`
+
+Implemented:
+- `uv run mwb ipython`.
+- Repeatable `--execute` mode that runs real IPython cells through installed Workbench hooks.
+- `%load_ext mwb.ipython` extension entrypoint.
+- `ctx`, `mwb`, `display_card`, `display_run`, `display_features`, and `display_graph` injection.
+- Session creation and close with `.mechanism/sessions/sess_*/session.json`.
+- `cells.jsonl`, `namespace_objects.jsonl`, and exception capture.
+- Namespace diffing for object registration, alias binding, alias deletion, and mutation.
+- SQLite indexing for sessions, cells, objects, and object versions.
+- `mwb inspect session latest`.
+
+Commands run:
+
+```bash
+uv run mwb init --name self-ground
+uv run mwb ipython --execute "obj = ctx.objects.create('Note', metadata={'source': 'phase2-qc'})"
+uv run mwb inspect session latest
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- `uv run mwb ipython --execute ...`: passed and wrote a closed IPython session.
+- `uv run mwb inspect session latest`: passed and reported `surface: ipython`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `17 passed`.
+
+Known residual risk:
+- Phase 2 validates generic typed-object capture. Real TransformerLens/SAELens adapter objects start in Phase 3.
+
+## Phase 3: P0 Adapter Contracts And Conformance
+
+Status: complete
+Commit: `5bc4325`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/05_adapters_and_dogfood.md`
+
+Implemented:
+- P0 dependencies promoted to main dependencies: TransformerLens, SAELens, and Torch.
+- `AdapterCapabilityManifest`.
+- `BackendVersionManifest`.
+- `AdapterConformanceResult`.
+- Claim-bearing evidence gate over adapter conformance and required refs.
+- `TransformerLensAdapter` with real model load, identity extraction, hook TensorSpace mapping, forward pass, and activation capture.
+- `SAELensAdapter` with real SAE load, dictionary identity extraction, hook compatibility, and feature ref round-trip.
+- `mwb adapter conformance transformer-lens`.
+- `mwb adapter conformance saelens`.
+- Tests for manifests, version manifests, TensorSpace mapping, evidence-gate blocking, and CLI dry-run output.
+
+Commands run:
+
+```bash
+uv sync
+uv run mwb init --name self-ground
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- `uv sync`: passed and installed `transformer-lens==3.3.0`, `sae-lens==6.44.4`, and `torch==2.12.1`.
+- TransformerLens conformance: passed; loaded `EleutherAI/pythia-70m-deduped`, captured `blocks.0.hook_resid_post`, activation shape `[1, 5, 512]`.
+- SAELens conformance: passed; loaded `pythia-70m-deduped-res-sm` / `blocks.2.hook_resid_post`, validated hook compatibility, created feature ref.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `23 passed`.
+
+Known residual risk:
+- Adapter conformance writes runtime reports under `.mechanism/adapters/`; `.mechanism/` remains ignored and is regenerated by commands.
+
+## Phase 4: Bundles, Context APIs, And Scratch Workflow
+
+Status: complete
+Commit: `2c99823`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0002.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/04_scientific_workflow_impl.md`
+
+Implemented:
+- `ctx.models.load_tl(...)` using the real TransformerLens adapter.
+- `ctx.saes.load(...)` using the real SAELens adapter.
+- `ctx.domains.negation.load("phase3_calibrated")`.
+- Built-in `negation_phase3_calibrated.yaml` bundle resource.
+- `DomainBundle`, `ActivationSet`, and `FeatureRanking` typed objects.
+- `ctx.capture(model, bundle).at(hook)` using real TransformerLens activation cache.
+- `ctx.features.rank(sae, acts, contrast=...)` using real SAELens encoding and top-k feature scoring.
+- `ctx.artifact.register(...)`.
+- `mwb demo negation --dry-run`.
+- IPython capture of loaded domain bundles.
+
+Commands run:
+
+```bash
+uv run mwb demo negation --dry-run --model EleutherAI/pythia-70m-deduped
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Demo dry-run: passed and validated the built-in negation bundle with four control families.
+- Real integration test: passed; loaded TransformerLens model, loaded SAELens SAE, captured activations, encoded features, and produced top-k feature rankings.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `26 passed, 1 skipped`.
+
+Known residual risk:
+- Default pytest skips the real adapter workflow unless `MWB_RUN_REAL_ADAPTER_TESTS=1`; the command above was run manually for this phase.
+
+## Phase 5: Hypotheses, Preflight, Prediction Locks, And Verification Skeleton
+
+Status: complete
+Commit: `c37350b`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/04_scientific_workflow_impl.md`
+
+Implemented:
+- `ctx.hypotheses.create(...)`.
+- `ctx.predictions.lock(...)` with hypothesis fingerprint, Git state, environment, expected direction, and expected controls.
+- `mwb preflight <hypothesis-json>`.
+- TensorSpace compatibility, model/SAE hook compatibility, control bundle, and decoder-unembedding projection preflight checks.
+- Preflight pass/warn/fail posture.
+- `mwb verify <hypothesis-json>`.
+- Prediction lock gate for claim-bearing verification.
+- Diagnostic-only dry-run verification output.
+- Explicit fixture-only hypothesis JSON for reproducible QC.
+
+Commands run:
+
+```bash
+uv run mwb init --name self-ground
+uv run mwb preflight docs/fixtures/hypothesis_phase5.json
+uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Preflight fixture: passed with `decoder_unembed_projection` score `0.04`.
+- Diagnostic verify fixture: passed with `evidence_posture=diagnostic_only`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `31 passed, 1 skipped`.
+
+Known residual risk:
+- `docs/fixtures/hypothesis_phase5.json` is explicitly `fixture_only` and `claim_bearing=false`; it must not be used as claim-bearing evidence.
+
+## Phase 6: Causal Verification, Sweep, Blockers, And Next-Probe
+
+Status: complete
+Commit: `8666bde`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/04_scientific_workflow_impl.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/05_adapters_and_dogfood.md`
+
+Implemented:
+- `mwb sweep`.
+- Repeatable `--axis name=value[,value...]` parsing with cross-product matrix size.
+- Canonical blocker diagnosis for artifact incompleteness, control leakage, family gap failure, and specificity gap failure.
+- `mwb next-probe`.
+- Deterministic next-probe plans from run manifests and control metrics.
+- `next_probe.yaml` and `next_probe.md` emission.
+- No recommendation command when required fields are missing.
+- Control-leaky fixture run with generated next-probe outputs.
+
+Commands run:
+
+```bash
+uv run mwb init --name self-ground
+uv run mwb sweep docs/fixtures/hypothesis_phase5.json --axis layer=0,1 --axis patch_mode=direct --dry-run
+uv run mwb next-probe docs/fixtures/runs/control_leaky
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Sweep dry-run: passed with cross-product matrix semantics.
+- Next-probe fixture: passed and wrote `next_probe.yaml` plus `next_probe.md`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `36 passed, 1 skipped`.
+
+Known residual risk:
+- Phase 6 plans dry-run sweeps and next probes; full causal execution remains bounded by adapter-backed verification and claim gates.
+
+## Phase 7: MechanismCards, Claim Grammar, Draft Guard, And Scientific Debt
+
+Status: complete
+Commit: `7af7f20`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0006.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/04_scientific_workflow_impl.md`
+
+Implemented:
+- `mwb card <run-path>`.
+- MechanismCard JSON and Markdown generation from run artifacts.
+- Evidence tier calculation.
+- Allowed and blocked language from evidence tier and blockers.
+- Claim refs linked to generated cards.
+- `.mechanism/cards` and `.mechanism/claims` local card/claim registry writes.
+- `mwb draft-check <draft-path>`.
+- Draft Guard `[CLAIM:...]` scanning over Markdown lines.
+- Blocked, allowed, and missing-card draft statuses.
+- Fixture allowed draft plus generated fixture MechanismCard artifacts.
+
+Commands run:
+
+```bash
+uv run mwb init --name self-ground
+uv run mwb card docs/fixtures/runs/control_leaky
+uv run mwb draft-check docs/fixture_draft.md
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Card fixture: passed and wrote `mechanism_card.json` plus `mechanism_card.md`.
+- Draft fixture: passed because it uses association-tier language.
+- Blocked mechanism wording: covered by tests and exits non-zero.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `39 passed, 1 skipped`.
+
+Known residual risk:
+- Draft Guard is deterministic string matching over claim-tagged lines; it intentionally does not attempt full natural-language entailment.
+
+## Phase 8: SELF-GROUND Dogfood Ingest And Acceptance
+
+Status: complete
+Commit: `1947d55`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/05_adapters_and_dogfood.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/06_qc_commit_push_protocol.md`
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/matrix_run_summary.json`
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/comparison/comparison.json`
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/comparison/matrix_summary.json`
+- `/home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix/comparison/claim_adjudication.md`
+
+Implemented:
+- `mwb ingest self-ground <run-dir>`.
+- Validation of the SELF-GROUND E004 artifact shape and required summary columns.
+- Translation of E004 best-run metrics into Workbench `control_metrics.json`.
+- Run manifest generation under `.mechanism/runs/run_self_ground_e004_specificity_rescue_matrix`.
+- Blocker report, next-probe plan, and MechanismCard generation during ingest.
+- `latest` resolution for `mwb card latest` and `mwb next-probe latest`.
+- `next_probe.json` emission alongside YAML and Markdown.
+- Draft Guard regression fix: blocked-language matching ignores `[CLAIM:...]` marker text.
+- Real E004 draft fixture using allowed association-tier language.
+- Phase 0 acceptance report.
+
+Commands run:
+
+```bash
+uv run mwb demo negation --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb ingest self-ground /home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix
+uv run mwb card latest
+uv run mwb next-probe latest
+uv run mwb draft-check docs/fixture_draft.md
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+```
+
+Observed result:
+- Real demo: passed; loaded `EleutherAI/pythia-70m-deduped` and captured activation shape `[2, 6, 512]`.
+- SELF-GROUND ingest: passed with `run_ref=run_self_ground_e004_specificity_rescue_matrix`, `status=insufficient_evidence`, and `primary_blocker=control_leaky`.
+- `mwb card latest`: passed and blocked mechanism/specificity language for the real E004 claim.
+- `mwb next-probe latest`: passed and recommended the smallest untried adjacent layer axis.
+- `mwb draft-check docs/fixture_draft.md`: passed with `status=allowed`.
+- `mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `42 passed, 1 skipped`.
+
+Known residual risk:
+- The ingested E004 result remains `insufficient_evidence`; the workbench preserves that status and does not upgrade it into claim-bearing mechanism evidence.
+
+## Phase 9: Hardening And Release Candidate
+
+Status: complete
+Commit: `b265464`
+Pushed: yes
+
+Required reading completed:
+- `docs/PHASE0_ACCEPTANCE_REPORT.md`
+- `docs/USAGE.md`
+- `docs/PHASE9_HARDENING_REPORT.md`
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/06_qc_commit_push_protocol.md`
+
+Implemented:
+- Release-candidate hardening report.
+- Usage guide with setup, scratch, backend, dogfood, and QC commands.
+- README command surface update.
+- Full dependency, lint, unit, integration, adapter, doctor, scan, commit, and push gate.
+
+Commands run:
+
+```bash
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb init --name self-ground
+uv run mwb doctor
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+rg -n --glob '!docs/PHASE9_HARDENING_REPORT.md' --glob '!docs/PHASE10_COMPLETION_REPORT.md' --glob '!docs/mwb_phase0_ledger.md' "fake|dummy|mock|simulated|placeholder|smoke" src tests docs README.md pyproject.toml
+rg -n --glob '!docs/PHASE9_HARDENING_REPORT.md' --glob '!docs/PHASE10_COMPLETION_REPORT.md' --glob '!docs/mwb_phase0_ledger.md' "implements|mechanism for|proves|isolated.*circuit|strong_candidate_evidence" src tests docs README.md pyproject.toml
+```
+
+Observed result:
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `42 passed, 1 skipped`.
+- `uv run mwb init --name self-ground`: passed.
+- `uv run mwb doctor`: passed with `status: ok`.
+- Real adapter integration test: passed, `1 passed, 3 deselected`.
+- TransformerLens conformance: passed with real model load and activation capture.
+- SAELens conformance: passed with real SAE load and feature ref round-trip.
+- Non-real-work scan: no matches.
+- Overclaiming scan: expected matches only in blocked-language declarations, tests, and fixture cards that assert blocking behavior.
+
+Known residual risk:
+- Upstream TransformerLens/SAELens deprecation warnings were observed in integration tests. They do not currently break the Phase 0 API, but should be watched before upgrading either package family.
+
+## Phase 10: Literal Checklist Completion
+
+Status: complete
+Commit: `f2de310`
+Pushed: yes
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260626/mi_impl/01_phased_checklist.md`
+- `docs/PHASE0_ACCEPTANCE_REPORT.md`
+- `docs/PHASE9_HARDENING_REPORT.md`
+- `docs/USAGE.md`
+
+Implemented:
+- `mwb ipython --resume <session-ref>` for scripted and interactive launches.
+- IPython capture tests for `ctx.note(...)` and `ctx.record(...)`.
+- Full dry-run sweep artifact emission:
+  - `sweep_config.json`
+  - `run_manifest.json`
+  - `verification_results.jsonl`
+  - `intervention_receipts.jsonl`
+  - `control_metrics.json`
+  - `blocker_report.json`
+- Complete evidence-tier language table for association, projection, causal necessity, causal sufficiency, mediation, generalization, and mechanism.
+- `scientific_debt.json` records generated from MechanismCards.
+- Draft Guard statuses for `allowed`, `caveated`, `blocked`, `unknown_claim`, and `missing_card`.
+- SELF-GROUND E004 comparison CSV and forensics CSV validation.
+- `mwb rebuild-index` for file-backed SQLite rebuild/read compatibility checks.
+- Phase 10 completion report and usage/acceptance doc updates.
+
+Commands run:
+
+```bash
+uv run mwb ipython --execute "note = ctx.note('resume-source')"
+uv run mwb ipython --resume <session-ref> --execute "note = ctx.record(ctx.note('resume-target'), name='resumed-note')"
+uv run mwb sweep docs/fixtures/hypothesis_phase5.json --axis layer=0,1 --axis feature_selection_mode=top-absolute --axis operation=ablate --axis patch_mode=direct --axis amplification_factor=1.0 --axis control_family=negation_removed --dry-run
+uv run mwb ingest self-ground /home/home/p/g/n/learning/ml_research/self-ground/runs/e004_specificity_rescue_matrix
+uv run mwb card latest
+uv run mwb next-probe latest
+uv run mwb draft-check docs/fixture_draft.md
+uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
+uv run mwb doctor
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+```
+
+Observed result:
+- Resume session: passed and wrote `resumed_from_session_ref`.
+- Sweep dry-run: passed and wrote the full non-claim-bearing artifact set.
+- SELF-GROUND ingest: passed with full comparison and forensics validation.
+- Card/latest, next-probe/latest, and draft guard: passed.
+- SQLite rebuild: passed with `status: ok`.
+- `mwb doctor`: passed with `status: ok`.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `50 passed, 1 skipped`.
+- Real adapter integration test: passed, `1 passed, 3 deselected`.
+- TransformerLens conformance: passed.
+- SAELens conformance: passed.
+- Non-real-work scan: no matches.
+- Overclaiming scan: expected matches only in blocked/allowed language tables, tests, and fixture cards; E004 remains association-tier and mechanism-blocked.
+
+Known residual risk:
+- The workbench still does not claim E004 proves a mechanism. The completed implementation enforces that boundary through blocker reports, MechanismCards, draft guard, and scientific debt records.

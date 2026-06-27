@@ -1,0 +1,43 @@
+{
+  "allowed_language": [
+    "is associated with",
+    "is correlated with",
+    "is a candidate marker for"
+  ],
+  "artifact_refs": [],
+  "blocked_language": [
+    "causes",
+    "is necessary for",
+    "is sufficient for",
+    "implements",
+    "mechanism for",
+    "specificity"
+  ],
+  "blockers": [
+    "control_leaky"
+  ],
+  "claim_ref": "claim_run_fixture_control_leaky",
+  "created_at": "2026-06-27T03:15:59Z",
+  "evidence_tier": "association",
+  "metadata": {
+    "blockers": [
+      "control_leaky"
+    ],
+    "claim_ref": "claim_run_fixture_control_leaky",
+    "control_metrics": {
+      "family_min_gap": -0.02,
+      "matched_control_delta": 0.45,
+      "specificity_gap": 0.05,
+      "target_delta": 0.5
+    }
+  },
+  "parents": [
+    "run_fixture_control_leaky"
+  ],
+  "run_ref": "run_fixture_control_leaky",
+  "status": "insufficient_evidence",
+  "title": "MechanismCard: run_fixture_control_leaky",
+  "wb_ref": "mc_run_fixture_control_leaky",
+  "wb_type": "MechanismCard",
+  "wb_version": "1"
+}
