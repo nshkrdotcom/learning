@@ -364,7 +364,9 @@ Required outputs:
 - `telemetry.jsonl`,
 - `blocker_report.json`,
 - `mechanism_card.json`,
-- `next_probe.yaml`.
+- `next_probe.yaml`,
+- `diagnosis_tree.json`,
+- `probe.yaml`.
 
 Rules:
 

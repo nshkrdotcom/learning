@@ -124,6 +124,15 @@ Fundamental items must be:
 - [x] `mwb next-probe` derives recommendations from blockers, metrics, tried axes, available axes, and backend capabilities.
   - Source: `0005` next-probe planning.
   - Evidence: `tests/test_phase6_next_probe.py`.
+- [x] `mwb diagnose` writes a provenance-preserving diagnosis tree from blocker reports, metrics, and scientific debt.
+  - Sources: `0005` next-probe planning, `0430_revised_v6` scientific debt.
+  - Evidence: `tests/test_phase20_diagnosis_probes.py`.
+- [x] `mwb next-probe --materialize` writes deterministic `probe.yaml` with source JSON paths.
+  - Sources: `0005` materialized next-probe requirements, `mechinterp_framework/0020_gpt`.
+  - Evidence: `tests/test_phase20_diagnosis_probes.py`.
+- [x] `mwb run-probe` executes only implemented probe kinds through workbench workflows.
+  - Source: `mechinterp_framework/0020_gpt` probe synthesis and execution boundary.
+  - Evidence: `tests/test_phase20_diagnosis_probes.py`.
 - [x] Artifact-incomplete input does not produce fabricated scientific commands.
   - Source: `0005` next-probe constraints.
   - Evidence: `tests/test_phase6_next_probe.py`.

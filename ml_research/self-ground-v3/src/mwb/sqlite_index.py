@@ -44,6 +44,8 @@ SCHEMA_TABLES = {
     "telemetry_reports",
     "blocker_reports",
     "next_probe_plans",
+    "diagnosis_trees",
+    "materialized_probes",
     "mechanism_cards",
     "claims",
     "claim_evidence",
@@ -229,6 +231,12 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         )
         counts["next_probe_plans"] += _insert_json_file(
             sqlite_path, run_dir / "next_probe.json", "next_probe_plans"
+        )
+        counts["diagnosis_trees"] += _insert_json_file(
+            sqlite_path, run_dir / "diagnosis_tree.json", "diagnosis_trees"
+        )
+        counts["materialized_probes"] += _insert_json_file(
+            sqlite_path, run_dir / "probe.json", "materialized_probes"
         )
         counts["mechanism_cards"] += _insert_json_file(
             sqlite_path, run_dir / "mechanism_card.json", "mechanism_cards"

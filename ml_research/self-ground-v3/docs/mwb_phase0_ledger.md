@@ -1011,3 +1011,58 @@ Observed result:
 
 Known residual risk:
 - Bundle audits identify geometric and control-design risks. They do not automatically rewrite source bundles or prove behavioral validity under a live tokenizer/model.
+
+## Phase 20: Diagnosis Tree And Probe Materialization
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: no
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` next-probe planning, materialized probe requirements, and blocker provenance sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` mechanistic debugger, diagnosis tree, probe synthesis, and implemented-probe execution sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` scientific debt, negative evidence, and unresolved blocker treatment.
+
+Implemented:
+- `DiagnosisTree` and `MaterializedProbe` domain objects.
+- `DiagnosisService` for run-local diagnosis trees, materialized probes, and implemented probe execution.
+- Deterministic `ProbeRegistry` with implemented `sweep_axis_extension` and `switch_patch_mode` probe kinds.
+- Blocked materialized probes for unsupported recommendations with `runnable: false` and no command.
+- Source-provenance propagation from `run_manifest.json`, `control_metrics.json`, `blocker_report.json`, and `scientific_debt.json` into diagnosis/probe artifacts.
+- `mwb diagnose <run>`.
+- `mwb next-probe <run> --materialize`.
+- `mwb run-probe <probe.yaml>` for implemented probes only.
+- SQLite schema and repair-index recovery for `diagnosis_trees` and `materialized_probes`.
+- `docs/DIAGNOSIS_AND_PROBES.md`, README, usage guide, fundamental checklist, target architecture, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase20_diagnosis_probes.py
+uv run ruff check src/mwb/workflows/diagnosis.py src/mwb/workflows/next_probe.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase20_diagnosis_probes.py
+uv run mwb diagnose latest
+uv run mwb next-probe latest --materialize
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb diagnose latest
+uv run mwb next-probe latest --materialize
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 20 RGR tests first failed on missing `mwb.workflows.diagnosis`.
+- Focused Phase 20 diagnosis/probe suite passed, `6 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `96 passed, 3 skipped`.
+- `uv run mwb diagnose latest`: passed and wrote a `DiagnosisTree` for `run_9815cd2998d6f99b` with primary blocker `insufficient_effect_size`.
+- `uv run mwb next-probe latest --materialize`: passed and wrote a blocked materialized probe for unsupported `heldout_generalization`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `diagnosis_trees: 1` and `materialized_probes: 1`.
+
+Known residual risk:
+- The implemented probe runner intentionally covers only sweep axis extension and patch-mode switching. Other recommendation kinds remain recorded as blocked materialized probes until a concrete workflow runner exists.

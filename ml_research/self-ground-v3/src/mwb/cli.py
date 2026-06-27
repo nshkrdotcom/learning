@@ -27,6 +27,7 @@ from mwb.space_types import SpaceTypeService
 from mwb.sqlite_index import rebuild_sqlite_index
 from mwb.static_compiler import StaticCompiler
 from mwb.workflows.cards import card_from_run, write_card
+from mwb.workflows.diagnosis import DiagnosisService
 from mwb.workflows.draft_guard import check_draft_text, load_claim_cards
 from mwb.workflows.io import load_json_payload
 from mwb.workflows.next_probe import build_next_probe, load_next_probe_payload, write_next_probe
@@ -92,6 +93,7 @@ GraphQueryKindArgument = Annotated[
 ]
 GraphRefArgument = Annotated[str, typer.Argument(help="Source or target ref for the graph query.")]
 RunRefArgument = Annotated[str, typer.Argument(help="Run ref or run directory.")]
+ProbePathArgument = Annotated[Path, typer.Argument(help="Materialized probe YAML or JSON file.")]
 CardRefArgument = Annotated[str, typer.Argument(help="MechanismCard ref or JSON path.")]
 HypothesisRefCliArgument = Annotated[str, typer.Argument(help="Hypothesis ref.")]
 HypothesisStateOption = Annotated[str, typer.Option("--to-state", help="Target workflow state.")]
@@ -117,6 +119,10 @@ CompileHypothesisFileArgument = Annotated[Path, typer.Argument(help="Hypothesis 
 BundleNameArgument = Annotated[
     str,
     typer.Argument(help="Built-in bundle name, e.g. negation_phase3_calibrated."),
+]
+MaterializeProbeOption = Annotated[
+    bool,
+    typer.Option("--materialize", help="Also write probe.yaml/probe.json for runnable probes."),
 ]
 
 
@@ -386,6 +392,7 @@ def sweep(
 @app.command("next-probe")
 def next_probe(
     run_path: Annotated[Path, typer.Argument(help="Run directory or JSON file.")],
+    materialize: MaterializeProbeOption = False,
 ) -> None:
     """Generate a deterministic next-probe plan from run artifacts."""
     project = ProjectManager.discover_or_create()
@@ -394,9 +401,42 @@ def next_probe(
     plan = build_next_probe(payload)
     if resolved_run_path.is_dir():
         write_next_probe(resolved_run_path, plan)
+        if materialize:
+            service = DiagnosisService(project)
+            tree = service.write_diagnosis(
+                resolved_run_path,
+                service.diagnose_run_dir(resolved_run_path),
+            )
+            service.materialize_probe(resolved_run_path, plan=plan, tree=tree)
+    elif materialize:
+        raise typer.BadParameter("--materialize requires a run directory")
     console.print_json(json.dumps(plan.model_dump(mode="json")))
-    if plan.diagnosis["primary"] == "artifact_incomplete":
+    if plan.diagnosis["primary"] == "artifact_incomplete" and not materialize:
         raise typer.Exit(code=1)
+
+
+@app.command()
+def diagnose(run_path: Annotated[Path, typer.Argument(help="Run directory or 'latest'.")]) -> None:
+    """Write and print a provenance-preserving diagnosis tree for a run."""
+    project = ProjectManager.discover_or_create()
+    resolved_run_path = resolve_run_path(run_path, project=project)
+    if not resolved_run_path.is_dir():
+        raise typer.BadParameter("diagnose requires a run directory")
+    service = DiagnosisService(project)
+    tree = service.write_diagnosis(resolved_run_path, service.diagnose_run_dir(resolved_run_path))
+    console.print_json(json.dumps(tree.model_dump(mode="json")))
+
+
+@app.command("run-probe")
+def run_probe(probe_path: ProbePathArgument) -> None:
+    """Execute an implemented materialized probe through the local workflow runner."""
+    project = ProjectManager.discover_or_create()
+    try:
+        report = DiagnosisService(project).run_probe(probe_path)
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print_json(json.dumps(report))
 
 
 @app.command()

@@ -421,6 +421,31 @@ class NextProbePlan(WorkbenchObject):
     missing_fields: list[str] = Field(default_factory=list)
 
 
+class DiagnosisTree(WorkbenchObject):
+    wb_type: str = "DiagnosisTree"
+    source_run_ref: str
+    status: str
+    primary_blocker: str
+    nodes: list[JsonDict]
+    source_refs: list[JsonDict] = Field(default_factory=list)
+    negative_evidence: list[JsonDict] = Field(default_factory=list)
+    scientific_debt: list[JsonDict] = Field(default_factory=list)
+
+
+class MaterializedProbe(WorkbenchObject):
+    wb_type: str = "MaterializedProbe"
+    source_run_ref: str
+    next_probe_ref: str
+    diagnosis_tree_ref: str
+    template_id: str
+    probe_kind: str
+    status: str
+    runnable: bool
+    command: list[str] = Field(default_factory=list)
+    parameters: JsonDict = Field(default_factory=dict)
+    provenance: list[JsonDict] = Field(default_factory=list)
+
+
 class MechanismCard(WorkbenchObject):
     wb_type: str = "MechanismCard"
     title: str
@@ -457,6 +482,7 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         CellEvent,
         ModelIdentity,
         DictionaryIdentity,
+        DiagnosisTree,
         TensorSpace,
         TensorRef,
         SpaceTransform,
@@ -484,6 +510,7 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         VerificationRun,
         BlockerReport,
         NextProbePlan,
+        MaterializedProbe,
         MechanismCard,
         Claim,
         EvidenceEdge,

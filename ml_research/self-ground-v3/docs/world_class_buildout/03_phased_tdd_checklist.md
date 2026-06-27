@@ -390,6 +390,8 @@ git push
 
 ## Phase 19: Diagnosis Tree And Probe Materialization
 
+Status: implementation/docs complete in repo Phase 20; QC, commit, and push pending.
+
 ### Required Reading
 
 - `0005.md` next-probe planning.
@@ -398,24 +400,24 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for diagnosis tree generation from blocker reports.
-- [ ] Add failing tests for deterministic probe templates.
-- [ ] Add failing tests for materialized `probe.yaml` provenance.
-- [ ] Add failing tests that unsupported probe commands are not emitted.
+- [x] Add failing tests for diagnosis tree generation from blocker reports.
+- [x] Add failing tests for deterministic probe templates.
+- [x] Add failing tests for materialized `probe.yaml` provenance.
+- [x] Add failing tests that unsupported probe commands are not emitted.
 
 ### Implementation
 
-- [ ] Add `DiagnosisTree`.
-- [ ] Add probe template registry.
-- [ ] Add `mwb diagnose`.
-- [ ] Add `mwb next-probe --materialize`.
-- [ ] Add `mwb run-probe <probe-yaml>` for implemented probes only.
+- [x] Add `DiagnosisTree`.
+- [x] Add probe template registry.
+- [x] Add `mwb diagnose`.
+- [x] Add `mwb next-probe --materialize`.
+- [x] Add `mwb run-probe <probe-yaml>` for implemented probes only.
 
 ### Docs
 
-- [ ] Add `docs/DIAGNOSIS_AND_PROBES.md`.
-- [ ] Update next-probe docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/DIAGNOSIS_AND_PROBES.md`.
+- [x] Update next-probe docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -433,7 +435,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 19: add diagnosis tree and probe materialization"
+git commit -m "phase 20: add diagnosis tree and probe materialization"
 git push
 ```
 

@@ -77,11 +77,35 @@ Inspect the latest generated evidence hygiene outputs:
 
 ```bash
 uv run mwb card latest
+uv run mwb diagnose latest
 uv run mwb next-probe latest
+uv run mwb next-probe latest --materialize
 uv run mwb draft-check docs/fixture_draft.md
 ```
 
 The accepted E004 posture is `insufficient_evidence` with `control_leaky` as the primary blocker. The workbench preserves that boundary in the generated card and draft guard.
+
+## Diagnosis And Probes
+
+Write a provenance-preserving diagnosis tree:
+
+```bash
+uv run mwb diagnose latest
+```
+
+Materialize the deterministic next probe:
+
+```bash
+uv run mwb next-probe latest --materialize
+```
+
+Run an implemented probe through the local workflow runner:
+
+```bash
+uv run mwb run-probe .mechanism/runs/<run_ref>/probe.yaml
+```
+
+Diagnosis writes `diagnosis_tree.json`, `diagnosis_tree.yaml`, and `diagnosis_tree.md`. Probe materialization writes `probe.json`, `probe.yaml`, and `probe.md`. Unsupported probe kinds are recorded as blocked materialized probes with no command and are rejected by `run-probe`. See `docs/DIAGNOSIS_AND_PROBES.md`.
 
 ## Evidence Graph
 
