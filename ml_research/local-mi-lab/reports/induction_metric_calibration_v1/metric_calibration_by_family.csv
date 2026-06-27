@@ -1,0 +1,11 @@
+family,n_examples,token_domains,sequence_length_buckets,should_show_induction_behavior,mean_true_vs_control_logit_diff,median_true_vs_control_logit_diff,fraction_diff_positive,mean_probability_gap,median_target_rank
+calib_clean_repeat_format_variant,9,"number,symbolic,word","long,medium,short",True,6.275806427001953,6.073115348815918,1.0,0.7942431598674877,1.0
+calib_clean_repeat_number,3,number,"long,medium,short",True,4.7462952931722,4.406632423400879,1.0,0.6105496665864408,1.0
+calib_clean_repeat_symbolic,3,symbolic,"long,medium,short",True,5.245444933573405,3.849262237548828,1.0,0.7496413527222927,1.0
+calib_clean_repeat_word,3,word,"long,medium,short",True,1.7427806854248047,2.1474666595458984,1.0,0.25697423448866513,1.0
+calib_frequency_trap_control,9,"number,symbolic,word","long,medium,short",False,3.2170213063557944,3.443899154663086,1.0,0.34259972908705755,1.0
+calib_no_repeat_control,9,"number,symbolic,word","long,medium,short",False,0.0834705564710829,0.26755523681640625,0.6666666666666666,-0.001260285088319188,13.0
+calib_reversed_order_control,9,"number,symbolic,word","long,medium,short",False,-1.0967043770684137,-0.9937143325805664,0.2222222222222222,-0.023696663922678572,11.0
+calib_same_token_frequency_control,9,"number,symbolic,word","long,medium,short",False,-0.22988933987087673,-0.2497262954711914,0.4444444444444444,0.010563698640224661,5.0
+calib_target_swap_control,9,"number,symbolic,word","long,medium,short",False,-3.5317175123426647,-4.19559383392334,0.0,-0.5312705741381125,5.0
+calib_wrong_target_same_prompt,9,"number,symbolic,word","long,medium,short",False,-3.91150697072347,-2.983973503112793,0.0,-0.5390550845991329,5.0

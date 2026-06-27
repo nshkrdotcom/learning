@@ -1,0 +1,45 @@
+{
+  "model": "gpt2-small",
+  "primary_metric": "true_vs_control_logit_diff",
+  "n_examples": 72,
+  "validation_counts": {
+    "ok": 72
+  },
+  "metric_counts": {
+    "ok": 72
+  },
+  "positive_mean_true_vs_control_logit_diff": 4.502581834793091,
+  "max_control_mean_true_vs_control_logit_diff": 3.2170213063557944,
+  "weakest_positive_family_mean": 1.7427806854248047,
+  "positive_minus_max_control_gap": 1.2855605284372964,
+  "hardest_control_family": {
+    "family": "calib_frequency_trap_control",
+    "mean_true_vs_control_logit_diff": 3.2170213063557944,
+    "fraction_diff_positive": 1.0
+  },
+  "positive_domain_means": {
+    "number": 6.0308332443237305,
+    "symbolic": 6.323929309844971,
+    "word": 2.9262075424194336
+  },
+  "positive_length_means": {
+    "long": 7.492025693257649,
+    "medium": 4.369056224822998,
+    "short": 3.419888178507487
+  },
+  "thresholds": {
+    "min_positive_minus_max_control_gap": 0.25,
+    "min_positive_fraction_diff_positive": 0.8,
+    "max_control_fraction_diff_positive": 0.2
+  },
+  "status": "metric_needs_revision",
+  "search_allowed": false,
+  "refused_claims": [
+    "This does not show an induction head.",
+    "This does not show a circuit.",
+    "This does not establish a broad GPT-2 property.",
+    "Calibration success would only permit a tighter next spec."
+  ],
+  "source_spec": "docs/experiments/induction_metric_calibration_v1.md",
+  "command": "uv run python scripts/run_metric_calibration.py --output reports/induction_metric_calibration_v1"
+}

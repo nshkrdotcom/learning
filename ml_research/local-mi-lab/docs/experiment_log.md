@@ -257,6 +257,36 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this does not show: no induction-head discovery, circuit, or broad GPT-2 behavior claim is supported.
 - Next step: pre-register candidate characterization without adding new candidates, then test attention/effect alignment, position sensitivity, OV/QK diagnostics, token-domain robustness, and counterexamples.
 
+## 2026-06-26 Characterization Failure Taxonomy
+
+- Source result: `docs/results/head_specific_candidate_characterization_v1.md`
+- Source counterexamples: `reports/head_specific_candidate_characterization_v1/counterexamples/`
+- Taxonomy report: `reports/head_specific_candidate_characterization_v1/failure_taxonomy/failure_taxonomy.md`
+- Tracked summary: `docs/results/head_specific_candidate_characterization_failure_taxonomy_v1.md`
+- Primary result: all five primary heads remained falsified.
+- Failure-mode counts: `control_moved`: 80; `target_swap_leak`: 54; `reversed_control_leak`: 26; `domain_flip`: 40; `length_flip`: 40; `intervention_disagreement`: 40; `position_mismatch`: 16.
+- Main lesson: the failures were not a single-head anomaly. Controls moved, target-swap/reversed controls leaked, domain and length slices disagreed, and intervention variants did not form a stable causal story.
+- What this does not show: no head was promoted back to candidate status, and no induction-head, circuit, or broad GPT-2 claim is supported.
+- Next step: calibrate the `true_vs_control_logit_diff` metric before any future candidate search.
+
+## 2026-06-26 Induction Metric Calibration v1
+
+- Spec: `docs/experiments/induction_metric_calibration_v1.md`
+- Report: `reports/induction_metric_calibration_v1/induction_metric_calibration_v1.md`
+- Tracked summary: `docs/results/induction_metric_calibration_v1.md`
+- Learning note: `docs/learning_notes/2026-06-26_induction_metric_calibration.md`
+- Model: `gpt2-small`
+- Primary metric: `true_vs_control_logit_diff`
+- Examples: 72
+- Tokenization validation: 72/72 rows passed.
+- Status: `metric_needs_revision`
+- Positive mean true-vs-control logit diff: 4.5026
+- Max control mean true-vs-control logit diff: 3.2170
+- Hardest control: `calib_frequency_trap_control`, with fraction positive diff 1.0.
+- Interpretation: positives separated from most controls, but the frequency-trap control was too strong under the same metric. That means this metric/prompt setup is still false-positive-prone and should not drive a new head search.
+- What this does not show: no induction-head discovery, circuit, broad GPT-2 behavior, or search permission.
+- Next step: revise/calibrate prompt and metric design before building a hand-curated bank or known-positive search loop.
+
 ## Template
 
 - Date:
