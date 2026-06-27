@@ -80,6 +80,29 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - Blockers: none. A prior failed attempt created an empty inspection run because the code initially used `.get` on `ActivationCache`; this was fixed before the recorded inspection.
 - Next step: implement head-specific `hook_z` patching and ablation. Do not label `hook_attn_out` fallback as head-specific.
 
+## 2026-06-26 Head-Specific Induction Causality Seed 0
+
+- Run: `runs/20260626_152332_gpt2_small_head_specific_induction`
+- Source run: `runs/20260626_144001_gpt2_small_induction_controls`
+- Hook inspection: `runs/20260626_152313_head_hook_inspection`
+- Head-specific hook used: `blocks.<layer>.attn.hook_z`
+- Was patching truly head-specific? Yes. Artifacts record `head_specific_patch=true` and `actual_patch_scope=single_head_z`.
+- Metric: `true_vs_control_logit_diff`
+- Intervention: `head_clean_to_corrupt_patch`
+- Families: `positive_repeat_sequence`, `distractor_repeat_control`, `random_expected_token_control`, and `same_token_frequency_control`
+- Examples per family: 8
+- Heads tested: 72 heads across layers `[0, 2, 4, 7, 9, 11]`
+- Positive mean effect: `0.0033`
+- Max control mean effect: `0.9617`
+- Best positive-minus-control causal gap: `0.0884`
+- Top heads by seed-0 gap: L7H7 `0.0884`, L9H9 `0.0772`, L7H11 `0.0715`, L11H4 `0.0646`, L0H8 `0.0414`
+- Specificity statuses: `head_specific_positive_candidate`: 19; `nonspecific_moves_controls`: 21; `no_positive_effect`: 32
+- Did raw attention heads survive? No. L0H1, L0H4, and L0H5 had `no_positive_effect`; L0H10 and L11H8 were `nonspecific_moves_controls`.
+- Did random comparison heads survive? This seed tested all selected-layer heads, so random-comparison status will be evaluated in the multi-seed comparison rather than from seed 0 alone.
+- What this shows: true head-specific `hook_z` patching works locally, and some heads have positive-minus-control gaps on seed 0 under the stricter metric.
+- What this does not show: one seed is not enough. A seed-0 positive candidate is not a replicated induction head, and the raw previous-occurrence attention heads still failed this stricter causal check.
+- Next step: run seed 1 and seed 2 head-specific replications.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`
