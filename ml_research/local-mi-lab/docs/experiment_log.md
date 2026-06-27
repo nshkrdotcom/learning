@@ -237,6 +237,26 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - What this does not show: seed 12 alone does not validate the prior candidates. Apparent survival remains mixed across interventions and is not specific to primary candidates.
 - Next step: run the consolidated held-out robustness comparison across seeds 10, 11, and 12.
 
+## 2026-06-26 Held-Out Induction Robustness Consolidated Result
+
+- Runs: `runs/20260626_161445_gpt2_small_induction_heldout_seed10`, `runs/20260626_162154_gpt2_small_induction_heldout_seed11`, and `runs/20260626_162753_gpt2_small_induction_heldout_seed12`
+- Candidate-set artifact: `reports/head_specific_induction_heldout_robustness_v1/heldout_candidate_set.csv`
+- Consolidated report: `reports/head_specific_induction_heldout_robustness_v1/head_specific_induction_heldout_robustness_v1.md`
+- Consolidated summary: `reports/head_specific_induction_heldout_robustness_v1/heldout_multiseed_summary.json`
+- Tracked result summary: `docs/results/head_specific_induction_heldout_robustness_v1.md`
+- Counterexample artifacts: `reports/head_specific_induction_heldout_robustness_v1/counterexamples_L7H7.md`, `reports/head_specific_induction_heldout_robustness_v1/counterexamples_L9H11.md`, and `reports/head_specific_induction_heldout_robustness_v1/counterexamples_L7H11.md`
+- Replicated/downgraded/falsified statuses: `heldout_replicated`: 0; `heldout_downgraded`: 5; `heldout_falsified`: 11.
+- L7H7 status: `heldout_falsified`; it had positive examples but also controls moved and the aggregate mean gap was negative.
+- L9H11 status: `heldout_falsified`; it had seed-level survival rows but controls-moving and negative aggregate gaps broke the robustness story.
+- L7H11 status: `heldout_downgraded`; it had a strong seed-10 clean-to-corrupt result but did not replicate robustly across held-out seeds and variants.
+- L7H0 status: `heldout_falsified`.
+- L0H8 status: `heldout_downgraded`; it had weak final-position support and a near-zero aggregate gap.
+- Negative-control result: negative controls also produced apparent seed-level survival rows, including L11H0 surviving three seed-level rows while still being classified `heldout_falsified`. This shows the permissive seed-level rule is not specific enough.
+- Prior raw-attention result: L0H1 and L0H5 were downgraded; L0H10, L0H4, and L11H8 were falsified. Raw previous-occurrence attention still does not provide robust causal evidence.
+- Interpretation: the held-out robustness check falsified or downgraded the previously replicated candidates. This is a useful negative result because the pipeline caught its own false-positive-prone candidates.
+- What this does not show: no induction-head discovery, circuit, or broad GPT-2 behavior claim is supported.
+- Next step: pre-register candidate characterization without adding new candidates, then test attention/effect alignment, position sensitivity, OV/QK diagnostics, token-domain robustness, and counterexamples.
+
 ## Template
 
 - Date:
