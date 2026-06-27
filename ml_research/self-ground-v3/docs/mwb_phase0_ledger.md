@@ -843,7 +843,7 @@ Known residual risk:
 ## Phase 17: Static Mechanistic Compiler
 
 Status: complete pending commit and push
-Commit: pending
+Commit: `90253a9`
 Pushed: pending
 
 Required reading completed:

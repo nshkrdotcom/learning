@@ -232,7 +232,7 @@ git push
 
 ## Phase 16: Static Mechanistic Compiler
 
-Status: complete in repo Phase 17 pending final commit and push.
+Status: complete in repo Phase 17. Implementation commit: `90253a9`; push pending.
 
 ### Required Reading
 
