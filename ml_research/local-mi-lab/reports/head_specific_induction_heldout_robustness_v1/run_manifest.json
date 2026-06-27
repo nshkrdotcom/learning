@@ -1,0 +1,113 @@
+{
+  "runs": [
+    {
+      "run_dir": "/home/home/p/g/n/learning/ml_research/local-mi-lab/runs/20260626_161445_gpt2_small_induction_heldout_seed10",
+      "seed": 10,
+      "n_candidate_rows": 96,
+      "n_family_rows": 576,
+      "summary": {
+        "n_result_rows": 6912,
+        "n_candidates": 16,
+        "families": [
+          "heldout_symbolic_longer",
+          "heldout_word_sequences",
+          "heldout_number_sequences",
+          "heldout_double_repeat",
+          "heldout_wrong_target_same_prompt",
+          "heldout_no_structure_same_tokens"
+        ],
+        "interventions": [
+          "head_clean_to_corrupt_patch",
+          "head_zero_ablation",
+          "head_mean_ablation"
+        ],
+        "positions": [
+          "final",
+          "previous_occurrence"
+        ],
+        "metric": "true_vs_control_logit_diff",
+        "head_specific_patch": true,
+        "survival_status_counts": {
+          "insufficient_valid_examples": 48,
+          "falsified_no_positive_effect": 24,
+          "falsified_controls_move": 14,
+          "heldout_survives_seed": 10
+        },
+        "interpretation_note": "Held-out robustness compares fixed candidates against held-out controls, interventions, and positions. This is not a mechanism claim."
+      }
+    },
+    {
+      "run_dir": "/home/home/p/g/n/learning/ml_research/local-mi-lab/runs/20260626_162154_gpt2_small_induction_heldout_seed11",
+      "seed": 11,
+      "n_candidate_rows": 96,
+      "n_family_rows": 576,
+      "summary": {
+        "n_result_rows": 6912,
+        "n_candidates": 16,
+        "families": [
+          "heldout_symbolic_longer",
+          "heldout_word_sequences",
+          "heldout_number_sequences",
+          "heldout_double_repeat",
+          "heldout_wrong_target_same_prompt",
+          "heldout_no_structure_same_tokens"
+        ],
+        "interventions": [
+          "head_clean_to_corrupt_patch",
+          "head_zero_ablation",
+          "head_mean_ablation"
+        ],
+        "positions": [
+          "final",
+          "previous_occurrence"
+        ],
+        "metric": "true_vs_control_logit_diff",
+        "head_specific_patch": true,
+        "survival_status_counts": {
+          "insufficient_valid_examples": 48,
+          "falsified_no_positive_effect": 24,
+          "heldout_survives_seed": 13,
+          "falsified_controls_move": 10,
+          "downgraded_weak_family_specific": 1
+        },
+        "interpretation_note": "Held-out robustness compares fixed candidates against held-out controls, interventions, and positions. This is not a mechanism claim."
+      }
+    },
+    {
+      "run_dir": "/home/home/p/g/n/learning/ml_research/local-mi-lab/runs/20260626_162753_gpt2_small_induction_heldout_seed12",
+      "seed": 12,
+      "n_candidate_rows": 96,
+      "n_family_rows": 576,
+      "summary": {
+        "n_result_rows": 6912,
+        "n_candidates": 16,
+        "families": [
+          "heldout_symbolic_longer",
+          "heldout_word_sequences",
+          "heldout_number_sequences",
+          "heldout_double_repeat",
+          "heldout_wrong_target_same_prompt",
+          "heldout_no_structure_same_tokens"
+        ],
+        "interventions": [
+          "head_clean_to_corrupt_patch",
+          "head_zero_ablation",
+          "head_mean_ablation"
+        ],
+        "positions": [
+          "final",
+          "previous_occurrence"
+        ],
+        "metric": "true_vs_control_logit_diff",
+        "head_specific_patch": true,
+        "survival_status_counts": {
+          "insufficient_valid_examples": 48,
+          "falsified_no_positive_effect": 25,
+          "heldout_survives_seed": 14,
+          "falsified_controls_move": 9
+        },
+        "interpretation_note": "Held-out robustness compares fixed candidates against held-out controls, interventions, and positions. This is not a mechanism claim."
+      }
+    }
+  ]
+}

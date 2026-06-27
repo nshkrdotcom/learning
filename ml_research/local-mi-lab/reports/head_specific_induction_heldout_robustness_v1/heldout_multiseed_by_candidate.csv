@@ -1,0 +1,17 @@
+candidate_id,candidate_group,layer,head,n_seeds,seeds_present,n_survived_seeds,n_downgraded_seeds,n_falsified_seeds,mean_positive_minus_control_gap,min_positive_minus_control_gap,families_survived_count,interventions_survived,positions_survived,heldout_replication_status
+heldout_cand_002,replicated_candidate,7,11,3,"10,11,12",1,0,3,0.18285776878010626,-0.3508637623675784,4,head_clean_to_corrupt_patch,final,heldout_downgraded
+heldout_cand_005,prior_raw_attention_failed,0,1,3,"10,11,12",2,0,2,0.1429554994687734,-0.1715630045889368,4,"head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",final,heldout_downgraded
+heldout_cand_006,prior_raw_attention_failed,0,5,3,"10,11,12",2,1,3,0.05953264611524632,-0.1269454764762465,3,head_clean_to_corrupt_patch,final,heldout_downgraded
+heldout_cand_004,replicated_candidate,0,8,3,"10,11,12",2,0,3,0.0005626069226038693,-0.1805511564128648,3,"head_clean_to_corrupt_patch,head_mean_ablation",final,heldout_downgraded
+heldout_cand_014,negative_control_nonspecific,11,9,3,"10,11,12",1,0,2,-0.0037506872315397847,-0.0899596496507326,3,"head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",final,heldout_downgraded
+heldout_cand_007,prior_raw_attention_failed,0,10,3,"10,11,12",2,0,3,0.12220651404464539,-0.3018920603595751,4,"head_clean_to_corrupt_patch,head_mean_ablation",final,heldout_falsified
+heldout_cand_011,negative_control_no_effect,11,0,3,"10,11,12",3,0,3,0.11241104674544228,-0.7568048569386813,4,"head_clean_to_corrupt_patch,head_zero_ablation",final,heldout_falsified
+heldout_cand_003,replicated_candidate,7,0,3,"10,11,12",0,0,3,0.07439205733183675,-0.0960422485429309,0,,,heldout_falsified
+heldout_cand_012,negative_control_no_effect,4,1,3,"10,11,12",0,0,3,-0.003970715689153813,-0.1136508035886753,0,,,heldout_falsified
+heldout_cand_010,negative_control_no_effect,9,5,3,"10,11,12",1,0,3,-0.005550729076052167,-0.0842042082964946,3,head_zero_ablation,final,heldout_falsified
+heldout_cand_013,negative_control_nonspecific,4,9,3,"10,11,12",2,0,3,-0.00803149672708272,-0.0762348432802862,3,"head_clean_to_corrupt_patch,head_mean_ablation",final,heldout_falsified
+heldout_cand_000,random_comparison_replicated,7,7,3,"10,11,12",3,0,3,-0.009352178233518242,-0.2247992896275431,4,"head_clean_to_corrupt_patch,head_zero_ablation",final,heldout_falsified
+heldout_cand_009,prior_raw_attention_failed,0,4,3,"10,11,12",2,0,3,-0.014412171406982298,-0.15826523611403,4,"head_clean_to_corrupt_patch,head_mean_ablation",final,heldout_falsified
+heldout_cand_015,negative_control_nonspecific,11,7,3,"10,11,12",1,0,3,-0.03694532360155987,-0.0946358180039727,3,head_mean_ablation,final,heldout_falsified
+heldout_cand_001,replicated_candidate,9,11,3,"10,11,12",3,0,2,-0.0494093769537423,-0.3557115880359129,4,"head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",final,heldout_falsified
+heldout_cand_008,prior_raw_attention_failed,11,8,3,"10,11,12",0,0,3,-0.16848829974908563,-0.2812646147633175,0,,,heldout_falsified

@@ -1,0 +1,292 @@
+{
+  "n_runs": 3,
+  "seeds": [
+    10,
+    11,
+    12
+  ],
+  "n_candidates": 16,
+  "status_counts": {
+    "heldout_falsified": 11,
+    "heldout_downgraded": 5
+  },
+  "replicated_candidates": [],
+  "primary_candidate_outcomes": [
+    {
+      "candidate_id": "heldout_cand_002",
+      "candidate_group": "replicated_candidate",
+      "layer": 7,
+      "head": 11,
+      "mean_positive_minus_control_gap": 0.18285776878010626,
+      "min_positive_minus_control_gap": -0.3508637623675784,
+      "n_survived_seeds": 1,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_downgraded"
+    },
+    {
+      "candidate_id": "heldout_cand_003",
+      "candidate_group": "replicated_candidate",
+      "layer": 7,
+      "head": 0,
+      "mean_positive_minus_control_gap": 0.07439205733183675,
+      "min_positive_minus_control_gap": -0.0960422485429309,
+      "n_survived_seeds": 0,
+      "families_survived_count": 0,
+      "interventions_survived": "",
+      "positions_survived": "",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_004",
+      "candidate_group": "replicated_candidate",
+      "layer": 0,
+      "head": 8,
+      "mean_positive_minus_control_gap": 0.0005626069226038693,
+      "min_positive_minus_control_gap": -0.1805511564128648,
+      "n_survived_seeds": 2,
+      "families_survived_count": 3,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_downgraded"
+    },
+    {
+      "candidate_id": "heldout_cand_000",
+      "candidate_group": "random_comparison_replicated",
+      "layer": 7,
+      "head": 7,
+      "mean_positive_minus_control_gap": -0.009352178233518242,
+      "min_positive_minus_control_gap": -0.2247992896275431,
+      "n_survived_seeds": 3,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_001",
+      "candidate_group": "replicated_candidate",
+      "layer": 9,
+      "head": 11,
+      "mean_positive_minus_control_gap": -0.0494093769537423,
+      "min_positive_minus_control_gap": -0.3557115880359129,
+      "n_survived_seeds": 3,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    }
+  ],
+  "prior_raw_attention_outcomes": [
+    {
+      "candidate_id": "heldout_cand_005",
+      "candidate_group": "prior_raw_attention_failed",
+      "layer": 0,
+      "head": 1,
+      "mean_positive_minus_control_gap": 0.1429554994687734,
+      "min_positive_minus_control_gap": -0.1715630045889368,
+      "n_survived_seeds": 2,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_downgraded"
+    },
+    {
+      "candidate_id": "heldout_cand_007",
+      "candidate_group": "prior_raw_attention_failed",
+      "layer": 0,
+      "head": 10,
+      "mean_positive_minus_control_gap": 0.12220651404464539,
+      "min_positive_minus_control_gap": -0.3018920603595751,
+      "n_survived_seeds": 2,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_006",
+      "candidate_group": "prior_raw_attention_failed",
+      "layer": 0,
+      "head": 5,
+      "mean_positive_minus_control_gap": 0.05953264611524632,
+      "min_positive_minus_control_gap": -0.1269454764762465,
+      "n_survived_seeds": 2,
+      "families_survived_count": 3,
+      "interventions_survived": "head_clean_to_corrupt_patch",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_downgraded"
+    },
+    {
+      "candidate_id": "heldout_cand_009",
+      "candidate_group": "prior_raw_attention_failed",
+      "layer": 0,
+      "head": 4,
+      "mean_positive_minus_control_gap": -0.014412171406982298,
+      "min_positive_minus_control_gap": -0.15826523611403,
+      "n_survived_seeds": 2,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_008",
+      "candidate_group": "prior_raw_attention_failed",
+      "layer": 11,
+      "head": 8,
+      "mean_positive_minus_control_gap": -0.16848829974908563,
+      "min_positive_minus_control_gap": -0.2812646147633175,
+      "n_survived_seeds": 0,
+      "families_survived_count": 0,
+      "interventions_survived": "",
+      "positions_survived": "",
+      "heldout_replication_status": "heldout_falsified"
+    }
+  ],
+  "negative_control_outcomes": [
+    {
+      "candidate_id": "heldout_cand_011",
+      "candidate_group": "negative_control_no_effect",
+      "layer": 11,
+      "head": 0,
+      "mean_positive_minus_control_gap": 0.11241104674544228,
+      "min_positive_minus_control_gap": -0.7568048569386813,
+      "n_survived_seeds": 3,
+      "families_survived_count": 4,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_014",
+      "candidate_group": "negative_control_nonspecific",
+      "layer": 11,
+      "head": 9,
+      "mean_positive_minus_control_gap": -0.0037506872315397847,
+      "min_positive_minus_control_gap": -0.0899596496507326,
+      "n_survived_seeds": 1,
+      "families_survived_count": 3,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation,head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_downgraded"
+    },
+    {
+      "candidate_id": "heldout_cand_012",
+      "candidate_group": "negative_control_no_effect",
+      "layer": 4,
+      "head": 1,
+      "mean_positive_minus_control_gap": -0.003970715689153813,
+      "min_positive_minus_control_gap": -0.1136508035886753,
+      "n_survived_seeds": 0,
+      "families_survived_count": 0,
+      "interventions_survived": "",
+      "positions_survived": "",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_010",
+      "candidate_group": "negative_control_no_effect",
+      "layer": 9,
+      "head": 5,
+      "mean_positive_minus_control_gap": -0.005550729076052167,
+      "min_positive_minus_control_gap": -0.0842042082964946,
+      "n_survived_seeds": 1,
+      "families_survived_count": 3,
+      "interventions_survived": "head_zero_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_013",
+      "candidate_group": "negative_control_nonspecific",
+      "layer": 4,
+      "head": 9,
+      "mean_positive_minus_control_gap": -0.00803149672708272,
+      "min_positive_minus_control_gap": -0.0762348432802862,
+      "n_survived_seeds": 2,
+      "families_survived_count": 3,
+      "interventions_survived": "head_clean_to_corrupt_patch,head_mean_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    },
+    {
+      "candidate_id": "heldout_cand_015",
+      "candidate_group": "negative_control_nonspecific",
+      "layer": 11,
+      "head": 7,
+      "mean_positive_minus_control_gap": -0.03694532360155987,
+      "min_positive_minus_control_gap": -0.0946358180039727,
+      "n_survived_seeds": 1,
+      "families_survived_count": 3,
+      "interventions_survived": "head_mean_ablation",
+      "positions_survived": "final",
+      "heldout_replication_status": "heldout_falsified"
+    }
+  ],
+  "family_summary": [
+    {
+      "family": "heldout_no_structure_same_tokens",
+      "heldout_family_type": "control",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": -0.030485505506668384,
+      "max_effect_size": 0.6980589269991914,
+      "n_position_unavailable": 1728,
+      "n_denominator_zero": 0
+    },
+    {
+      "family": "heldout_wrong_target_same_prompt",
+      "heldout_family_type": "control",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": NaN,
+      "max_effect_size": NaN,
+      "n_position_unavailable": 1728,
+      "n_denominator_zero": 1728
+    },
+    {
+      "family": "heldout_number_sequences",
+      "heldout_family_type": "positive",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": 0.005293504925629832,
+      "max_effect_size": 0.23641024716795,
+      "n_position_unavailable": 0,
+      "n_denominator_zero": 0
+    },
+    {
+      "family": "heldout_symbolic_longer",
+      "heldout_family_type": "positive",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": 0.0007214307468550177,
+      "max_effect_size": 2.2174601853713694,
+      "n_position_unavailable": 0,
+      "n_denominator_zero": 0
+    },
+    {
+      "family": "heldout_double_repeat",
+      "heldout_family_type": "positive",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": -0.0024205879980726723,
+      "max_effect_size": 0.0558895918029356,
+      "n_position_unavailable": 0,
+      "n_denominator_zero": 0
+    },
+    {
+      "family": "heldout_word_sequences",
+      "heldout_family_type": "positive",
+      "n_seeds": 3,
+      "n_candidate_rows": 288,
+      "mean_effect_size": -0.004719236068537733,
+      "max_effect_size": 0.4004166258321289,
+      "n_position_unavailable": 0,
+      "n_denominator_zero": 0
+    }
+  ],
+  "executive_summary": "The held-out robustness check falsified or downgraded the previously replicated candidates. They should not be treated as induction-head candidates beyond the original synthetic setup.",
+  "limitation": "This report compares fixed GPT-2 small heads under held-out synthetic prompt families, hook_z interventions, and the true-vs-control logit-diff metric. It is not broad model evidence."
+}
