@@ -129,7 +129,7 @@ git push
 
 ## Phase 14: Hypothesis Lifecycle And Alternative Explanations
 
-Status: complete in repo Phase 15 pending final commit and push.
+Status: complete in repo Phase 15 commit `0dca227`, pushed yes.
 
 ### Required Reading
 
