@@ -129,6 +129,8 @@ git push
 
 ## Phase 14: Hypothesis Lifecycle And Alternative Explanations
 
+Status: complete in repo Phase 15 pending final commit and push.
+
 ### Required Reading
 
 - `0005.md` research modes and canonical workflow.
@@ -137,25 +139,25 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for workflow state separate from evidence tier.
-- [ ] Add failing tests for valid/invalid hypothesis transitions.
-- [ ] Add failing tests for live alternative explanations from blocker metrics.
-- [ ] Add failing tests for human approval requirement on claim promotion.
+- [x] Add failing tests for workflow state separate from evidence tier.
+- [x] Add failing tests for valid/invalid hypothesis transitions.
+- [x] Add failing tests for live alternative explanations from blocker metrics.
+- [x] Add failing tests for human approval requirement on claim promotion.
 
 ### Implementation
 
-- [ ] Add `HypothesisState`.
-- [ ] Add `AlternativeExplanation`.
-- [ ] Add transition receipts.
-- [ ] Add `mwb hypothesis transition`.
-- [ ] Add `mwb hypothesis explain`.
-- [ ] Add claim promotion proposal, not automatic promotion.
+- [x] Add `HypothesisState`.
+- [x] Add `AlternativeExplanation`.
+- [x] Add transition receipts.
+- [x] Add `mwb hypothesis transition`.
+- [x] Add `mwb hypothesis explain`.
+- [x] Add claim promotion proposal, not automatic promotion.
 
 ### Docs
 
-- [ ] Add lifecycle docs.
-- [ ] Update MechanismCard docs to reference lifecycle state.
-- [ ] Update phase ledger.
+- [x] Add lifecycle docs.
+- [x] Update MechanismCard docs to reference lifecycle state.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -172,7 +174,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 14: add hypothesis lifecycle and alternatives"
+git commit -m "phase 15: add hypothesis lifecycle and alternatives"
 git push
 ```
 

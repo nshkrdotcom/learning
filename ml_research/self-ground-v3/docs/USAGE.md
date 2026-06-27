@@ -119,6 +119,22 @@ uv run mwb ledger propose-claim <card-ref>
 
 Committed ledgers live under `research/logs/`. Proposal files stay under `.mechanism/` until reviewed. See `docs/LEDGERS.md` for schemas and parser rules.
 
+## Hypothesis Lifecycle
+
+Record workflow state separately from evidence tier and claim status:
+
+```bash
+uv run mwb hypothesis transition <hypothesis-ref> --to-state triaged
+```
+
+Generate live alternative explanations from blocker reports:
+
+```bash
+uv run mwb hypothesis explain <run-ref>
+```
+
+Promotion to `claimable` requires `--approved-by` and `--decision-ref`. See `docs/HYPOTHESIS_LIFECYCLE.md` for states, transition rules, and alternative-explanation outputs.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

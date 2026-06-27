@@ -1,5 +1,6 @@
 from mwb.domain.objects import (
     ActivationSet,
+    AlternativeExplanation,
     BlockerReport,
     Claim,
     ControlBundle,
@@ -9,6 +10,8 @@ from mwb.domain.objects import (
     ExampleBundle,
     FeatureRanking,
     Hypothesis,
+    HypothesisState,
+    HypothesisTransitionReceipt,
     InterventionSpec,
     MechanismCard,
     MechanisticUnitRef,
@@ -26,6 +29,7 @@ from mwb.domain.objects import (
 
 __all__ = [
     "BlockerReport",
+    "AlternativeExplanation",
     "Claim",
     "ControlBundle",
     "DictionaryIdentity",
@@ -35,6 +39,8 @@ __all__ = [
     "ExampleBundle",
     "FeatureRanking",
     "Hypothesis",
+    "HypothesisState",
+    "HypothesisTransitionReceipt",
     "InterventionSpec",
     "MechanismCard",
     "MechanisticUnitRef",

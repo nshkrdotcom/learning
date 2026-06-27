@@ -15,6 +15,7 @@ from mwb.adapters.transformer_lens import TransformerLensAdapter
 from mwb.context import RunContext
 from mwb.doctor import run_doctor
 from mwb.evidence_graph import QUERY_KINDS, EvidenceGraphService
+from mwb.hypothesis_lifecycle import HypothesisLifecycleService
 from mwb.ipython.extension import start_workbench_ipython, unload_ipython_extension
 from mwb.ledgers import propose_claim_update, propose_run_ledger_row, validate_ledgers
 from mwb.project import ProjectManager
@@ -39,12 +40,14 @@ demo_app = typer.Typer(help="Run built-in workbench demos.")
 ingest_app = typer.Typer(help="Ingest external research artifact sets.")
 graph_app = typer.Typer(help="Rebuild and query the local evidence graph.")
 ledger_app = typer.Typer(help="Validate Git-native research ledgers and proposals.")
+hypothesis_app = typer.Typer(help="Manage hypothesis lifecycle and alternatives.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
 app.add_typer(ingest_app, name="ingest")
 app.add_typer(graph_app, name="graph")
 app.add_typer(ledger_app, name="ledger")
+app.add_typer(hypothesis_app, name="hypothesis")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -81,6 +84,25 @@ GraphQueryKindArgument = Annotated[
 GraphRefArgument = Annotated[str, typer.Argument(help="Source or target ref for the graph query.")]
 RunRefArgument = Annotated[str, typer.Argument(help="Run ref or run directory.")]
 CardRefArgument = Annotated[str, typer.Argument(help="MechanismCard ref or JSON path.")]
+HypothesisRefCliArgument = Annotated[str, typer.Argument(help="Hypothesis ref.")]
+HypothesisStateOption = Annotated[str, typer.Option("--to-state", help="Target workflow state.")]
+EvidenceTierOption = Annotated[
+    str | None,
+    typer.Option("--evidence-tier", help="Current evidence tier, separate from workflow state."),
+]
+ClaimStatusOption = Annotated[
+    str | None,
+    typer.Option("--claim-status", help="Current claim status, separate from workflow state."),
+]
+ApprovedByOption = Annotated[
+    str | None,
+    typer.Option("--approved-by", help="Reviewer required for claimable promotion."),
+]
+DecisionRefOption = Annotated[
+    str | None,
+    typer.Option("--decision-ref", help="Decision ref required for claimable promotion."),
+]
+ReasonOption = Annotated[str | None, typer.Option("--reason", help="Transition rationale.")]
 
 
 @app.command()
@@ -157,6 +179,46 @@ def ledger_propose_claim(card_ref: CardRefArgument) -> None:
     """Write a human-reviewable claim ledger proposal from a MechanismCard."""
     project = ProjectManager.discover_or_create()
     report = propose_claim_update(project, card_ref)
+    console.print_json(json.dumps(report))
+
+
+@hypothesis_app.command("transition")
+def hypothesis_transition(
+    hypothesis_ref: HypothesisRefCliArgument,
+    to_state: HypothesisStateOption,
+    evidence_tier: EvidenceTierOption = None,
+    claim_status: ClaimStatusOption = None,
+    approved_by: ApprovedByOption = None,
+    decision_ref: DecisionRefOption = None,
+    reason: ReasonOption = None,
+) -> None:
+    """Record a hypothesis workflow transition receipt."""
+    project = ProjectManager.discover_or_create()
+    try:
+        report = HypothesisLifecycleService(project).transition(
+            hypothesis_ref,
+            to_state=to_state,
+            evidence_tier=evidence_tier,
+            claim_status=claim_status,
+            approved_by=approved_by,
+            decision_ref=decision_ref,
+            reason=reason,
+        )
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    console.print_json(json.dumps(report))
+
+
+@hypothesis_app.command("explain")
+def hypothesis_explain(run_ref: RunRefArgument) -> None:
+    """Write live alternative explanations from a run's blocker report."""
+    project = ProjectManager.discover_or_create()
+    try:
+        report = HypothesisLifecycleService(project).explain(run_ref)
+    except FileNotFoundError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
     console.print_json(json.dumps(report))
 
 

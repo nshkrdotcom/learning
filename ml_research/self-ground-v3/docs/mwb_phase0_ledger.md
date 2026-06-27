@@ -738,3 +738,53 @@ Observed result:
 
 Known residual risk:
 - Ledger validation proves structure and local traceability. It does not silently append proposals or promote claim status without human review.
+
+## Phase 15: Hypothesis Lifecycle And Alternative Explanations
+
+Status: complete pending QC and commit finalization
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` research modes, hypothesis creation, next-probe, MechanismCard, and acceptance criteria sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` hypothesis state machine and alternative-explanation engine sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0020_critique_claude.md` critique of collapsed workflow state and epistemic status.
+
+Implemented:
+- `HypothesisState` domain object with workflow state, evidence tier, and claim status as separate fields.
+- `HypothesisTransitionReceipt` domain object.
+- `AlternativeExplanation` domain object.
+- `HypothesisLifecycleService` for valid transitions, transition receipt persistence, and alternative-explanation generation from blocker reports.
+- `mwb hypothesis transition <hypothesis-ref> --to-state <state>`.
+- `mwb hypothesis explain <run-ref>`.
+- Explicit `--approved-by` and `--decision-ref` requirements for `claimable` promotion.
+- SQLite indexing and rebuild/repair recovery for `hypothesis_states`, `hypothesis_transitions`, and `alternative_explanations`.
+- `docs/HYPOTHESIS_LIFECYCLE.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase15_hypothesis_lifecycle.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb hypothesis transition hyp_qc_phase15 --to-state triaged --evidence-tier association
+uv run mwb hypothesis explain latest
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 15 RGR tests first failed on missing `HypothesisState`, missing `mwb hypothesis`, and missing SQLite lifecycle recovery.
+- Focused Phase 15 test suite passed after implementation, `4 passed`.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `64 passed, 1 skipped`.
+- `uv run mwb hypothesis transition hyp_qc_phase15 --to-state triaged --evidence-tier association`: passed and wrote a transition receipt.
+- `uv run mwb hypothesis explain latest`: passed and generated a live `control_leaky` alternative from the latest run's blocker metrics.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `hypothesis_states`, `hypothesis_transitions`, and `alternative_explanations`.
+
+Known residual risk:
+- Lifecycle state and alternative explanations are deterministic workflow records. They do not create or accept paper claims without the separate ledger/proposal review path.

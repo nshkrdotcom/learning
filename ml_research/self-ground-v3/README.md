@@ -24,7 +24,8 @@ uv run mwb next-probe latest
 uv run mwb draft-check docs/fixture_draft.md
 uv run mwb graph rebuild
 uv run mwb ledger validate
+uv run mwb hypothesis transition <hypothesis-ref> --to-state triaged
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
-See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, source-traced buildout plan, and dogfood evidence boundary.
+See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, source-traced buildout plan, and dogfood evidence boundary.

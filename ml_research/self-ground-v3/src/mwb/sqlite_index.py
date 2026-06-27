@@ -25,6 +25,9 @@ SCHEMA_TABLES = {
     "run_events",
     "metrics",
     "hypotheses",
+    "hypothesis_states",
+    "hypothesis_transitions",
+    "alternative_explanations",
     "prediction_locks",
     "preflight_reports",
     "verification_runs",
@@ -201,6 +204,7 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
                 insert_payload(sqlite_path, "artifacts", str(ref), artifact)
                 counts["artifacts"] += 1
 
+    indexed_alternative_refs: set[str] = set()
     runs_dir = project.mechanism_dir / "runs"
     for run_dir in sorted(runs_dir.glob("*")) if runs_dir.exists() else []:
         if not run_dir.is_dir():
@@ -221,6 +225,37 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         counts["scientific_debt"] += _insert_json_file(
             sqlite_path, run_dir / "scientific_debt.json", "scientific_debt"
         )
+        counts["alternative_explanations"] += _insert_json_file_once(
+            sqlite_path,
+            run_dir / "alternative_explanations.json",
+            "alternative_explanations",
+            indexed_alternative_refs,
+        )
+
+    hypotheses_dir = project.mechanism_dir / "hypotheses"
+    for path in sorted(hypotheses_dir.glob("*.json")) if hypotheses_dir.exists() else []:
+        if path.name.endswith("_lifecycle.json"):
+            counts["hypothesis_states"] += _insert_json_file(
+                sqlite_path, path, "hypothesis_states"
+            )
+        elif path.name.endswith("_alternatives.json"):
+            counts["alternative_explanations"] += _insert_json_file_once(
+                sqlite_path,
+                path,
+                "alternative_explanations",
+                indexed_alternative_refs,
+            )
+        else:
+            counts["hypotheses"] += _insert_json_file(sqlite_path, path, "hypotheses")
+    transition_paths = (
+        sorted(hypotheses_dir.glob("*_transitions.jsonl")) if hypotheses_dir.exists() else []
+    )
+    for path in transition_paths:
+        for receipt in _read_jsonl(path):
+            ref = receipt.get("wb_ref") or receipt.get("receipt_ref")
+            if ref:
+                insert_payload(sqlite_path, "hypothesis_transitions", str(ref), receipt)
+                counts["hypothesis_transitions"] += 1
 
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")
@@ -269,6 +304,30 @@ def _insert_json_file(sqlite_path: Path, path: Path, table: str) -> int:
         or path.parent.name
     )
     insert_payload(sqlite_path, table, str(ref), payload)
+    return 1
+
+
+def _insert_json_file_once(
+    sqlite_path: Path,
+    path: Path,
+    table: str,
+    seen_refs: set[str],
+) -> int:
+    if not path.exists():
+        return 0
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = (
+        payload.get("wb_ref")
+        or payload.get("run_ref")
+        or payload.get("source_run_ref")
+        or payload.get("mechanism_card_ref")
+        or path.parent.name
+    )
+    ref_text = str(ref)
+    if ref_text in seen_refs:
+        return 0
+    seen_refs.add(ref_text)
+    insert_payload(sqlite_path, table, ref_text, payload)
     return 1
 
 

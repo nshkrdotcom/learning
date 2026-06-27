@@ -20,6 +20,24 @@ EvidenceRelation = Literal[
     "generalizes_to",
     "cited_by",
 ]
+HypothesisWorkflowState = Literal[
+    "noticed",
+    "triaged",
+    "structurally_plausible",
+    "cheap_proxy_supported",
+    "exact_patch_supported",
+    "control_clean",
+    "generalized",
+    "claimable",
+    "structurally_impossible",
+    "proxy_false_positive",
+    "control_leaky",
+    "self_repair_confounded",
+    "off_manifold",
+    "task_artifact",
+    "dictionary_artifact",
+    "abandoned",
+]
 
 
 @runtime_checkable
@@ -190,6 +208,40 @@ class Hypothesis(WorkbenchObject):
     requested_evidence_tier: str = "causal_necessity"
 
 
+class HypothesisState(WorkbenchObject):
+    wb_type: str = "HypothesisState"
+    hypothesis_ref: str
+    state: HypothesisWorkflowState
+    evidence_tier: str = "none"
+    claim_status: str | None = None
+    approved_by: str | None = None
+    decision_ref: str | None = None
+
+
+class HypothesisTransitionReceipt(WorkbenchObject):
+    wb_type: str = "HypothesisTransitionReceipt"
+    hypothesis_ref: str
+    from_state: HypothesisWorkflowState
+    to_state: HypothesisWorkflowState
+    evidence_tier: str = "none"
+    claim_status: str | None = None
+    approved_by: str | None = None
+    decision_ref: str | None = None
+    reason: str | None = None
+
+
+class AlternativeExplanation(WorkbenchObject):
+    wb_type: str = "AlternativeExplanation"
+    hypothesis_ref: str
+    explanation_id: str
+    source_ref: str
+    blocker: str
+    evidence_for: list[str] = Field(default_factory=list)
+    evidence_against: list[str] = Field(default_factory=list)
+    next_test: str
+    status: str = "live"
+
+
 class PredictionLock(WorkbenchObject):
     wb_type: str = "PredictionLock"
     hypothesis_ref: str
@@ -291,6 +343,9 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         ActivationSet,
         FeatureRanking,
         Hypothesis,
+        HypothesisState,
+        HypothesisTransitionReceipt,
+        AlternativeExplanation,
         PredictionLock,
         InterventionSpec,
         PreflightReport,
