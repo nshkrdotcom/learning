@@ -492,6 +492,7 @@ class ClaimGrammarReport(WorkbenchObject):
     status: str
     requested_text: str
     evidence_tier: str
+    policy_profile: str = "strict"
     supported_claim_type: str
     missing_requirements: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
@@ -501,6 +502,18 @@ class ClaimGrammarReport(WorkbenchObject):
     blocked_verbs: list[str] = Field(default_factory=list)
     suggested_replacements: list[str] = Field(default_factory=list)
     override: JsonDict = Field(default_factory=dict)
+
+
+class PolicyEvaluationReport(WorkbenchObject):
+    wb_type: str = "PolicyEvaluationReport"
+    policy_profile: str
+    status: str
+    mode: str
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    claim_ceiling: str | None = None
+    checks: list[JsonDict] = Field(default_factory=list)
+    profile: JsonDict = Field(default_factory=dict)
 
 
 class EvidenceEdge(WorkbenchObject):
@@ -554,6 +567,7 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         MechanismCard,
         Claim,
         ClaimGrammarReport,
+        PolicyEvaluationReport,
         EvidenceEdge,
     ]
 }
