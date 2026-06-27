@@ -1,0 +1,43 @@
+{
+  "source_artifacts": {
+    "counterexamples_dir": "reports/head_specific_candidate_characterization_v1/counterexamples",
+    "summary_path": "docs/results/head_specific_candidate_characterization_v1.md"
+  },
+  "command": "uv run python scripts/build_characterization_failure_taxonomy.py --counterexamples reports/head_specific_candidate_characterization_v1/counterexamples --summary docs/results/head_specific_candidate_characterization_v1.md --output reports/head_specific_candidate_characterization_v1/failure_taxonomy",
+  "n_row_failure_labels": 296,
+  "n_heads": 16,
+  "failure_mode_counts": {
+    "control_moved": 80,
+    "domain_flip": 40,
+    "intervention_disagreement": 40,
+    "length_flip": 40,
+    "position_mismatch": 16,
+    "reversed_control_leak": 26,
+    "target_swap_leak": 54
+  },
+  "head_modes": {
+    "L0H1": "attention_effect_decoupled,ov_qk_local_only",
+    "L0H10": "attention_effect_decoupled,ov_qk_local_only",
+    "L0H4": "ov_qk_local_only",
+    "L0H5": "attention_effect_decoupled,ov_qk_local_only",
+    "L0H8": "control_moved,target_swap_leak,reversed_control_leak,domain_flip,length_flip",
+    "L11H0": "ov_qk_local_only",
+    "L11H7": "attention_effect_decoupled",
+    "L11H8": "attention_effect_decoupled",
+    "L11H9": "ov_qk_local_only",
+    "L4H1": "attention_effect_decoupled,ov_qk_local_only",
+    "L4H9": "attention_effect_decoupled,ov_qk_local_only",
+    "L7H0": "control_moved,target_swap_leak,reversed_control_leak,domain_flip,length_flip",
+    "L7H11": "control_moved,target_swap_leak,reversed_control_leak,domain_flip,length_flip",
+    "L7H7": "control_moved,target_swap_leak,reversed_control_leak,domain_flip,length_flip",
+    "L9H11": "control_moved,target_swap_leak,reversed_control_leak,domain_flip,length_flip",
+    "L9H5": "attention_effect_decoupled,ov_qk_local_only"
+  },
+  "final_status": "failure_taxonomy_complete_no_candidate_search_justified",
+  "refused_claims": [
+    "No induction-head discovery.",
+    "No circuit claim.",
+    "No broad GPT-2 claim.",
+    "No new candidate selection from this taxonomy."
+  ]
+}
