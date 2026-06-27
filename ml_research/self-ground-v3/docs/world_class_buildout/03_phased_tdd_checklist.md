@@ -642,6 +642,8 @@ git push
 
 ## Phase 24: Release Hardening
 
+Status: QC green in repo Phase 25; implementation commit pending.
+
 ### Required Reading
 
 - Full world-class buildout docset.
@@ -650,26 +652,26 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add regression tests for all previously fixed false positives/negatives.
-- [ ] Add compatibility tests for reading old `.mechanism` state.
-- [ ] Add docs-link tests if docs tooling exists.
-- [ ] Add command help snapshot tests for public CLI.
+- [x] Add regression tests for all previously fixed false positives/negatives.
+- [x] Add compatibility tests for reading old `.mechanism` state.
+- [x] Add docs-link tests if docs tooling exists.
+- [x] Add command help snapshot tests for public CLI.
 
 ### Implementation
 
-- [ ] Run full QC.
-- [ ] Run real integration gates.
-- [ ] Run scan for fake/dummy/mock/smoke/placeholder.
-- [ ] Run overclaim language scan.
-- [ ] Rebuild SQLite and graph.
-- [ ] Validate docs against runtime commands.
-- [ ] Generate release report.
+- [x] Run full QC.
+- [x] Run real integration gates.
+- [x] Run scan for fake/dummy/mock/smoke/placeholder.
+- [x] Run overclaim language scan.
+- [x] Rebuild SQLite and graph.
+- [x] Validate docs against runtime commands.
+- [x] Generate release report.
 
 ### Docs
 
-- [ ] Add release report.
-- [ ] Update README.
-- [ ] Update phase ledger.
+- [x] Add release report.
+- [x] Update README.
+- [x] Update phase ledger.
 
 ### QC Gate
 

@@ -1281,3 +1281,59 @@ Observed result:
 
 Known residual risk:
 - Optional nnsight and pyvene dependencies are not installed in the current QC environment. Their adapters therefore remain diagnostic-only unless a user installs/configures those backends and runs real conformance; this is deliberate and prevents fake support.
+
+## Phase 25: Release Hardening
+
+Status: complete; implementation commit pending
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- Full `docs/world_class_buildout/` docset, especially source mining findings, target architecture, implementation plan, phased checklist, and QC/commit/push protocol.
+- Current `docs/mwb_phase0_ledger.md` through Phase 24.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/BEST_EVALS_github.md` eval engineering patterns: deterministic checks, versioned evals, reproducibility docs, commandable CI-style gates, and failure analysis.
+
+Implemented:
+- Release-hardening regression suite for known false-positive blocking and overclaim blocking.
+- Compatibility test for legacy adapter manifest/backend-version records without new stable refs.
+- README docs-link regression for release report links.
+- Public CLI help snapshot coverage for root commands, adapter conformance commands, and pyvene options.
+- `docs/RELEASE_HARDENING_REPORT.md` with release scope, command gate, scan policy, and result slots.
+- README and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase25_release_hardening.py
+uv run ruff check tests/test_phase25_release_hardening.py
+uv sync
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_phase4_context.py -m integration
+uv run mwb adapter conformance transformer-lens --model EleutherAI/pythia-70m-deduped --device cpu
+uv run mwb adapter conformance saelens --model EleutherAI/pythia-70m-deduped --hook blocks.2.hook_resid_post --device cpu
+uv run mwb graph rebuild
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+rg -n "fake|dummy|mock|simulated|placeholder|smoke" src tests docs README.md pyproject.toml
+rg -n "implements|mechanism for|proves|isolated.*circuit|strong_candidate_evidence" src tests docs README.md pyproject.toml
+git status --short --branch
+```
+
+Observed result:
+- Phase 25 RGR tests first failed on missing `docs/RELEASE_HARDENING_REPORT.md` link in README.
+- Focused Phase 25 release-hardening suite passed, `4 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `123 passed, 3 skipped`.
+- Real adapter integration test: passed, `1 passed, 3 deselected`.
+- TransformerLens conformance: passed with real model load and activation capture.
+- SAELens conformance: passed with real SAE load and feature ref round-trip.
+- `uv run mwb graph rebuild`: passed with `30` edges and `23` nodes.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `adapter_manifests: 5`, `backend_versions: 5`, `evidence_edges: 30`.
+- Release scans reviewed; hits were expected protocol/report text, blocked-language tables, tests asserting overclaim blocking, historical ledger entries, and source-mined anti-pattern notes.
+
+Known residual risk:
+- Optional nnsight and pyvene dependencies remain absent from the current QC environment and therefore remain diagnostic-only until installed/configured for real conformance.
