@@ -1,0 +1,43 @@
+experiment:
+  name: gpt2_small_induction_heldout_seed10
+  seed: 10
+
+model:
+  name: gpt2-small
+  backend: transformer_lens
+  device: cuda
+  dtype: float32
+  use_inference_mode: true
+
+resources:
+  max_disk_cache_gb: 100
+  max_activation_cache_gb_per_run: 20
+  max_ram_gb_per_run: 64
+  max_gpu_vram_fraction: 0.80
+  max_examples_initial: 240
+  max_examples_full: 1024
+  batch_size_auto: true
+
+task:
+  name: induction_heldout
+  prompt_style: heldout_repeated_token_sequences
+  n_examples_initial_per_family: 24
+  families:
+    - heldout_symbolic_longer
+    - heldout_word_sequences
+    - heldout_number_sequences
+    - heldout_double_repeat
+    - heldout_wrong_target_same_prompt
+    - heldout_no_structure_same_tokens
+
+activations:
+  cache_strategy: selected_layers
+  token_positions: [final]
+  layers: auto_even_6
+
+attention:
+  layers: auto_even_6
+  top_k_heads: 20
+
+outputs:
+  run_root: runs

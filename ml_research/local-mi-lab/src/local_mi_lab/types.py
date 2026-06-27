@@ -28,6 +28,8 @@ class PromptRecord:
     true_expected_next_token: str = ""
     paired_positive_example_id: str = ""
     wrong_or_control_token: str = ""
+    heldout_family_type: str = ""
+    heldout_construction_note: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -83,6 +85,8 @@ class PromptRecord:
             true_expected_next_token=true_expected_next_token,
             paired_positive_example_id=paired_positive_example_id,
             wrong_or_control_token=wrong_or_control_token,
+            heldout_family_type=str(row.get("heldout_family_type") or ""),
+            heldout_construction_note=str(row.get("heldout_construction_note") or ""),
         )
 
 

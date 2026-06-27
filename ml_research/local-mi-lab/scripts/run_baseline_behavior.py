@@ -10,6 +10,7 @@ import torch
 from tqdm import tqdm
 
 from local_mi_lab.config import load_config, max_examples_for_initial_run, write_config
+from local_mi_lab.heldout_prompts import generate_heldout_induction_prompts
 from local_mi_lab.metrics import (
     aggregate_baseline,
     aggregate_baseline_by_family,
@@ -82,7 +83,7 @@ def run_baseline(config: dict[str, Any], records: list[Any]) -> tuple[list[dict[
             }
         )
     summary = aggregate_baseline(rows)
-    if config["task"]["name"] == "induction_controls":
+    if config["task"]["name"] in {"induction_controls", "induction_heldout"}:
         summary.update(controlled_baseline_summary(rows))
     summary["model"] = config["model"]["name"]
     summary["task"] = config["task"]["name"]
@@ -103,6 +104,12 @@ def _records_for_config(config: dict[str, Any]) -> list[Any]:
         )
     if task_name == "induction_controls":
         return generate_induction_control_prompts(
+            n_examples_per_family=int(config["task"]["n_examples_initial_per_family"]),
+            families=list(config["task"]["families"]),
+            seed=seed,
+        )
+    if task_name == "induction_heldout":
+        return generate_heldout_induction_prompts(
             n_examples_per_family=int(config["task"]["n_examples_initial_per_family"]),
             families=list(config["task"]["families"]),
             seed=seed,

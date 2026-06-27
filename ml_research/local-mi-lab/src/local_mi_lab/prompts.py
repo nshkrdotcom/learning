@@ -30,6 +30,8 @@ PROMPT_COLUMNS = [
     "true_expected_next_token",
     "paired_positive_example_id",
     "wrong_or_control_token",
+    "heldout_family_type",
+    "heldout_construction_note",
 ]
 
 CONTROL_FAMILIES = [
