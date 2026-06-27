@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 import torch
 
 from local_mi_lab.head_hooks import HeadPatchSite
@@ -10,7 +11,9 @@ from local_mi_lab.head_patching import (
     apply_head_intervention,
     classify_head_specificity,
     parse_heads,
+    resolve_position_index_for_record,
 )
+from local_mi_lab.types import PromptRecord
 
 
 def test_patches_only_selected_head_dimension_in_hook_z_tensor() -> None:
@@ -45,6 +48,37 @@ def test_zero_ablation_zeros_only_selected_head() -> None:
     )
     assert torch.all(patched[:, 1, 0, :] == 0)
     assert torch.all(patched[:, 1, 1, :] == 1)
+
+
+def test_mean_ablation_replaces_only_selected_head() -> None:
+    site = _site(head_specific=True)
+    corrupt = torch.ones(1, 3, 2, 4)
+    mean_act = torch.arange(4, dtype=corrupt.dtype)
+    patched = apply_head_intervention(
+        corrupt,
+        None,
+        site=site,
+        head=1,
+        clean_position=1,
+        corrupt_position=1,
+        intervention="head_mean_ablation",
+        mean_act=mean_act,
+    )
+    assert torch.all(patched[:, 1, 1, :] == mean_act)
+    assert torch.all(patched[:, 1, 0, :] == 1)
+
+
+def test_unsupported_intervention_fails_clearly() -> None:
+    with pytest.raises(ValueError, match="Unsupported intervention"):
+        apply_head_intervention(
+            torch.ones(1, 3, 2, 4),
+            None,
+            site=_site(head_specific=True),
+            head=0,
+            clean_position=1,
+            corrupt_position=1,
+            intervention="unknown",
+        )
 
 
 def test_full_attn_out_fallback_is_marked_not_head_specific() -> None:
@@ -96,6 +130,39 @@ def test_denominator_zero_handling() -> None:
 
 def test_parse_heads_deduplicates_and_sorts() -> None:
     assert parse_heads("L2H3,L0H1,L2H3") == [(0, 1), (2, 3)]
+
+
+def test_previous_occurrence_position_status_is_explicit() -> None:
+    record = PromptRecord(
+        example_id="p0",
+        task="induction_heldout",
+        family="heldout_symbolic_longer",
+        prompt="A B C D E F A B C D E",
+        expected_next_token=" F",
+        control_prompt="A C E B D F C A E B D",
+        notes="",
+        prompt_tokens_text=["A", "B", "C", "D", "E", "F", "A", "B", "C", "D", "E"],
+        expected_source_position_hint=4,
+    )
+    position, status = resolve_position_index_for_record(record, "previous_occurrence", 12)
+    assert position == 5
+    assert status == "ok"
+
+    control = PromptRecord(
+        example_id="c0",
+        task="induction_heldout",
+        family="heldout_no_structure_same_tokens",
+        prompt="A C E B D F C A E B D",
+        expected_next_token=" F",
+        control_prompt="A B C D E F A B C D E",
+        notes="",
+        prompt_tokens_text=["A", "C", "E", "B", "D", "F", "C", "A", "E", "B", "D"],
+        expected_source_position_hint=None,
+        should_show_induction_behavior=False,
+    )
+    position, status = resolve_position_index_for_record(control, "previous_occurrence", 12)
+    assert position is None
+    assert status == "unavailable_for_family"
 
 
 def _site(head_specific: bool) -> HeadPatchSite:

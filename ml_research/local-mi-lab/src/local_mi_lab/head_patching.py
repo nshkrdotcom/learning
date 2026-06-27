@@ -13,6 +13,8 @@ from local_mi_lab.head_hooks import HeadPatchSite, resolve_head_patch_site
 from local_mi_lab.induction_metrics import (
     logit_diff_score,
     normalized_effect_size,
+    probability_score,
+    rank_score,
     resolve_induction_token_ids,
     target_logit_score,
 )
@@ -40,8 +42,11 @@ RESULT_COLUMNS = [
     "head_specific_patch",
     "actual_patch_scope",
     "intervention",
+    "intervention_status",
     "position_label",
+    "position_status",
     "patch_position",
+    "mean_ablation_source_n_examples",
     "clean_prompt",
     "corrupt_prompt",
     "true_expected_next_token",
@@ -147,6 +152,7 @@ def apply_head_intervention(
     clean_position: int,
     corrupt_position: int,
     intervention: str,
+    mean_act: torch.Tensor | None = None,
 ) -> torch.Tensor:
     patched = corrupt_act.clone()
     if not site.head_specific_possible:
@@ -154,6 +160,12 @@ def apply_head_intervention(
             patched[:, corrupt_position, :] = clean_act[:, clean_position, :]
         elif intervention == "head_zero_ablation":
             patched[:, corrupt_position, :] = 0
+        elif intervention == "head_mean_ablation" and mean_act is not None:
+            patched[:, corrupt_position, :] = mean_act
+        elif intervention == "head_mean_ablation":
+            raise ValueError("mean_act is required for head_mean_ablation")
+        else:
+            raise ValueError(f"Unsupported intervention {intervention!r}")
         return patched
     if intervention == "head_clean_to_corrupt_patch":
         if clean_act is None:
@@ -161,6 +173,10 @@ def apply_head_intervention(
         patched[:, corrupt_position, head, :] = clean_act[:, clean_position, head, :]
     elif intervention == "head_zero_ablation":
         patched[:, corrupt_position, head, :] = 0
+    elif intervention == "head_mean_ablation":
+        if mean_act is None:
+            raise ValueError("mean_act is required for head_mean_ablation")
+        patched[:, corrupt_position, head, :] = mean_act
     else:
         raise ValueError(f"Unsupported intervention {intervention!r}")
     return patched
@@ -193,6 +209,16 @@ def run_head_specific_patching(
         layer: HeadPatchSite(**resolve_head_patch_site(model, layer))
         for layer in sorted({layer for layer, _ in heads})
     }
+    mean_activations: dict[tuple[int, int, str, int], tuple[torch.Tensor, int]] = {}
+    if intervention == "head_mean_ablation":
+        mean_activations = compute_mean_ablation_activations(model, jobs, site_by_layer)
+        for job in jobs:
+            key = job.get("_mean_ablation_key")
+            if key is not None:
+                job["mean_act"], job["mean_ablation_source_n_examples"] = mean_activations.get(
+                    key,
+                    (None, 0),
+                )
     rows = [
         _run_head_job(
             model,
@@ -217,6 +243,7 @@ def aggregate_head_patching_by_family(results: pd.DataFrame) -> pd.DataFrame:
     if results.empty:
         return pd.DataFrame()
     valid = results.copy()
+    _ensure_result_defaults(valid)
     valid["effect_size_numeric"] = pd.to_numeric(valid["effect_size"], errors="coerce")
     grouped = valid.groupby(
         [
@@ -228,7 +255,9 @@ def aggregate_head_patching_by_family(results: pd.DataFrame) -> pd.DataFrame:
             "head_specific_patch",
             "actual_patch_scope",
             "intervention",
+            "intervention_status",
             "metric",
+            "position_label",
         ],
         as_index=False,
     )
@@ -248,6 +277,8 @@ def aggregate_head_patching_by_family(results: pd.DataFrame) -> pd.DataFrame:
 def aggregate_head_patching_by_head(results: pd.DataFrame) -> pd.DataFrame:
     if results.empty:
         return pd.DataFrame()
+    results = results.copy()
+    _ensure_result_defaults(results)
     by_family = aggregate_head_patching_by_family(results)
     rows: list[dict[str, Any]] = []
     group_cols = [
@@ -258,7 +289,9 @@ def aggregate_head_patching_by_head(results: pd.DataFrame) -> pd.DataFrame:
         "head_specific_patch",
         "actual_patch_scope",
         "intervention",
+        "intervention_status",
         "metric",
+        "position_label",
     ]
     for key, subset in by_family.groupby(group_cols):
         key_dict = dict(zip(group_cols, key, strict=True))
@@ -278,9 +311,9 @@ def aggregate_head_patching_by_head(results: pd.DataFrame) -> pd.DataFrame:
             if positive_mean is not None and max_control_mean is not None
             else None
         )
-        head_results = results[
-            (results["layer"] == key_dict["layer"]) & (results["head"] == key_dict["head"])
-        ]
+        head_results = results.copy()
+        for column in group_cols:
+            head_results = head_results[head_results[column] == key_dict[column]]
         rows.append(
             {
                 **key_dict,
@@ -409,8 +442,32 @@ def _run_head_job(
     wrong_id = int(token_ids["wrong_or_control_token_id"])
     clean_tokens = model.to_tokens(job["clean_prompt"])
     corrupt_tokens = model.to_tokens(job["corrupt_prompt"])
-    clean_position = position_index_for_record(record, job["position_label"], int(clean_tokens.shape[1]))
-    corrupt_position = position_index_for_record(record, job["position_label"], int(corrupt_tokens.shape[1]))
+    clean_position, clean_position_status = resolve_position_index_for_record(
+        record,
+        job["position_label"],
+        int(clean_tokens.shape[1]),
+    )
+    corrupt_position, corrupt_position_status = resolve_position_index_for_record(
+        record,
+        job["position_label"],
+        int(corrupt_tokens.shape[1]),
+    )
+    position_status = (
+        "ok"
+        if clean_position_status == "ok" and corrupt_position_status == "ok"
+        else "unavailable_for_family"
+    )
+    if clean_position is None or corrupt_position is None:
+        return _skipped_position_row(
+            job,
+            record=record,
+            run_id=run_id,
+            seed=seed,
+            site=site,
+            metric=metric,
+            intervention=intervention,
+            position_status=position_status,
+        )
     with torch.inference_mode():
         clean_logits, clean_cache = model.run_with_cache(clean_tokens, names_filter=[site.hook_name])
         corrupt_logits = model(corrupt_tokens)
@@ -428,6 +485,7 @@ def _run_head_job(
             clean_position=clean_position,
             corrupt_position=corrupt_position,
             intervention=intervention,
+            mean_act=job.get("mean_act"),
         )
 
     with torch.inference_mode():
@@ -447,8 +505,11 @@ def _run_head_job(
         "head_specific_patch": site.head_specific_possible,
         "actual_patch_scope": site.actual_patch_scope,
         "intervention": intervention,
+        "intervention_status": "ok",
         "position_label": job["position_label"],
+        "position_status": position_status,
         "patch_position": corrupt_position,
+        "mean_ablation_source_n_examples": int(job.get("mean_ablation_source_n_examples") or 0),
         "clean_prompt": job["clean_prompt"],
         "corrupt_prompt": job["corrupt_prompt"],
         "true_expected_next_token": record.true_expected_next_token,
@@ -466,20 +527,126 @@ def score_logits(logits: Any, metric: str, true_id: int, wrong_id: int) -> float
         return target_logit_score(logits, true_id)
     if metric == "true_vs_control_logit_diff":
         return logit_diff_score(logits, true_id, wrong_id)
+    if metric == "probability_gap":
+        return probability_score(logits, true_id) - probability_score(logits, wrong_id)
+    if metric == "rank_delta":
+        return float(rank_score(logits, wrong_id) - rank_score(logits, true_id))
     raise ValueError(f"Unsupported metric {metric!r}")
 
 
 def position_index_for_record(record: PromptRecord, position_label: str, seq_len: int) -> int:
+    position, status = resolve_position_index_for_record(record, position_label, seq_len)
+    if position is None:
+        raise ValueError(f"Record {record.example_id} has no source position metadata")
+    if status != "ok":
+        raise ValueError(f"Position {position_label!r} unavailable for {record.example_id}")
+    return position
+
+
+def resolve_position_index_for_record(
+    record: PromptRecord,
+    position_label: str,
+    seq_len: int,
+) -> tuple[int | None, str]:
     if position_label == "final":
-        return seq_len - 1
+        return seq_len - 1, "ok"
     if position_label in {"source", "previous_occurrence"}:
         if record.expected_source_position_hint is None:
-            raise ValueError(f"Record {record.example_id} has no source position metadata")
+            return None, "unavailable_for_family"
         bos_offset = max(seq_len - len(record.prompt_tokens_text), 0)
-        return int(record.expected_source_position_hint) + bos_offset
+        return int(record.expected_source_position_hint) + bos_offset, "ok"
     if position_label == "all_prompt_positions":
         raise ValueError("all_prompt_positions is supported only by the sweep job expander")
     raise ValueError(f"Unsupported position label {position_label!r}")
+
+
+def mean_ablation_key(job: dict[str, Any], seq_len: int) -> tuple[int, int, str, int] | None:
+    record: PromptRecord = job["record"]
+    position, status = resolve_position_index_for_record(record, job["position_label"], seq_len)
+    if position is None or status != "ok":
+        return None
+    return int(job["layer"]), int(job["head"]), str(job["position_label"]), int(position)
+
+
+def compute_mean_ablation_activations(
+    model: Any,
+    jobs: list[dict[str, Any]],
+    site_by_layer: dict[int, HeadPatchSite],
+) -> dict[tuple[int, int, str, int], tuple[torch.Tensor, int]]:
+    values: dict[tuple[int, int, str, int], list[torch.Tensor]] = {}
+    for job in jobs:
+        tokens = model.to_tokens(job["clean_prompt"])
+        key = mean_ablation_key(job, int(tokens.shape[1]))
+        job["_mean_ablation_key"] = key
+        if key is None:
+            continue
+        layer, head, _position_label, clean_position = key
+        site = site_by_layer[layer]
+        with torch.inference_mode():
+            _, cache = model.run_with_cache(tokens, names_filter=[site.hook_name])
+        act = _cache_get(cache, site.hook_name)
+        if site.head_specific_possible:
+            vector = act[:, clean_position, head, :].mean(dim=0)
+        else:
+            vector = act[:, clean_position, :].mean(dim=0)
+        values.setdefault(key, []).append(vector)
+    return {
+        key: (torch.stack(vectors, dim=0).mean(dim=0), len(vectors))
+        for key, vectors in values.items()
+    }
+
+
+def _ensure_result_defaults(results: pd.DataFrame) -> None:
+    defaults: dict[str, Any] = {
+        "intervention_status": "ok",
+        "position_status": "ok",
+        "mean_ablation_source_n_examples": 0,
+    }
+    for column, default in defaults.items():
+        if column not in results.columns:
+            results[column] = default
+
+
+def _skipped_position_row(
+    job: dict[str, Any],
+    *,
+    record: PromptRecord,
+    run_id: str,
+    seed: int,
+    site: HeadPatchSite,
+    metric: str,
+    intervention: str,
+    position_status: str,
+) -> dict[str, Any]:
+    return {
+        "run_id": run_id,
+        "seed": seed,
+        "example_id": record.example_id,
+        "family": record.family,
+        "control_family": record.control_family,
+        "should_show_induction_behavior": record.should_show_induction_behavior,
+        "layer": int(job["layer"]),
+        "head": int(job["head"]),
+        "hook_name": site.hook_name,
+        "head_specific_patch": site.head_specific_possible,
+        "actual_patch_scope": site.actual_patch_scope,
+        "intervention": intervention,
+        "intervention_status": "skipped_position_unavailable",
+        "position_label": job["position_label"],
+        "position_status": position_status,
+        "patch_position": None,
+        "mean_ablation_source_n_examples": 0,
+        "clean_prompt": job["clean_prompt"],
+        "corrupt_prompt": job["corrupt_prompt"],
+        "true_expected_next_token": record.true_expected_next_token,
+        "wrong_or_control_token": record.wrong_or_control_token,
+        "metric": metric,
+        "clean_score": None,
+        "corrupt_score": None,
+        "patched_score": None,
+        "effect_size": None,
+        "effect_size_status": "position_unavailable",
+    }
 
 
 def _cache_get(cache: Any, hook_name: str) -> Any:
