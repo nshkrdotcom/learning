@@ -1,0 +1,29 @@
+{
+  "source_report_dir": "/home/home/p/g/n/learning/ml_research/local-mi-lab/reports/head_specific_induction_causality_v1",
+  "output_dir": "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1",
+  "generated_files": [
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_1_multiseed_candidate_gaps.svg",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_1_multiseed_candidate_gaps.pdf",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_2_seed_status_counts.svg",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_2_seed_status_counts.pdf",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_3_candidate_group_outcomes.svg",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_3_candidate_group_outcomes.pdf",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_4_l7h7_example_effects.svg",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/figures/head_specific_induction_causality_v1/figure_4_l7h7_example_effects.pdf"
+  ],
+  "source_artifacts": [
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/reports/head_specific_induction_causality_v1/head_specific_multiseed_by_head.csv",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/reports/head_specific_induction_causality_v1/head_specific_multiseed_summary.json",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/reports/head_specific_induction_causality_v1/run_manifest.json",
+    "/home/home/p/g/n/learning/ml_research/local-mi-lab/reports/head_specific_induction_causality_v1/replicated_head_L7H7_examples.csv"
+  ],
+  "primary_metric": "true_vs_control_logit_diff",
+  "interpretation_limit": "Figures summarize local practice artifacts. They do not establish an induction-head mechanism or a broad GPT-2 claim.",
+  "replicated_candidates": [
+    "L7H7",
+    "L9H11",
+    "L7H11",
+    "L7H0",
+    "L0H8"
+  ]
+}
