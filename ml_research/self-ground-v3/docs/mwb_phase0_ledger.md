@@ -1069,9 +1069,9 @@ Known residual risk:
 
 ## Phase 21: Reference Mechanism Suite
 
-Status: complete pending commit and push
-Commit: pending
-Pushed: no
+Status: complete pending push
+Commit: `79bbe4c`
+Pushed: pending
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` reference tasks with known ground truth, toy circuits, planted features, synthetic SAE dictionaries, and negative controls.
