@@ -638,3 +638,48 @@ Observed result:
 
 Known residual risk:
 - This phase is documentation and planning only. It intentionally does not implement the future buildout capabilities described in the checklist.
+
+## Phase 13: Evidence Graph Query Core
+
+Status: complete pending QC and commit finalization
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` Evidence Core, persistence model, evidence graph, and SQLite schema sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0004.md` object registration, artifact capture, lineage, and recovery sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` "Evidence as a typed causal graph".
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260624/ml_research/mechinterp_tracker/0430_revised_v6.md` SQLite-never-canonical and index rebuild sections.
+
+Implemented:
+- `EvidenceEdge` domain object with validated typed relations: `supports`, `contradicts`, `depends_on`, `derived_from`, `tested_by`, `confounded_by`, `fails_on`, `generalizes_to`, and `cited_by`.
+- `EvidenceGraphService` that rebuilds `.mechanism/graph/evidence_edges.jsonl` and `.mechanism/graph/graph_summary.json` from file-backed workbench records.
+- SQLite `evidence_edges` operational index.
+- `mwb graph rebuild`.
+- `mwb graph query claims-depending-on <ref>`.
+- `mwb graph query controls-contradicting <run-ref>`.
+- `mwb graph query cells-producing <artifact-ref>`.
+- `mwb graph query debt-blocking <claim-ref>`.
+- `mwb rebuild-index` / `mwb repair-index` restoration of `evidence_edges` from graph JSONL.
+- `docs/EVIDENCE_GRAPH.md`, README, usage guide, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase12_evidence_graph.py
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb graph rebuild
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 13 RGR tests first failed on missing `EvidenceEdge`, missing `EvidenceGraphService`, and missing `mwb graph`.
+- Focused Phase 13 test suite passed after implementation, `3 passed`.
+- Full QC pending final run in this commit.
+
+Known residual risk:
+- The graph records declared provenance and evidence relationships. It does not upgrade evidence tiers or make a claim scientifically true by itself.

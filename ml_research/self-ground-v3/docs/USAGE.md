@@ -83,6 +83,25 @@ uv run mwb draft-check docs/fixture_draft.md
 
 The accepted E004 posture is `insufficient_evidence` with `control_leaky` as the primary blocker. The workbench preserves that boundary in the generated card and draft guard.
 
+## Evidence Graph
+
+Rebuild graph edges from file-backed workbench records:
+
+```bash
+uv run mwb graph rebuild
+```
+
+Run focused provenance and evidence queries:
+
+```bash
+uv run mwb graph query claims-depending-on <unit-or-object-ref>
+uv run mwb graph query controls-contradicting <run-ref>
+uv run mwb graph query cells-producing <artifact-ref>
+uv run mwb graph query debt-blocking <claim-ref>
+```
+
+Graph edges are written to `.mechanism/graph/evidence_edges.jsonl` and indexed in SQLite. See `docs/EVIDENCE_GRAPH.md` for the schema and claim boundary.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

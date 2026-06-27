@@ -1,6 +1,6 @@
 # Phased TDD/RGR Checklist
 
-This checklist begins after the current completed Phase 0/10/11 baseline. Phase numbers continue from the repo ledger.
+This checklist begins after the current completed Phase 0/10/11 baseline. The source-mining docset itself was recorded as repo Phase 12, so completed buildout phases after it are recorded in the repo ledger with the next available repo phase number.
 
 Every phase must be implemented with TDD/RGR, docs updates, QC-green, commit, and push.
 
@@ -16,6 +16,8 @@ For example, `0005.md` means `CANONICAL/0005.md`; `0430_revised_v6.md` means `TR
 
 ## Phase 12: Evidence Graph Query Core
 
+Status: complete in repo Phase 13 pending final commit and push.
+
 ### Required Reading
 
 - `0003.md` Evidence Core and persistence sections.
@@ -25,28 +27,28 @@ For example, `0005.md` means `CANONICAL/0005.md`; `0430_revised_v6.md` means `TR
 
 ### TDD/RGR
 
-- [ ] Add failing tests for typed edges: `supports`, `contradicts`, `depends_on`, `derived_from`, `tested_by`, `confounded_by`, `fails_on`, `generalizes_to`, `cited_by`.
-- [ ] Add failing tests for graph rebuild from file-backed records.
-- [ ] Add failing tests for graph query CLI:
-  - [ ] claims depending on a unit,
-  - [ ] controls contradicting a run,
-  - [ ] cells producing an artifact,
-  - [ ] debt blocking a claim.
+- [x] Add failing tests for typed edges: `supports`, `contradicts`, `depends_on`, `derived_from`, `tested_by`, `confounded_by`, `fails_on`, `generalizes_to`, `cited_by`.
+- [x] Add failing tests for graph rebuild from file-backed records.
+- [x] Add failing tests for graph query CLI:
+  - [x] claims depending on a unit,
+  - [x] controls contradicting a run,
+  - [x] cells producing an artifact,
+  - [x] debt blocking a claim.
 
 ### Implementation
 
-- [ ] Add `EvidenceEdge` domain object.
-- [ ] Add `EvidenceGraphService`.
-- [ ] Add `mwb graph query`.
-- [ ] Add `mwb graph rebuild`.
-- [ ] Persist graph edges in JSONL and SQLite.
-- [ ] Keep SQLite rebuildable.
+- [x] Add `EvidenceEdge` domain object.
+- [x] Add `EvidenceGraphService`.
+- [x] Add `mwb graph query`.
+- [x] Add `mwb graph rebuild`.
+- [x] Persist graph edges in JSONL and SQLite.
+- [x] Keep SQLite rebuildable.
 
 ### Docs
 
-- [ ] Update `docs/USAGE.md`.
-- [ ] Add graph schema docs.
-- [ ] Update phase ledger.
+- [x] Update `docs/USAGE.md`.
+- [x] Add graph schema docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -64,7 +66,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 12: add evidence graph query core"
+git commit -m "phase 13: add evidence graph query core"
 git push
 ```
 

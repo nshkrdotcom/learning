@@ -20,6 +20,7 @@ SCHEMA_TABLES = {
     "artifacts",
     "artifact_versions",
     "lineage_edges",
+    "evidence_edges",
     "runs",
     "run_events",
     "metrics",
@@ -219,6 +220,12 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
         counts["scientific_debt"] += _insert_json_file(
             sqlite_path, run_dir / "scientific_debt.json", "scientific_debt"
         )
+
+    for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
+        ref = edge.get("wb_ref") or edge.get("edge_ref")
+        if ref:
+            insert_payload(sqlite_path, "evidence_edges", str(ref), edge)
+            counts["evidence_edges"] += 1
 
     return {"status": "ok", "sqlite_path": str(sqlite_path), "counts": counts}
 
