@@ -1014,9 +1014,9 @@ Known residual risk:
 
 ## Phase 20: Diagnosis Tree And Probe Materialization
 
-Status: complete pending push
+Status: complete
 Commit: `9b9293d`
-Pushed: pending
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` next-probe planning, materialized probe requirements, and blocker provenance sections.
