@@ -10,6 +10,7 @@ from local_mi_lab.head_patching import (
     aggregate_head_patching_by_head,
     apply_head_intervention,
     classify_head_specificity,
+    clean_corrupt_prompts,
     parse_heads,
     resolve_position_index_for_record,
 )
@@ -163,6 +164,23 @@ def test_previous_occurrence_position_status_is_explicit() -> None:
     position, status = resolve_position_index_for_record(control, "previous_occurrence", 12)
     assert position is None
     assert status == "unavailable_for_family"
+
+
+def test_positive_heldout_clean_corrupt_uses_structural_control() -> None:
+    record = PromptRecord(
+        example_id="p0",
+        task="induction_heldout",
+        family="heldout_symbolic_longer",
+        prompt="A B C D E F A B C D E",
+        expected_next_token=" F",
+        control_prompt="A C E B D F C A E B D",
+        notes="",
+        is_positive_induction_example=True,
+    )
+    clean, corrupt = clean_corrupt_prompts(record, record)
+    assert clean == record.prompt
+    assert corrupt == record.control_prompt
+    assert clean != corrupt
 
 
 def _site(head_specific: bool) -> HeadPatchSite:

@@ -162,6 +162,33 @@ Add dated entries after script-generated artifacts exist. Keep entries short and
 - Blockers: none in this run.
 - Next step: inspect `attention_patterns_by_head.csv` and compare the top attention candidates against a controlled prompt set before treating any head as worth causal follow-up.
 
+## 2026-06-26 Held-Out Induction Robustness Seed 10
+
+- Run: `runs/20260626_161445_gpt2_small_induction_heldout_seed10`
+- Descriptive source run: `runs/20260626_161335_gpt2_small_induction_heldout_seed10`
+- Candidate set: `reports/head_specific_induction_heldout_robustness_v1/heldout_candidate_set.csv`
+- Prompt families: `heldout_symbolic_longer`, `heldout_word_sequences`, `heldout_number_sequences`, `heldout_double_repeat`, `heldout_wrong_target_same_prompt`, and `heldout_no_structure_same_tokens`
+- Interventions: `head_clean_to_corrupt_patch`, `head_zero_ablation`, and `head_mean_ablation`
+- Positions: `final` and `previous_occurrence`
+- Examples per family: 12
+- Primary metric: `true_vs_control_logit_diff`
+- Candidates tested: 16 fixed candidates, including the five prior replicated candidates, prior raw-attention comparison heads, and deterministic negative controls.
+- Survived seed: 10 candidate/intervention/position rows were classified as `heldout_survives_seed`.
+- Downgraded: no rows used the weak-family-specific downgrade status in this seed.
+- Falsified: 24 rows had `falsified_no_positive_effect`; 14 rows had `falsified_controls_move`; 48 rows had `insufficient_valid_examples`, mostly for position or denominator limitations.
+- Controls-moving failures: 14 candidate/intervention/position rows had controls move as much as or more than positives.
+- L7H7 status: survived seed 10 for final-position clean-to-corrupt patching, but remains a prior random-comparison candidate and is not interpretable without seed 11/12.
+- L9H11 status: survived seed 10 only weakly for final clean-to-corrupt patching; the gap was near zero in that condition.
+- L7H11 status: strongest seed-10 final clean-to-corrupt positive-minus-control gap among primary candidates; ablations did not support the same direction.
+- L7H0 status: no positive effect under final clean-to-corrupt patching.
+- L0H8 status: no positive effect under final clean-to-corrupt patching and controls moved in at least one condition.
+- Prior raw-attention heads status: L0H10 survived seed 10 under final clean-to-corrupt patching, but this is a comparison head and does not rescue raw previous-occurrence attention without replication. Other prior raw-attention heads remained weak or failed.
+- Negative controls status: at least one negative-control head also satisfied the seed-level survival rule, so seed 10 alone is not specific enough.
+- Implementation note: an earlier robustness attempt, `runs/20260626_160547_gpt2_small_induction_heldout_seed10`, was rejected because positive held-out examples used identical clean/corrupt prompts and produced denominator-zero effects. The prompt pairing and clean/corrupt construction were fixed before this recorded run.
+- What this shows: the held-out runner can execute true head-specific `hook_z` interventions across prompt, intervention, and position variants, and seed 10 produces mixed candidate effects.
+- What this does not show: seed 10 does not establish a robust candidate. Negative controls and prior comparison heads also showed apparent survival under the seed-level rule, so the multi-seed report must be conservative.
+- Next step: run held-out robustness seeds 11 and 12 without changing decision rules.
+
 ## Template
 
 - Date:

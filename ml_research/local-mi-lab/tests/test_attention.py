@@ -9,9 +9,11 @@ from local_mi_lab.attention import (
     attention_entropy,
     previous_occurrence_attention,
     prompt_word_token_spans,
+    require_induction_metadata,
     summarize_attention_controls,
     summarize_attention_heads,
 )
+from local_mi_lab.heldout_prompts import generate_heldout_induction_prompts
 from local_mi_lab.prompts import generate_induction_prompts
 
 
@@ -22,6 +24,15 @@ def test_induction_metadata_maps_to_expected_source_positions() -> None:
     assert record.prompt_tokens_text[source_position] == record.expected_source_token
     assert source_position < len(record.prompt_tokens_text) - 1
     assert record.prompt_tokens_text[-1] == record.expected_source_token
+
+
+def test_heldout_induction_metadata_is_accepted() -> None:
+    record = generate_heldout_induction_prompts(
+        n_examples_per_family=1,
+        families=["heldout_symbolic_longer"],
+        seed=10,
+    )[0]
+    require_induction_metadata(record)
 
 
 def test_attention_entropy_math_on_synthetic_distribution() -> None:

@@ -399,7 +399,22 @@ def plot_candidate_gaps(by_candidate: pd.DataFrame, path: Path) -> None:
         ax.text(0.5, 0.5, "No candidate rows", ha="center", va="center")
         ax.axis("off")
     else:
-        top = by_candidate.sort_values("positive_minus_control_gap", ascending=False).head(24)
+        plot_rows = by_candidate.copy()
+        plot_rows["positive_minus_control_gap"] = pd.to_numeric(
+            plot_rows["positive_minus_control_gap"],
+            errors="coerce",
+        )
+        top = plot_rows.dropna(subset=["positive_minus_control_gap"]).sort_values(
+            "positive_minus_control_gap",
+            ascending=False,
+        ).head(24)
+        if top.empty:
+            ax.text(0.5, 0.5, "No finite candidate gaps", ha="center", va="center")
+            ax.axis("off")
+            fig.tight_layout()
+            fig.savefig(path, dpi=160)
+            plt.close(fig)
+            return
         labels = [
             f"{row.candidate_id}\nL{int(row.layer)}H{int(row.head)}"
             for row in top.itertuples()

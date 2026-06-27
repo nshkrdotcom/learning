@@ -63,10 +63,14 @@ def generate_heldout_induction_prompts(
     if unknown:
         raise ValueError(f"Unknown held-out families: {unknown}")
 
-    rng = random.Random(seed)
     records: list[PromptRecord] = []
+    symbolic_pool = _pool_for_family("heldout_symbolic_longer", random.Random(f"{seed}:heldout_symbolic_longer"))
     for family in selected_families:
-        pool = _pool_for_family(family, rng)
+        pool = (
+            symbolic_pool
+            if family in {"heldout_symbolic_longer", "heldout_wrong_target_same_prompt", "heldout_no_structure_same_tokens"}
+            else _pool_for_family(family, random.Random(f"{seed}:{family}"))
+        )
         for index in range(n_examples_per_family):
             sequence = pool[index % len(pool)]
             records.append(_heldout_record(family, sequence, index))

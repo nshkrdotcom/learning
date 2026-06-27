@@ -44,19 +44,24 @@ def test_positive_and_control_pairing_metadata_valid() -> None:
             assert not record.is_positive_induction_example
             assert record.paired_positive_example_id in by_id
             assert by_id[record.paired_positive_example_id].should_show_induction_behavior
+            assert record.sequence_tokens == by_id[record.paired_positive_example_id].sequence_tokens
 
 
 def test_wrong_target_controls_differ_from_true_expected_token() -> None:
     records = generate_heldout_induction_prompts(
         n_examples_per_family=5,
-        families=["heldout_wrong_target_same_prompt"],
+        families=["heldout_symbolic_longer", "heldout_wrong_target_same_prompt"],
         seed=10,
     )
-    assert records
-    for record in records:
+    by_id = {record.example_id: record for record in records}
+    controls = [record for record in records if record.family == "heldout_wrong_target_same_prompt"]
+    assert controls
+    for record in controls:
+        positive = by_id[record.paired_positive_example_id]
         assert record.expected_next_token != record.true_expected_next_token
         assert record.wrong_or_control_token == record.expected_next_token
         assert not record.should_show_induction_behavior
+        assert record.prompt == positive.prompt
 
 
 def test_no_structure_controls_are_marked_as_controls() -> None:

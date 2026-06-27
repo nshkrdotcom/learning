@@ -38,7 +38,7 @@ def attention_entropy(distribution: Any) -> float:
 
 
 def require_induction_metadata(record: PromptRecord) -> None:
-    if record.task not in {"induction", "induction_controls"}:
+    if record.task not in {"induction", "induction_controls", "induction_heldout"}:
         raise ValueError(
             f"Attention-pattern inspection expects induction records, got {record.task}"
         )

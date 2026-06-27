@@ -136,6 +136,8 @@ def build_head_patching_jobs(
 
 
 def clean_corrupt_prompts(record: PromptRecord, positive: PromptRecord) -> tuple[str, str]:
+    if record.is_positive_induction_example:
+        return record.prompt, record.control_prompt
     if record.family == "positive_repeat_sequence":
         return positive.prompt, positive.control_prompt
     if record.family == "random_expected_token_control":
