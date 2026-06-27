@@ -1,1 +1,0 @@
-date,run_id,git_commit,phase,purpose,hypothesis,command,model,hook_point,sae_release,sae_id,ranking_dir,out_dir,seed,per_family,top_k_features,baseline_mode,operations,status,blocker,key_metric_1,key_metric_2,artifact_paths,decision

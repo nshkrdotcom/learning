@@ -1,6 +1,0 @@
-{
-  "target_delta": 0.5,
-  "matched_control_delta": 0.45,
-  "specificity_gap": 0.05,
-  "family_min_gap": -0.02
-}
