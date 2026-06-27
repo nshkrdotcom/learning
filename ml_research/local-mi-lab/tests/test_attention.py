@@ -5,8 +5,11 @@ import pytest
 import torch
 
 from local_mi_lab.attention import (
+    attention_by_family,
     attention_entropy,
+    previous_occurrence_attention,
     prompt_word_token_spans,
+    summarize_attention_controls,
     summarize_attention_heads,
 )
 from local_mi_lab.prompts import generate_induction_prompts
@@ -81,3 +84,94 @@ def test_top_head_summary_ranks_previous_occurrence_attention_first() -> None:
     assert top["layer"] == 1
     assert top["head"] == 2
     assert top["mean_attention_to_previous_occurrence"] == pytest.approx(0.8)
+
+
+def test_controls_without_source_positions_do_not_fake_previous_occurrence_attention() -> None:
+    assert previous_occurrence_attention([0.2, 0.8], None) is None
+
+
+def test_attention_by_family_aggregation() -> None:
+    df = _attention_df()
+    by_family = attention_by_family(df)
+    positive = by_family[
+        (by_family["family"] == "positive_repeat_sequence")
+        & (by_family["layer"] == 0)
+        & (by_family["head"] == 0)
+    ].iloc[0]
+    assert positive["mean_attention_to_previous_occurrence"] == pytest.approx(0.8)
+
+
+def test_positive_minus_control_attention_gap_ranks_specific_heads() -> None:
+    summary = summarize_attention_controls(_attention_df(), top_k=5)
+    top_gap = summary["top_heads_by_positive_minus_control_gap"][0]
+    assert top_gap["layer"] == 0
+    assert top_gap["head"] == 0
+    assert top_gap["positive_minus_control_attention_gap"] == pytest.approx(0.6)
+
+
+def test_attention_summary_distinguishes_raw_and_control_firing_heads() -> None:
+    summary = summarize_attention_controls(_attention_df(), top_k=5)
+    raw_top = summary["top_heads_on_positive_examples"][0]
+    control_top = summary["top_heads_on_controls"][0]
+    assert raw_top["mean_attention_to_previous_occurrence"] == pytest.approx(0.9)
+    assert control_top["mean_attention_to_previous_occurrence"] == pytest.approx(0.7)
+    assert summary["hardest_control_family_by_attention"]["family"] == (
+        "same_token_frequency_control"
+    )
+
+
+def _attention_df() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "example_id": "p1",
+                "family": "positive_repeat_sequence",
+                "should_show_induction_behavior": True,
+                "layer": 0,
+                "head": 0,
+                "attention_to_previous_occurrence": 0.8,
+                "attention_to_bos": 0.1,
+                "attention_entropy": 0.5,
+            },
+            {
+                "example_id": "c1",
+                "family": "shuffled_repeat_control",
+                "should_show_induction_behavior": False,
+                "layer": 0,
+                "head": 0,
+                "attention_to_previous_occurrence": 0.2,
+                "attention_to_bos": 0.1,
+                "attention_entropy": 0.7,
+            },
+            {
+                "example_id": "p2",
+                "family": "positive_repeat_sequence",
+                "should_show_induction_behavior": True,
+                "layer": 1,
+                "head": 1,
+                "attention_to_previous_occurrence": 0.9,
+                "attention_to_bos": 0.1,
+                "attention_entropy": 0.5,
+            },
+            {
+                "example_id": "c2",
+                "family": "same_token_frequency_control",
+                "should_show_induction_behavior": False,
+                "layer": 1,
+                "head": 1,
+                "attention_to_previous_occurrence": 0.7,
+                "attention_to_bos": 0.1,
+                "attention_entropy": 0.7,
+            },
+            {
+                "example_id": "c3",
+                "family": "no_repeat_control",
+                "should_show_induction_behavior": False,
+                "layer": 1,
+                "head": 1,
+                "attention_to_previous_occurrence": None,
+                "attention_to_bos": 0.9,
+                "attention_entropy": 0.2,
+            },
+        ]
+    )

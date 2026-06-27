@@ -2,6 +2,30 @@
 
 Add dated entries after script-generated artifacts exist. Keep entries short and link to the relevant run directory.
 
+## 2026-06-26 GPT-2 Small GPU Capability Verification
+
+- Run: `runs/20260626_142914_capability_check`
+- Model: `gpt2-small`
+- Result: CUDA was available and the model loaded on `cuda:0` with dtype `torch.float32`.
+- GPU: NVIDIA GeForce RTX 5060 Ti.
+- Verified checks: one-token forward pass, small-batch forward pass, and selected activation cache all succeeded.
+- Blockers: none.
+
+## 2026-06-26 GPT-2 Small Induction Controls
+
+- Run: `runs/20260626_144001_gpt2_small_induction_controls`
+- Model: `gpt2-small`
+- Examples: 192 total, balanced across six families: `positive_repeat_sequence`, `no_repeat_control`, `shuffled_repeat_control`, `distractor_repeat_control`, `same_token_frequency_control`, and `random_expected_token_control`.
+- Positive baseline summary: positive mean expected-token probability `0.2785`, median rank `1.0`, and 32/32 examples rank <= 10.
+- Hardest control family by baseline behavior: `distractor_repeat_control`, mean expected-token probability `0.2323`, median rank `1.0`, and 32/32 examples rank <= 10.
+- Other high-scoring controls: `same_token_frequency_control` and `shuffled_repeat_control` both had median rank `3.0` and 31/32 examples rank <= 10.
+- Top heads by raw positive previous-occurrence attention: L0H1 `0.542`, L0H5 `0.531`, L0H10 `0.248`, L11H8 `0.221`, L0H4 `0.191`.
+- Top heads by positive-minus-control gap: best reported gaps were `0.000` because the random-expected-token control uses the same repeated prompt with a wrong target token, exposing that raw previous-occurrence attention is not target-specific.
+- Controls exposed false positives: yes. L0H1 and L0H5 attend strongly on positives, but also attend strongly on distractor and random-expected-token controls.
+- Logit lens by family: `logit_lens_by_family.csv` exists; best positive layer was 9 and hardest control family by expected-token probability was `distractor_repeat_control`.
+- Limitation: this is still practice work. These controls are simple and not a publication-quality induction-head benchmark.
+- Next step: inspect `attention_by_family.csv`, then design a tiny controlled patching pass that compares a small number of positive examples against the high-scoring control families.
+
 ## 2026-06-26 GPT-2 Small First Practice Loop
 
 - Run: `runs/20260626_142215_gpt2_small_induction`

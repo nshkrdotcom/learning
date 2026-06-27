@@ -8,5 +8,48 @@
   "mean_logit_diff_vs_control": 1.2,
   "n_rank_at_most_10": 2,
   "failing_examples": [],
-  "behavior_analysis_note": "This is behavior characterization, not interpretability evidence."
+  "behavior_analysis_note": "This is behavior characterization, not interpretability evidence.",
+  "positive_vs_control_gap": {
+    "positive_mean_expected_probability": 0.5,
+    "max_control_mean_expected_probability": 0.2,
+    "gap_mean_expected_probability": 0.3,
+    "positive_fraction_rank_at_most_10": 1.0,
+    "max_control_fraction_rank_at_most_10": 0.0,
+    "gap_fraction_rank_at_most_10": 1.0
+  },
+  "hardest_control_family": {
+    "family": "shuffled_repeat_control",
+    "n_examples": 2,
+    "mean_expected_probability": 0.2,
+    "median_expected_rank": 20.0,
+    "mean_logit_diff_vs_control": 0.1,
+    "mean_probability_diff_vs_control": 0.01,
+    "n_rank_at_most_10": 0,
+    "fraction_rank_at_most_10": 0.0,
+    "should_show_induction_behavior": false
+  },
+  "by_family": [
+    {
+      "family": "positive_repeat_sequence",
+      "n_examples": 2,
+      "mean_expected_probability": 0.5,
+      "median_expected_rank": 1.0,
+      "mean_logit_diff_vs_control": 2.0,
+      "mean_probability_diff_vs_control": 0.2,
+      "n_rank_at_most_10": 2,
+      "fraction_rank_at_most_10": 1.0,
+      "should_show_induction_behavior": true
+    },
+    {
+      "family": "shuffled_repeat_control",
+      "n_examples": 2,
+      "mean_expected_probability": 0.2,
+      "median_expected_rank": 20.0,
+      "mean_logit_diff_vs_control": 0.1,
+      "mean_probability_diff_vs_control": 0.01,
+      "n_rank_at_most_10": 0,
+      "fraction_rank_at_most_10": 0.0,
+      "should_show_induction_behavior": false
+    }
+  ]
 }

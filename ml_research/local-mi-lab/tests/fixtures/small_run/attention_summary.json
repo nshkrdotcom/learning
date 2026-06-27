@@ -15,6 +15,45 @@
       "n_examples": 2
     }
   ],
+  "top_heads_on_positive_examples": [
+    {
+      "layer": 2,
+      "head": 3,
+      "mean_attention_to_previous_occurrence": 0.8,
+      "median_attention_to_previous_occurrence": 0.75,
+      "mean_attention_entropy": 0.9,
+      "n_examples": 2
+    }
+  ],
+  "top_heads_by_positive_minus_control_gap": [
+    {
+      "layer": 2,
+      "head": 3,
+      "positive_mean_attention_to_previous_occurrence": 0.8,
+      "max_control_mean_attention_to_previous_occurrence": 0.2,
+      "max_control_family": "shuffled_repeat_control",
+      "positive_minus_control_attention_gap": 0.6
+    }
+  ],
+  "hardest_control_family_by_attention": {
+    "family": "shuffled_repeat_control",
+    "mean_attention_to_previous_occurrence": 0.2,
+    "n_examples": 2
+  },
+  "families_present": [
+    "positive_repeat_sequence",
+    "shuffled_repeat_control"
+  ],
+  "top_heads_on_controls": [
+    {
+      "layer": 2,
+      "head": 3,
+      "mean_attention_to_previous_occurrence": 0.2,
+      "median_attention_to_previous_occurrence": 0.2,
+      "mean_attention_entropy": 1.0,
+      "n_examples": 2
+    }
+  ],
   "interpretation_note": "High scores are induction-like attention pattern candidates, not identified induction heads.",
   "limitation": "Attention-pattern evidence is descriptive. It can suggest where to inspect, but it is not causal evidence by itself."
 }

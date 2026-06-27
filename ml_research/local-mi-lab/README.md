@@ -23,6 +23,21 @@ uv run python scripts/run_attention_patterns.py --config configs/gpt2_small_indu
 uv run python scripts/summarize_run.py --run runs/<run_id>
 ```
 
+## Controls Workflow
+
+Use this after the basic induction run works. The goal is to catch false positives: raw attention to a previous token is not enough, and a candidate head should separate positive induction prompts from controls.
+
+```bash
+uv run python scripts/build_toy_prompts.py --config configs/gpt2_small_induction_controls.yaml
+uv run python scripts/run_baseline_behavior.py --config configs/gpt2_small_induction_controls.yaml
+uv run python scripts/cache_activations.py --config configs/gpt2_small_induction_controls.yaml --run runs/<run_id>
+uv run python scripts/run_logit_lens.py --config configs/gpt2_small_induction_controls.yaml --run runs/<run_id>
+uv run python scripts/run_attention_patterns.py --config configs/gpt2_small_induction_controls.yaml --run runs/<run_id>
+uv run python scripts/summarize_run.py --run runs/<run_id>
+```
+
+Failure is useful. If controls also score highly, the current prompt family or metric is not specific enough.
+
 Activation patching is separate and should be run only after baseline behavior, activation capture, logit lens, and attention-pattern inspection are working:
 
 ```bash

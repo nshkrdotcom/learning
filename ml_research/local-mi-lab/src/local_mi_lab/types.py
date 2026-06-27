@@ -9,6 +9,7 @@ from typing import Any
 class PromptRecord:
     example_id: str
     task: str
+    family: str
     prompt: str
     expected_next_token: str
     control_prompt: str
@@ -19,6 +20,9 @@ class PromptRecord:
     target_position_label: str = ""
     expected_source_token: str = ""
     expected_source_position_hint: int | None = None
+    is_positive_induction_example: bool = True
+    control_family: str = ""
+    should_show_induction_behavior: bool = True
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -34,6 +38,7 @@ class PromptRecord:
         return cls(
             example_id=str(row["example_id"]),
             task=str(row["task"]),
+            family=str(row.get("family") or "positive_repeat_sequence"),
             prompt=str(row["prompt"]),
             expected_next_token=str(row["expected_next_token"]),
             control_prompt=str(row["control_prompt"]),
@@ -45,6 +50,13 @@ class PromptRecord:
             expected_source_token=str(row.get("expected_source_token") or ""),
             expected_source_position_hint=_parse_optional_int(
                 row.get("expected_source_position_hint")
+            ),
+            is_positive_induction_example=_parse_bool(
+                row.get("is_positive_induction_example", True)
+            ),
+            control_family=str(row.get("control_family") or ""),
+            should_show_induction_behavior=_parse_bool(
+                row.get("should_show_induction_behavior", True)
             ),
         )
 
@@ -64,3 +76,16 @@ def _parse_optional_int(value: Any) -> int | None:
     if value is None or value == "":
         return None
     return int(value)
+
+
+def _parse_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return bool(value)
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes"}:
+        return True
+    if normalized in {"false", "0", "no"}:
+        return False
+    raise ValueError(f"Expected boolean value, got {value!r}")

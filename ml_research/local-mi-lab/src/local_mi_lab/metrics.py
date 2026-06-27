@@ -67,6 +67,90 @@ def aggregate_baseline(rows: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def aggregate_baseline_by_family(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    families = sorted({str(row.get("family", "positive_repeat_sequence")) for row in rows})
+    family_rows: list[dict[str, Any]] = []
+    for family in families:
+        subset = [row for row in rows if str(row.get("family", "positive_repeat_sequence")) == family]
+        summary = aggregate_baseline(subset)
+        should_values = {bool(row.get("should_show_induction_behavior", True)) for row in subset}
+        family_rows.append(
+            {
+                "family": family,
+                "n_examples": summary["n_examples"],
+                "mean_expected_probability": summary["mean_expected_probability"],
+                "median_expected_rank": summary["median_expected_rank"],
+                "mean_logit_diff_vs_control": summary["mean_logit_diff_vs_control"],
+                "mean_probability_diff_vs_control": summary["mean_probability_diff_vs_control"],
+                "n_rank_at_most_10": summary["n_rank_at_most_10"],
+                "fraction_rank_at_most_10": (
+                    int(summary["n_rank_at_most_10"]) / int(summary["n_examples"])
+                    if summary["n_examples"]
+                    else 0.0
+                ),
+                "should_show_induction_behavior": should_values == {True},
+            }
+        )
+    return family_rows
+
+
+def positive_vs_control_gap(family_rows: list[dict[str, Any]]) -> dict[str, Any]:
+    positive_rows = [
+        row for row in family_rows if bool(row.get("should_show_induction_behavior", False))
+    ]
+    control_rows = [
+        row for row in family_rows if not bool(row.get("should_show_induction_behavior", False))
+    ]
+    if not positive_rows or not control_rows:
+        return {
+            "positive_mean_expected_probability": None,
+            "max_control_mean_expected_probability": None,
+            "gap_mean_expected_probability": None,
+            "positive_fraction_rank_at_most_10": None,
+            "max_control_fraction_rank_at_most_10": None,
+            "gap_fraction_rank_at_most_10": None,
+        }
+    positive_mean = float(
+        np.mean([float(row["mean_expected_probability"]) for row in positive_rows])
+    )
+    max_control_mean = max(float(row["mean_expected_probability"]) for row in control_rows)
+    positive_fraction = float(
+        np.mean([float(row["fraction_rank_at_most_10"]) for row in positive_rows])
+    )
+    max_control_fraction = max(float(row["fraction_rank_at_most_10"]) for row in control_rows)
+    return {
+        "positive_mean_expected_probability": positive_mean,
+        "max_control_mean_expected_probability": max_control_mean,
+        "gap_mean_expected_probability": positive_mean - max_control_mean,
+        "positive_fraction_rank_at_most_10": positive_fraction,
+        "max_control_fraction_rank_at_most_10": max_control_fraction,
+        "gap_fraction_rank_at_most_10": positive_fraction - max_control_fraction,
+    }
+
+
+def hardest_control_family(family_rows: list[dict[str, Any]]) -> dict[str, Any] | None:
+    control_rows = [
+        row for row in family_rows if not bool(row.get("should_show_induction_behavior", False))
+    ]
+    if not control_rows:
+        return None
+    return max(control_rows, key=lambda row: float(row["mean_expected_probability"]))
+
+
+def controlled_baseline_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    family_rows = aggregate_baseline_by_family(rows)
+    positive_rows = [row for row in rows if bool(row.get("should_show_induction_behavior", True))]
+    control_rows = [row for row in rows if not bool(row.get("should_show_induction_behavior", True))]
+    return {
+        "overall_summary": aggregate_baseline(rows),
+        "positive_family_summary": aggregate_baseline(positive_rows),
+        "control_family_summary": aggregate_baseline(control_rows),
+        "positive_vs_control_gap": positive_vs_control_gap(family_rows),
+        "hardest_control_family": hardest_control_family(family_rows),
+        "by_family": family_rows,
+    }
+
+
 def behavior_is_worth_activation_analysis(summary: dict[str, Any]) -> bool:
     if not summary or not summary.get("n_examples"):
         return False

@@ -11,6 +11,7 @@ from local_mi_lab.types import PromptRecord
 PROMPT_COLUMNS = [
     "example_id",
     "task",
+    "family",
     "prompt",
     "expected_next_token",
     "control_prompt",
@@ -21,6 +22,18 @@ PROMPT_COLUMNS = [
     "target_position_label",
     "expected_source_token",
     "expected_source_position_hint",
+    "is_positive_induction_example",
+    "control_family",
+    "should_show_induction_behavior",
+]
+
+CONTROL_FAMILIES = [
+    "positive_repeat_sequence",
+    "no_repeat_control",
+    "shuffled_repeat_control",
+    "distractor_repeat_control",
+    "same_token_frequency_control",
+    "random_expected_token_control",
 ]
 
 BASE_SEQUENCES: tuple[tuple[str, ...], ...] = (
@@ -61,6 +74,7 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
             PromptRecord(
                 example_id=f"induction_{i:04d}",
                 task="induction",
+                family="positive_repeat_sequence",
                 prompt=" ".join(prompt_tokens),
                 expected_next_token=expected,
                 control_prompt=" ".join(control_tokens),
@@ -71,8 +85,32 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
                 target_position_label="final",
                 expected_source_token=sequence[expected_source_position],
                 expected_source_position_hint=expected_source_position,
+                is_positive_induction_example=True,
+                control_family="",
+                should_show_induction_behavior=True,
             )
         )
+    return records
+
+
+def generate_induction_control_prompts(
+    n_examples_per_family: int,
+    families: list[str] | None = None,
+    seed: int = 0,
+) -> list[PromptRecord]:
+    if n_examples_per_family <= 0:
+        raise ValueError("n_examples_per_family must be positive")
+    selected_families = families or CONTROL_FAMILIES
+    unknown = sorted(set(selected_families) - set(CONTROL_FAMILIES))
+    if unknown:
+        raise ValueError(f"Unknown control families: {unknown}")
+    rng = random.Random(seed)
+    pool = _sequence_pool(rng)
+    records: list[PromptRecord] = []
+    for family in selected_families:
+        for i in range(n_examples_per_family):
+            sequence = pool[i % len(pool)]
+            records.append(_control_record(family, sequence, i))
     return records
 
 
@@ -81,18 +119,24 @@ def generate_text_prompts() -> list[PromptRecord]:
         PromptRecord(
             example_id="text_0000",
             task="basic_next_token",
+            family="basic_next_token",
             prompt="The capital of France is",
             expected_next_token=" Paris",
             control_prompt="The capital of France is not",
             notes="Human-readable factual next-token prompt for tokenizer inspection.",
+            is_positive_induction_example=False,
+            should_show_induction_behavior=False,
         ),
         PromptRecord(
             example_id="text_0001",
             task="basic_next_token",
+            family="basic_next_token",
             prompt="Once upon a time there was a",
             expected_next_token=" little",
             control_prompt="Once upon a time there was not a",
             notes="Human-readable continuation prompt for tokenizer inspection.",
+            is_positive_induction_example=False,
+            should_show_induction_behavior=False,
         ),
     ]
 
@@ -111,6 +155,7 @@ def write_prompt_dataset(
         "dataset": dataset_name,
         "n_prompts": len(records),
         "tasks": sorted({record.task for record in records}),
+        "families": _counts_by_family(records),
         "columns": PROMPT_COLUMNS,
     }
     summary_path.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
@@ -138,3 +183,106 @@ def _distractor_for(sequence: tuple[str, ...]) -> str:
         if candidate not in sequence:
             return candidate
     return "other"
+
+
+def _sequence_pool(rng: random.Random) -> list[tuple[str, ...]]:
+    pool: list[tuple[str, ...]] = []
+    for sequence in BASE_SEQUENCES:
+        for offset in range(len(sequence)):
+            pool.append(sequence[offset:] + sequence[:offset])
+    rng.shuffle(pool)
+    return pool
+
+
+def _counts_by_family(records: list[PromptRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record.family] = counts.get(record.family, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _control_record(family: str, sequence: tuple[str, ...], index: int) -> PromptRecord:
+    positive_prompt_tokens = [*sequence, *sequence[:-1]]
+    true_expected = f" {sequence[-1]}"
+    control_prompt_tokens = [*sequence, "X", "Y", "Z"]
+    source_position: int | None
+    source_token: str
+    prompt_tokens: list[str]
+    expected = true_expected
+    repeated_prefix_length = 0
+
+    if family == "positive_repeat_sequence":
+        prompt_tokens = positive_prompt_tokens
+        source_position = len(sequence) - 2
+        source_token = sequence[source_position]
+        repeated_prefix_length = len(sequence) - 1
+        is_positive = True
+        should_show = True
+        notes = "Positive repeated-prefix induction prompt."
+    elif family == "no_repeat_control":
+        prompt_tokens = control_prompt_tokens
+        source_position = None
+        source_token = ""
+        is_positive = False
+        should_show = False
+        notes = "No repeated prefix licenses the expected token."
+    elif family == "shuffled_repeat_control":
+        prompt_tokens = [*sequence, sequence[1], sequence[0]]
+        source_position = 0
+        source_token = sequence[0]
+        is_positive = False
+        should_show = False
+        notes = "Repeated tokens are shuffled, so prior occurrence does not license the expected token."
+    elif family == "distractor_repeat_control":
+        prompt_tokens = [*sequence, sequence[0], sequence[1]]
+        source_position = 1
+        source_token = sequence[1]
+        repeated_prefix_length = 2
+        is_positive = False
+        should_show = False
+        notes = "Repeated subsequence points toward a different next token than the scored target."
+    elif family == "same_token_frequency_control":
+        if len(sequence) >= 4:
+            prompt_tokens = [*sequence, sequence[-2], sequence[0], sequence[1]]
+            source_position = 1
+            source_token = sequence[1]
+        else:
+            prompt_tokens = [*sequence, sequence[-2], sequence[0]]
+            source_position = 0
+            source_token = sequence[0]
+        is_positive = False
+        should_show = False
+        notes = "Approximate token frequencies are preserved without the positive induction structure."
+    elif family == "random_expected_token_control":
+        prompt_tokens = positive_prompt_tokens
+        expected = " X"
+        source_position = len(sequence) - 2
+        source_token = sequence[source_position]
+        repeated_prefix_length = len(sequence) - 1
+        is_positive = False
+        should_show = False
+        notes = (
+            "Positive repeated-prefix prompt with a deliberately wrong scored expected token; "
+            f"true positive expected token would be {true_expected!r}."
+        )
+    else:
+        raise ValueError(f"Unknown control family {family!r}")
+
+    return PromptRecord(
+        example_id=f"{family}_{index:04d}",
+        task="induction_controls",
+        family=family,
+        prompt=" ".join(prompt_tokens),
+        expected_next_token=expected,
+        control_prompt=" ".join(control_prompt_tokens),
+        notes=notes,
+        prompt_tokens_text=list(prompt_tokens),
+        sequence_tokens=list(sequence),
+        repeated_prefix_length=repeated_prefix_length,
+        target_position_label="final",
+        expected_source_token=source_token,
+        expected_source_position_hint=source_position,
+        is_positive_induction_example=is_positive,
+        control_family="" if is_positive else family,
+        should_show_induction_behavior=should_show,
+    )

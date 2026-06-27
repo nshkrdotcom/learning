@@ -1,0 +1,3 @@
+family,layer,n_examples,mean_expected_logit,mean_expected_probability,median_expected_rank,should_show_induction_behavior
+positive_repeat_sequence,2,2,4.0,0.5,2.0,True
+shuffled_repeat_control,2,2,1.0,0.2,20.0,False

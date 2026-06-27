@@ -1,0 +1,17 @@
+{
+  "model": "gpt2-small",
+  "n_examples": 2,
+  "layers": [0, 2],
+  "best_layer_by_mean_probability": 2,
+  "best_positive_layer": {
+    "layer": 2,
+    "family": "positive_repeat_sequence",
+    "mean_expected_probability": 0.5
+  },
+  "hardest_control_family_by_expected_probability": {
+    "family": "shuffled_repeat_control",
+    "mean_expected_probability": 0.2
+  },
+  "positive_separates_from_controls_descriptively": true,
+  "interpretation_note": "Logit lens is descriptive and is not causal mechanism evidence."
+}

@@ -26,3 +26,5 @@ First-pass defaults:
 - Script artifacts before notebook inspection.
 
 Attention pattern CSVs are small for GPT-2 small selected-layer runs, but they should stay scoped to the current prompt set and selected layers. Do not cache every attention pattern for every layer and prompt by default.
+
+The controls workflow uses 192 initial examples by default, balanced across six families. This is still a small GPT-2 small run and should remain selected-layer/final-token by default.

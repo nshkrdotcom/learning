@@ -29,3 +29,5 @@ Do not start with SAEs.
 Do not start with a new framework.
 
 Attention inspection is descriptive. A high previous-occurrence attention score is an induction-like attention pattern candidate, not a mechanism claim. Tiny clean/corrupt patching is practice work, not a full IOI experiment.
+
+For Stage 5, use the induction controls config before inventing a new task. The goal of controls is to catch false positives. Raw attention to a previous token is not enough. A candidate head should separate positives from controls. Failure is useful: if controls also score highly, the current prompt/metric is not specific.

@@ -50,6 +50,10 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "",
         _baseline_text(baseline),
         "",
+        "## Baseline behavior by family",
+        "",
+        _baseline_family_text(root, baseline),
+        "",
         "## Activation cache",
         "",
         _activation_text(activation_manifest or activation_summary),
@@ -58,25 +62,44 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "",
         _logit_lens_text(logit_lens),
         "",
+        "## Logit lens by family",
+        "",
+        _logit_lens_family_text(root, logit_lens),
+        "",
         "## Attention patterns",
         "",
         _attention_text(attention),
+        "",
+        "## Attention controls",
+        "",
+        _attention_controls_text(root, attention),
         "",
         "## Activation patching",
         "",
         _patching_text(root, patching_metadata),
         "",
+        "## False positives and controls",
+        "",
+        _false_positive_text(attention),
+        "",
         "## What this shows",
         "",
         "This is a local MI practice run. It shows only the artifacts present in this run directory.",
         "",
+        "## What this suggests",
+        "",
+        _suggests_text(root, baseline, attention),
+        "",
         "## What this does not show",
         "",
         *MANDATORY_LANGUAGE[:2],
+        "A head that attends to previous occurrences on positive prompts but also attends strongly on controls is not a specific induction-head candidate.",
+        "A positive-minus-control gap is more informative than raw positive attention alone.",
+        "These controls are still simple practice controls, not a publication-quality induction-head benchmark.",
         "",
         "## Next step",
         "",
-        _next_step_text(baseline, activation_manifest, logit_lens, attention, root),
+        _next_step_text(root),
         "",
         MANDATORY_LANGUAGE[2],
     ]
@@ -132,6 +155,22 @@ def _baseline_text(baseline: dict[str, Any] | None) -> str:
     )
 
 
+def _baseline_family_text(root: Path, baseline: dict[str, Any] | None) -> str:
+    if not (root / "baseline_by_family.csv").exists():
+        return "Missing: `baseline_by_family.csv` was not found."
+    if not baseline or "positive_vs_control_gap" not in baseline:
+        return "Baseline family table present. Controlled positive-vs-control summary is missing."
+    gap = baseline["positive_vs_control_gap"]
+    hardest = baseline.get("hardest_control_family") or {}
+    return (
+        "Baseline family table present. "
+        f"Positive mean expected probability: {gap.get('positive_mean_expected_probability')}. "
+        f"Max control mean expected probability: {gap.get('max_control_mean_expected_probability')}. "
+        f"Gap: {gap.get('gap_mean_expected_probability')}. "
+        f"Hardest control family: {hardest.get('family')}."
+    )
+
+
 def _activation_text(manifest: dict[str, Any] | None) -> str:
     if manifest is None:
         return "Missing: activation manifest was not found."
@@ -150,10 +189,31 @@ def _logit_lens_text(summary: dict[str, Any] | None) -> str:
     )
 
 
+def _logit_lens_family_text(root: Path, summary: dict[str, Any] | None) -> str:
+    if not (root / "logit_lens_by_family.csv").exists():
+        return "Missing: `logit_lens_by_family.csv` was not found."
+    if summary is None:
+        return "Logit-lens family table present, but `logit_lens_summary.json` is missing."
+    best_positive = summary.get("best_positive_layer")
+    hardest_control = summary.get("hardest_control_family_by_expected_probability")
+    separates = summary.get("positive_separates_from_controls_descriptively")
+    return (
+        "Logit-lens-by-family table present. "
+        f"Best positive layer: {best_positive}. "
+        f"Hardest control family by expected-token probability: {hardest_control}. "
+        f"Positive separates from controls descriptively: {separates}. "
+        "Logit lens remains descriptive."
+    )
+
+
 def _attention_text(summary: dict[str, Any] | None) -> str:
     if summary is None:
         return f"Missing: `attention_summary.json` was not found. {ATTENTION_LIMITATION}"
-    top_heads = summary.get("top_heads_by_previous_occurrence_attention") or []
+    top_heads = (
+        summary.get("top_heads_on_positive_examples")
+        or summary.get("top_heads_by_previous_occurrence_attention")
+        or []
+    )
     if not top_heads:
         return f"Attention summary present, but no top heads were recorded. {ATTENTION_LIMITATION}"
     formatted = []
@@ -169,6 +229,24 @@ def _attention_text(summary: dict[str, Any] | None) -> str:
     )
 
 
+def _attention_controls_text(root: Path, summary: dict[str, Any] | None) -> str:
+    if not (root / "attention_by_family.csv").exists():
+        return f"Missing: `attention_by_family.csv` was not found. {ATTENTION_LIMITATION}"
+    if summary is None:
+        return "Attention family table present, but `attention_summary.json` is missing."
+    gap_heads = summary.get("top_heads_by_positive_minus_control_gap") or []
+    raw_heads = summary.get("top_heads_on_positive_examples") or []
+    hardest = summary.get("hardest_control_family_by_attention")
+    gap_text = _format_gap_heads(gap_heads[:5])
+    raw_text = _format_raw_heads(raw_heads[:5])
+    return (
+        f"Raw positive heads: {raw_text}. "
+        f"Top positive-minus-control gap heads: {gap_text}. "
+        f"Hardest control family by attention: {hardest}. "
+        f"{ATTENTION_LIMITATION}"
+    )
+
+
 def _patching_text(root: Path, metadata: dict[str, Any] | None) -> str:
     if not (root / "patching_results.csv").exists():
         return "Missing: `patching_results.csv` was not found."
@@ -180,21 +258,65 @@ def _patching_text(root: Path, metadata: dict[str, Any] | None) -> str:
     return "Patching results present, but metadata is missing."
 
 
-def _next_step_text(
-    baseline: dict[str, Any] | None,
-    activation: dict[str, Any] | None,
-    logit_lens: dict[str, Any] | None,
-    attention: dict[str, Any] | None,
+def _false_positive_text(summary: dict[str, Any] | None) -> str:
+    base = (
+        "A head that attends to previous occurrences on positive prompts but also attends strongly "
+        "on controls is not a specific induction-head candidate. A positive-minus-control gap is "
+        "more informative than raw positive attention alone."
+    )
+    if summary is None:
+        return base
+    control_heads = summary.get("top_heads_on_controls") or []
+    if not control_heads:
+        return f"{base} No control-firing head summary was found."
+    return f"{base} Strongest control-firing heads include: {_format_raw_heads(control_heads[:5])}."
+
+
+def _suggests_text(
     root: Path,
+    baseline: dict[str, Any] | None,
+    attention: dict[str, Any] | None,
 ) -> str:
-    if baseline is None:
-        return "Run baseline behavior measurement before interpretability analysis."
-    if activation is None:
-        return "Cache selected activations for the successful baseline run."
-    if logit_lens is None:
-        return "Run logit lens on the selected activation workflow."
-    if attention is None:
-        return "Run attention-pattern inspection for induction-like attention candidates."
-    if not (root / "patching_results.csv").exists():
-        return "Run controlled activation patching on an explicit clean/corrupt prompt pair."
-    return "Inspect artifacts and write a short learning note."
+    if not (root / "baseline_by_family.csv").exists() or not (root / "attention_by_family.csv").exists():
+        return "Controlled artifacts are incomplete, so no false-positive comparison should be inferred."
+    gap = (baseline or {}).get("positive_vs_control_gap", {})
+    attention_gap = (attention or {}).get("top_heads_by_positive_minus_control_gap", [])
+    return (
+        "The controlled run can suggest whether behavior and attention candidates separate "
+        f"positives from controls. Baseline probability gap: {gap.get('gap_mean_expected_probability')}. "
+        f"Top attention gap candidate: {_format_gap_heads(attention_gap[:1])}."
+    )
+
+
+def _next_step_text(root: Path) -> str:
+    if not (root / "prompts.csv").exists():
+        return "Build induction_controls prompts."
+    if not (root / "baseline_by_family.csv").exists():
+        return "Run baseline behavior on controls."
+    if not (root / "attention_by_family.csv").exists():
+        return "Run attention-pattern controls."
+    if not (root / "logit_lens_by_family.csv").exists():
+        return "Run logit lens by family."
+    return "Inspect false positives and decide whether to run a tiny controlled patching pass."
+
+
+def _format_raw_heads(heads: list[dict[str, Any]]) -> str:
+    if not heads:
+        return "none"
+    return ", ".join(
+        "L"
+        f"{int(head['layer'])}H{int(head['head'])}="
+        f"{float(head['mean_attention_to_previous_occurrence']):.3f}"
+        for head in heads
+    )
+
+
+def _format_gap_heads(heads: list[dict[str, Any]]) -> str:
+    if not heads:
+        return "none"
+    return ", ".join(
+        "L"
+        f"{int(head['layer'])}H{int(head['head'])} gap="
+        f"{float(head['positive_minus_control_attention_gap']):.3f}"
+        for head in heads
+    )

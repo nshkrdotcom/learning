@@ -81,11 +81,14 @@ def cache_selected_resid_post(
 
     manifest = {
         "model": config["model"]["name"],
+        "task": config["task"]["name"],
         "hook_names": hook_names,
         "layers": layers,
         "token_positions": positions,
         "dtype": dtype_name,
         "n_examples": len(records),
+        "families_present": sorted({record.family for record in records}),
+        "n_examples_by_family": _counts_by_family(records),
         "files": files,
         "created_at": datetime.now().isoformat(timespec="seconds"),
         "cache_budget": {
@@ -100,3 +103,10 @@ def cache_selected_resid_post(
         encoding="utf-8",
     )
     return manifest
+
+
+def _counts_by_family(records: list[PromptRecord]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for record in records:
+        counts[record.family] = counts.get(record.family, 0) + 1
+    return dict(sorted(counts.items()))

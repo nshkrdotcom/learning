@@ -36,11 +36,11 @@ This is a six-stage path for local mechanistic-interpretability practice. Keep e
 
 ## Stage 5: Controls and False Positives
 
-- What to learn: prompt controls, random or irrelevant target tokens, corrupted pairs, seed sensitivity, and failure cases.
-- Script/notebook to run: rerun baseline, cache, logit lens, and patching scripts with controlled prompt sets.
-- Result to inspect: examples where the expected token is not preferred, and controls where patching should not help.
-- Mistake to avoid: interpreting every large-looking number as meaningful without a counterexample.
-- Completion: at least one negative control behaves as expected and is reported.
+- What to learn: prompt controls, random or irrelevant target tokens, shuffled repeats, distractor repeats, same-frequency controls, and how false positives appear.
+- Script/notebook to run: `scripts/build_toy_prompts.py --config configs/gpt2_small_induction_controls.yaml`, then baseline, cache, logit lens, attention patterns, and `notebooks/003_induction_heads.ipynb`.
+- Result to inspect: `baseline_by_family.csv`, `attention_by_family.csv`, `attention_summary.json`, `logit_lens_by_family.csv`, and `figures/attention_by_family.png`.
+- Mistake to avoid: treating raw previous-occurrence attention as specific. A candidate head should separate positives from controls.
+- Completion: the report states whether controls exposed false positives and names the hardest control family.
 
 ## Stage 6: Small Original Question
 
