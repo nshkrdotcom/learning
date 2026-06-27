@@ -446,6 +446,26 @@ class MaterializedProbe(WorkbenchObject):
     provenance: list[JsonDict] = Field(default_factory=list)
 
 
+class ReferenceTask(WorkbenchObject):
+    wb_type: str = "ReferenceTask"
+    suite: str
+    task_id: str
+    task_kind: str
+    ground_truth: JsonDict
+    fixture: JsonDict = Field(default_factory=dict)
+
+
+class ReferenceBenchmarkReport(WorkbenchObject):
+    wb_type: str = "ReferenceBenchmarkReport"
+    suite: str
+    status: str
+    tasks: list[JsonDict]
+    summary: JsonDict
+    calibration: JsonDict
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class MechanismCard(WorkbenchObject):
     wb_type: str = "MechanismCard"
     title: str
@@ -511,6 +531,8 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         BlockerReport,
         NextProbePlan,
         MaterializedProbe,
+        ReferenceTask,
+        ReferenceBenchmarkReport,
         MechanismCard,
         Claim,
         EvidenceEdge,

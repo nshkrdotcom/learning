@@ -206,6 +206,16 @@ uv run mwb bundle rebalance --dry-run
 
 The audit checks token validity, role balance, contaminated controls, and baseline margins, then proposes heldout/control-balance improvements. See `docs/EXAMPLE_GEOMETRY.md`.
 
+## Reference Mechanisms
+
+Run the built-in framework benchmark suite against deterministic known-ground-truth tasks:
+
+```bash
+uv run mwb benchmark framework
+```
+
+The benchmark writes `.mechanism/benchmarks/latest_framework_benchmark.json`, indexes `benchmark_reports` and `reference_tasks`, and checks planted mechanism recovery, false-positive blocking, synthetic SAE split detection, synthetic SAE absorption detection, and calibration fields. See `docs/REFERENCE_MECHANISMS.md`.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

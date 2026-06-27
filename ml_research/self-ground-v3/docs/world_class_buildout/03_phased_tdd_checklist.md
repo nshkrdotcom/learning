@@ -441,6 +441,8 @@ git push
 
 ## Phase 20: Reference Mechanism Suite
 
+Status: implementation/docs complete in repo Phase 21; QC, commit, and push pending.
+
 ### Required Reading
 
 - `mechinterp_framework/0020_gpt.md` reference tasks with known ground truth.
@@ -449,24 +451,24 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for toy known mechanism classification.
-- [ ] Add failing tests for tempting false-positive confound blocking.
-- [ ] Add failing tests for synthetic SAE split/absorption detection.
-- [ ] Add failing tests for reference task report generation.
+- [x] Add failing tests for toy known mechanism classification.
+- [x] Add failing tests for tempting false-positive confound blocking.
+- [x] Add failing tests for synthetic SAE split/absorption detection.
+- [x] Add failing tests for reference task report generation.
 
 ### Implementation
 
-- [ ] Add reference task registry.
-- [ ] Add small toy model fixtures or deterministic generated fixtures.
-- [ ] Add negative controls.
-- [ ] Add `mwb benchmark framework`.
-- [ ] Add benchmark report artifacts.
+- [x] Add reference task registry.
+- [x] Add small toy model fixtures or deterministic generated fixtures.
+- [x] Add negative controls.
+- [x] Add `mwb benchmark framework`.
+- [x] Add benchmark report artifacts.
 
 ### Docs
 
-- [ ] Add `docs/REFERENCE_MECHANISMS.md`.
-- [ ] Add benchmark contribution guide.
-- [ ] Update phase ledger.
+- [x] Add `docs/REFERENCE_MECHANISMS.md`.
+- [x] Add benchmark contribution guide.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -483,7 +485,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 20: add reference mechanism suite"
+git commit -m "phase 21: add reference mechanism suite"
 git push
 ```
 

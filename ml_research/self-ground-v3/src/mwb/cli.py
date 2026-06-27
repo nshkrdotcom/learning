@@ -21,6 +21,7 @@ from mwb.hypothesis_lifecycle import HypothesisLifecycleService
 from mwb.ipython.extension import start_workbench_ipython, unload_ipython_extension
 from mwb.ledgers import propose_claim_update, propose_run_ledger_row, validate_ledgers
 from mwb.project import ProjectManager
+from mwb.reference_benchmarks import ReferenceBenchmarkService
 from mwb.refs import stable_ref
 from mwb.session import SessionManager, latest_session
 from mwb.space_types import SpaceTypeService
@@ -48,6 +49,7 @@ hypothesis_app = typer.Typer(help="Manage hypothesis lifecycle and alternatives.
 space_app = typer.Typer(help="Check mechanistic tensor spaces and unit operations.")
 compile_app = typer.Typer(help="Compile static mechanistic plausibility checks.")
 bundle_app = typer.Typer(help="Audit and rebalance example/control bundles.")
+benchmark_app = typer.Typer(help="Run framework reference mechanism benchmarks.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -58,6 +60,7 @@ app.add_typer(hypothesis_app, name="hypothesis")
 app.add_typer(space_app, name="space")
 app.add_typer(compile_app, name="compile")
 app.add_typer(bundle_app, name="bundle")
+app.add_typer(benchmark_app, name="benchmark")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -120,6 +123,7 @@ BundleNameArgument = Annotated[
     str,
     typer.Argument(help="Built-in bundle name, e.g. negation_phase3_calibrated."),
 ]
+BenchmarkSuiteOption = Annotated[str, typer.Option("--suite", help="Reference suite name.")]
 MaterializeProbeOption = Annotated[
     bool,
     typer.Option("--materialize", help="Also write probe.yaml/probe.json for runnable probes."),
@@ -298,6 +302,22 @@ def bundle_rebalance(
         raise typer.Exit(code=1) from exc
     service.write_rebalance(proposal)
     console.print_json(json.dumps(proposal.model_dump(mode="json")))
+
+
+@benchmark_app.command("framework")
+def benchmark_framework(suite: BenchmarkSuiteOption = "toy") -> None:
+    """Run framework benchmarks against known-ground-truth reference tasks."""
+    project = ProjectManager.discover_or_create()
+    service = ReferenceBenchmarkService(project)
+    try:
+        report = service.run_suite(suite)
+    except ValueError as exc:
+        console.print(f"error: {exc}")
+        raise typer.Exit(code=1) from exc
+    service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status != "pass":
+        raise typer.Exit(code=1)
 
 
 @app.command()

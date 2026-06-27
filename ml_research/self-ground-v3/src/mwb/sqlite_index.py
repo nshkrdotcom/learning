@@ -25,6 +25,8 @@ SCHEMA_TABLES = {
     "example_geometry_reports",
     "control_contamination_reports",
     "bundle_rebalance_proposals",
+    "reference_tasks",
+    "benchmark_reports",
     "artifacts",
     "artifact_versions",
     "lineage_edges",
@@ -327,6 +329,20 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
             "bundle_rebalance_proposals",
         )
 
+    benchmarks_dir = project.mechanism_dir / "benchmarks"
+    benchmark_paths = sorted(benchmarks_dir.glob("*.json")) if benchmarks_dir.exists() else []
+    indexed_benchmark_refs: set[str] = set()
+    indexed_reference_task_refs: set[str] = set()
+    for path in benchmark_paths:
+        restored = _insert_benchmark_report(
+            sqlite_path,
+            path,
+            indexed_benchmark_refs,
+            indexed_reference_task_refs,
+        )
+        counts["benchmark_reports"] += restored["reports"]
+        counts["reference_tasks"] += restored["tasks"]
+
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")
         if ref:
@@ -408,6 +424,32 @@ def _insert_bundle_audit_report(sqlite_path: Path, path: Path) -> dict[str, int]
         )
         return {"geometry": 1, "contamination": 1}
     return {"geometry": 1, "contamination": 0}
+
+
+def _insert_benchmark_report(
+    sqlite_path: Path,
+    path: Path,
+    seen_reports: set[str],
+    seen_tasks: set[str],
+) -> dict[str, int]:
+    if not path.exists():
+        return {"reports": 0, "tasks": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = str(payload.get("wb_ref") or path.stem)
+    reports = 0
+    if ref not in seen_reports:
+        insert_payload(sqlite_path, "benchmark_reports", ref, payload)
+        seen_reports.add(ref)
+        reports = 1
+    tasks = 0
+    for task in payload.get("tasks", []):
+        task_ref = task.get("task_ref")
+        if not task_ref or str(task_ref) in seen_tasks:
+            continue
+        insert_payload(sqlite_path, "reference_tasks", str(task_ref), task)
+        seen_tasks.add(str(task_ref))
+        tasks += 1
+    return {"reports": reports, "tasks": tasks}
 
 
 def _insert_json_file_once(

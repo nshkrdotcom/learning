@@ -1066,3 +1066,55 @@ Observed result:
 
 Known residual risk:
 - The implemented probe runner intentionally covers only sweep axis extension and patch-mode switching. Other recommendation kinds remain recorded as blocked materialized probes until a concrete workflow runner exists.
+
+## Phase 21: Reference Mechanism Suite
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: no
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` reference tasks with known ground truth, toy circuits, planted features, synthetic SAE dictionaries, and negative controls.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` Tracr ground-truth circuits, calibration loop, empirical nulls, and FDR correction sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/BEST_EVALS_github.md` eval registry structure, deterministic assertions, contribution standards, and CI-oriented benchmark patterns.
+
+Implemented:
+- `ReferenceTask` and `ReferenceBenchmarkReport` domain objects.
+- `ReferenceBenchmarkService` with a deterministic built-in `toy` suite.
+- Planted residual-direction fixture requiring exact-effect recovery of `unit_direct_writer`.
+- Negative-control surface-confound fixture that blocks the tempting high-proxy non-causal unit.
+- Synthetic SAE split/absorption fixture with deterministic artifact detection.
+- Empirical-null p-values, Benjamini-Hochberg q-values, proxy-vs-exact correlation, null seed counts, and calibration summary fields.
+- `mwb benchmark framework`.
+- Benchmark report persistence under `.mechanism/benchmarks/`.
+- SQLite schema and repair-index recovery for `benchmark_reports` and `reference_tasks`.
+- `docs/REFERENCE_MECHANISMS.md`, README, usage guide, fundamental checklist, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase21_reference_mechanisms.py
+uv run ruff check src/mwb/reference_benchmarks.py src/mwb/cli.py src/mwb/domain src/mwb/sqlite_index.py tests/test_phase21_reference_mechanisms.py
+uv run mwb benchmark framework
+uv sync
+uv run ruff check .
+uv run pytest
+uv run mwb benchmark framework
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 21 RGR tests first failed on missing `mwb.reference_benchmarks`.
+- Focused Phase 21 reference benchmark suite passed, `4 passed`.
+- Focused ruff check passed.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `100 passed, 3 skipped`.
+- `uv run mwb benchmark framework`: passed with `status: pass`, `task_count: 3`, planted mechanism recovery, false-positive blocking, and synthetic SAE artifact detection.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `benchmark_reports: 1` and `reference_tasks: 3`.
+
+Known residual risk:
+- The built-in `toy` suite is deterministic and CI-friendly. It does not replace future optional heavy integrations with Tracr, ACDC/EAP, SAEBench/RAVEL, or live backend reference circuits.

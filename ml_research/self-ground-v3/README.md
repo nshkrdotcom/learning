@@ -32,7 +32,8 @@ uv run mwb space check docs/fixtures/space_check_valid.json
 uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
 uv run mwb verify docs/fixtures/hypothesis_phase5.json --diagnostic-only --dry-run
 uv run mwb bundle audit negation_phase3_calibrated
+uv run mwb benchmark framework
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
-See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/STATIC_COMPILER.md`, `docs/CAUSAL_VERIFICATION.md`, `docs/EXAMPLE_GEOMETRY.md`, `docs/DIAGNOSIS_AND_PROBES.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, space type system, static compiler, causal verification, example geometry, diagnosis/probe workflows, source-traced buildout plan, and dogfood evidence boundary.
+See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/STATIC_COMPILER.md`, `docs/CAUSAL_VERIFICATION.md`, `docs/EXAMPLE_GEOMETRY.md`, `docs/DIAGNOSIS_AND_PROBES.md`, `docs/REFERENCE_MECHANISMS.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, space type system, static compiler, causal verification, example geometry, diagnosis/probe workflows, reference benchmarks, source-traced buildout plan, and dogfood evidence boundary.

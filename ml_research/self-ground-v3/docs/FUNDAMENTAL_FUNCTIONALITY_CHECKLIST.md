@@ -137,6 +137,21 @@ Fundamental items must be:
   - Source: `0005` next-probe constraints.
   - Evidence: `tests/test_phase6_next_probe.py`.
 
+## Reference Mechanism Benchmarks
+
+- [x] `mwb benchmark framework` runs deterministic known-ground-truth reference tasks.
+  - Sources: `mechinterp_framework/0020_gpt` reference tasks, `BEST_EVALS_github` eval registry patterns.
+  - Evidence: `tests/test_phase21_reference_mechanisms.py`.
+- [x] Planted toy mechanisms must be recovered from exact-effect scores and empirical nulls.
+  - Sources: `mechinterp_framework/0020_gpt` known toy mechanisms, `mechinterp_framework/0010_claude` Tracr ground truth.
+  - Evidence: `tests/test_phase21_reference_mechanisms.py`.
+- [x] Tempting false-positive confounds are blocked instead of reported as mechanisms.
+  - Source: `mechinterp_framework/0020_gpt` negative controls where tempting features are confounds.
+  - Evidence: `tests/test_phase21_reference_mechanisms.py`.
+- [x] Synthetic SAE split and absorption artifacts are detected.
+  - Sources: `mechinterp_framework/0020_gpt` synthetic SAE dictionaries, `mechinterp_framework/0010_claude` SAE quality metrics.
+  - Evidence: `tests/test_phase21_reference_mechanisms.py`.
+
 ## MechanismCards, Claim Grammar, And Draft Guard
 
 - [x] `mwb card` generates structured JSON and Markdown from run artifacts.
