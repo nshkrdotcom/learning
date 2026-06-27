@@ -543,7 +543,7 @@ git push
 
 ## Phase 22: Policy Profiles And Research Taste
 
-Status: implementation/docs complete in repo Phase 23; QC, commit, and push pending.
+Status: complete in repo Phase 23. Implementation commit: `bbab83d`; push pending.
 
 ### Required Reading
 
