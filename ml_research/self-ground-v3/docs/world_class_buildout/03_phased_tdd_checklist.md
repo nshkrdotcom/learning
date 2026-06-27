@@ -491,7 +491,7 @@ git push
 
 ## Phase 21: Rich Claim Grammar
 
-Status: implementation/docs complete in repo Phase 22; QC, commit, and push pending.
+Status: complete in repo Phase 22. Implementation commit: `9ed966c`; push pending.
 
 ### Required Reading
 

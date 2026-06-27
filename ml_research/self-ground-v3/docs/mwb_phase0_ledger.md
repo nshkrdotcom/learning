@@ -1121,9 +1121,9 @@ Known residual risk:
 
 ## Phase 22: Rich Claim Grammar
 
-Status: complete pending commit and push
-Commit: pending
-Pushed: no
+Status: complete pending push
+Commit: `9ed966c`
+Pushed: pending
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` evidence tiers, claim atoms, blocker-to-claim mapping, Draft Guard behavior, caveats, and scientific debt.
