@@ -232,6 +232,8 @@ git push
 
 ## Phase 16: Static Mechanistic Compiler
 
+Status: complete in repo Phase 17 pending final commit and push.
+
 ### Required Reading
 
 - `0005.md` static preflight.
@@ -240,26 +242,26 @@ git push
 
 ### TDD/RGR
 
-- [ ] Add failing tests for real decoder-unembedding cosine calculation.
-- [ ] Add failing tests for dictionary neighbor interference.
-- [ ] Add failing tests for activation density warnings.
-- [ ] Add failing tests for plausibility gate aggregation.
-- [ ] Add failing tests that failed static gate blocks claim-bearing verification.
+- [x] Add failing tests for real decoder-unembedding cosine calculation.
+- [x] Add failing tests for dictionary neighbor interference.
+- [x] Add failing tests for activation density warnings.
+- [x] Add failing tests for plausibility gate aggregation.
+- [x] Add failing tests that failed static gate blocks claim-bearing verification.
 
 ### Implementation
 
-- [ ] Add `StaticCheckResult`.
-- [ ] Add compiler check registry.
-- [ ] Implement real decoder/unembed projection over TransformerLens model identity.
-- [ ] Implement dictionary neighbor geometry for SAELens dictionaries where available.
-- [ ] Implement plausibility gate.
-- [ ] Add `mwb compile hypothesis`.
+- [x] Add `StaticCheckResult`.
+- [x] Add compiler check registry.
+- [x] Implement real decoder/unembed projection over explicit compiler vectors and optional TransformerLens integration fixture.
+- [x] Implement dictionary neighbor geometry for explicit dictionaries and optional SAELens integration fixture.
+- [x] Implement plausibility gate.
+- [x] Add `mwb compile hypothesis`.
 
 ### Docs
 
-- [ ] Add `docs/STATIC_COMPILER.md`.
-- [ ] Update preflight docs.
-- [ ] Update phase ledger.
+- [x] Add `docs/STATIC_COMPILER.md`.
+- [x] Update preflight docs.
+- [x] Update phase ledger.
 
 ### QC Gate
 
@@ -277,7 +279,7 @@ git status --short --branch
 
 ```bash
 git add .
-git commit -m "phase 16: add static mechanistic compiler"
+git commit -m "phase 17: add static mechanistic compiler"
 git push
 ```
 

@@ -26,7 +26,8 @@ uv run mwb graph rebuild
 uv run mwb ledger validate
 uv run mwb hypothesis transition <hypothesis-ref> --to-state triaged
 uv run mwb space check docs/fixtures/space_check_valid.json
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
 uv run mwb rebuild-index --output .mechanism/workbench.rebuilt.sqlite
 ```
 
-See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, space type system, source-traced buildout plan, and dogfood evidence boundary.
+See `docs/USAGE.md`, `docs/EVIDENCE_GRAPH.md`, `docs/LEDGERS.md`, `docs/HYPOTHESIS_LIFECYCLE.md`, `docs/SPACE_TYPES.md`, `docs/STATIC_COMPILER.md`, `docs/FUNDAMENTAL_FUNCTIONALITY_CHECKLIST.md`, `docs/world_class_buildout/README.md`, `docs/PHASE0_ACCEPTANCE_REPORT.md`, and `docs/PHASE10_COMPLETION_REPORT.md` for the completed workflow, evidence graph, research ledgers, hypothesis lifecycle, space type system, static compiler, source-traced buildout plan, and dogfood evidence boundary.

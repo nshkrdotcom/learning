@@ -4,6 +4,7 @@ from typing import Any
 
 from mwb.domain.objects import Hypothesis, PreflightReport
 from mwb.refs import stable_ref
+from mwb.static_compiler import StaticCompiler, has_static_compiler_payload
 
 
 def _hypothesis_from_payload(payload: dict[str, Any]) -> Hypothesis:
@@ -44,7 +45,12 @@ def run_preflight(payload: dict[str, Any]) -> PreflightReport:
     if not hook_ok:
         blockers.append("metadata_mismatch")
 
-    if "decoder_unembed_projection_score" in metadata:
+    if has_static_compiler_payload(payload):
+        static_report = StaticCompiler().compile_payload(payload)
+        checks.extend(static_report.checks)
+        blockers.extend(static_report.blockers)
+        warnings.extend(static_report.warnings)
+    elif "decoder_unembed_projection_score" in metadata:
         score = float(metadata["decoder_unembed_projection_score"])
         if score >= 0.03:
             projection_status = "pass"
@@ -73,4 +79,3 @@ def run_preflight(payload: dict[str, Any]) -> PreflightReport:
         warnings=warnings,
         parents=[hypothesis.wb_ref],
     )
-

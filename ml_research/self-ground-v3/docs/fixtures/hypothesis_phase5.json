@@ -13,5 +13,28 @@
     "tensor_space_compatible": true,
     "model_sae_hook_match": true,
     "decoder_unembed_projection_score": 0.04
+  },
+  "static_compiler": {
+    "tensor_space_ref": "space_resid_post",
+    "unembedding_space_ref": "space_resid_post",
+    "target_token_ids": [10],
+    "foil_token_ids": [20],
+    "decoder_vector": [1.0, 0.0, 0.0],
+    "unembedding": {
+      "10": [1.0, 0.0, 0.0],
+      "20": [0.0, 1.0, 0.0]
+    },
+    "dictionary": {
+      "feature_id": "unit_fixture",
+      "decoder_vectors": {
+        "unit_fixture": [1.0, 0.0, 0.0],
+        "unit_clean_neighbor": [0.0, 0.0, 1.0]
+      }
+    },
+    "activation_density": {
+      "target": 0.1,
+      "control": 0.1,
+      "max_ratio": 1.5
+    }
   }
 }

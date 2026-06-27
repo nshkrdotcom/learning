@@ -145,6 +145,16 @@ uv run mwb space check docs/fixtures/space_check_valid.json
 
 Space checks write `.mechanism/space_checks/latest_space_check.json` and block incompatible dictionaries, pre-LN/post-LN mismatches without transforms, wrong-hook patches, and invalid unit operations. See `docs/SPACE_TYPES.md`.
 
+## Static Compiler
+
+Run static algebraic plausibility checks before claim-bearing verification:
+
+```bash
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
+```
+
+The compiler writes `.mechanism/static_compiler/latest_static_compile.json`, indexes top-level reports plus per-check rows, and blocks claim-bearing verification when the gate is `FAIL`. See `docs/STATIC_COMPILER.md`.
+
 ## Rebuild Check
 
 Rebuild a separate SQLite index from file-backed `.mechanism` records:

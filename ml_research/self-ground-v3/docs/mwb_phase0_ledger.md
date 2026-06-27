@@ -839,3 +839,61 @@ Observed result:
 
 Known residual risk:
 - Space checks are structural compatibility gates. A passing report does not establish causal evidence, validate controls, or promote a claim.
+
+## Phase 17: Static Mechanistic Compiler
+
+Status: complete pending commit and push
+Commit: pending
+Pushed: pending
+
+Required reading completed:
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0005.md` static preflight, decoder-unembedding projection math, preflight statuses, blocker taxonomy, and required command sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0010_claude.md` compiler, direct-effect attribution, dictionary geometry diagnostics, and weakest-link plausibility gate sections.
+- `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/mi_docs/mechinterp_framework/0020_gpt.md` typed algebra compiler, static checks, live alternatives, and static compile usage sections.
+
+Implemented:
+- `StaticCheckResult` and `StaticCompilationReport` domain objects.
+- `StaticCompiler` with a check registry for decoder-unembedding projection, dictionary neighbor interference, and activation density.
+- Real L2 cosine projection over provided decoder vectors and target-vs-foil unembedding vectors.
+- Dictionary neighbor geometry scan with fail/warn thresholds.
+- Activation density warning check using symmetric target/control ratios.
+- Weakest-link plausibility gate aggregation: `PASS`, `WEAK`, or `FAIL`.
+- Claim-bearing verification blocking when static compiler input is missing or the static gate fails.
+- `mwb compile hypothesis <json>` with report persistence under `.mechanism/static_compiler/` and SQLite indexing.
+- SQLite repair recovery for static compiler reports and per-check rows.
+- Optional real-adapter integration test that builds compiler input from TransformerLens unembedding weights and SAELens decoder vectors.
+- `docs/STATIC_COMPILER.md`, README, usage-guide, fixture, and buildout checklist updates.
+
+Commands run:
+
+```bash
+uv run pytest tests/test_phase17_static_compiler.py
+uv run pytest tests/test_phase17_static_compiler.py tests/test_static_compiler_integration.py
+uv run ruff check src/mwb/static_compiler.py src/mwb/workflows/preflight.py src/mwb/workflows/verify.py src/mwb/cli.py tests/test_phase17_static_compiler.py
+uv run pytest tests/test_phase5_workflow.py tests/test_phase17_static_compiler.py
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
+uv sync
+uv run ruff check .
+uv run pytest
+MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_static_compiler_integration.py -m integration
+uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json
+uv run mwb doctor
+uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite
+git status --short --branch
+```
+
+Observed result:
+- Phase 17 RGR tests first failed on missing `mwb.static_compiler`, missing `mwb compile`, and claim-bearing verification ignoring failed static gates.
+- Focused compiler tests passed, `6 passed`.
+- Optional integration file is skipped by default unless `MWB_RUN_REAL_ADAPTER_TESTS=1`.
+- Existing preflight/verify workflow tests still pass with static compiler integration.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `78 passed, 2 skipped`.
+- `MWB_RUN_REAL_ADAPTER_TESTS=1 uv run pytest tests/test_static_compiler_integration.py -m integration`: passed, `1 passed`; warnings were upstream deprecations from TransformerLens/SAELens imports.
+- `uv run mwb compile hypothesis docs/fixtures/hypothesis_phase5.json`: passed and wrote a `StaticCompilationReport` with `plausibility_gate: PASS`.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored `static_compiler_reports: 1` and `static_check_results: 3`.
+
+Known residual risk:
+- Static compiler reports are structural plausibility evidence only. They cannot produce causal evidence or claim promotion without subsequent prediction-locked causal verification.

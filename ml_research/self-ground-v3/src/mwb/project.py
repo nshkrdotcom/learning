@@ -26,6 +26,7 @@ PROJECT_DIRS = [
     "logs",
     "redactions",
     "space_checks",
+    "static_compiler",
 ]
 
 

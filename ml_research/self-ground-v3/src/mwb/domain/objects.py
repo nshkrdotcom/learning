@@ -317,6 +317,27 @@ class PreflightReport(WorkbenchObject):
     warnings: list[str] = Field(default_factory=list)
 
 
+class StaticCheckResult(WorkbenchObject):
+    wb_type: str = "StaticCheckResult"
+    hypothesis_ref: str
+    check_name: str
+    status: str
+    score: float | None = None
+    metrics: JsonDict = Field(default_factory=dict)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class StaticCompilationReport(WorkbenchObject):
+    wb_type: str = "StaticCompilationReport"
+    hypothesis_ref: str
+    status: str
+    plausibility_gate: str
+    checks: list[JsonDict]
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class VerificationRun(WorkbenchObject):
     wb_type: str = "VerificationRun"
     hypothesis_ref: str
@@ -398,6 +419,8 @@ _TYPE_REGISTRY: dict[str, type[WorkbenchObject]] = {
         PredictionLock,
         InterventionSpec,
         PreflightReport,
+        StaticCheckResult,
+        StaticCompilationReport,
         VerificationRun,
         BlockerReport,
         NextProbePlan,

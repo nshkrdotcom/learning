@@ -17,6 +17,8 @@ SCHEMA_TABLES = {
     "tensor_refs",
     "space_transforms",
     "space_checks",
+    "static_compiler_reports",
+    "static_check_results",
     "mechanistic_units",
     "example_bundles",
     "control_bundles",
@@ -264,6 +266,15 @@ def rebuild_sqlite_index(project: Any, *, output_path: Path | None = None) -> di
     for path in sorted(space_checks_dir.glob("*.json")) if space_checks_dir.exists() else []:
         counts["space_checks"] += _insert_json_file(sqlite_path, path, "space_checks")
 
+    static_compiler_dir = project.mechanism_dir / "static_compiler"
+    static_paths = (
+        sorted(static_compiler_dir.glob("*.json")) if static_compiler_dir.exists() else []
+    )
+    for path in static_paths:
+        restored = _insert_static_compiler_report(sqlite_path, path)
+        counts["static_compiler_reports"] += restored["reports"]
+        counts["static_check_results"] += restored["checks"]
+
     for edge in _read_jsonl(project.mechanism_dir / "graph" / "evidence_edges.jsonl"):
         ref = edge.get("wb_ref") or edge.get("edge_ref")
         if ref:
@@ -312,6 +323,21 @@ def _insert_json_file(sqlite_path: Path, path: Path, table: str) -> int:
     )
     insert_payload(sqlite_path, table, str(ref), payload)
     return 1
+
+
+def _insert_static_compiler_report(sqlite_path: Path, path: Path) -> dict[str, int]:
+    if not path.exists():
+        return {"reports": 0, "checks": 0}
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    ref = payload.get("wb_ref") or payload.get("hypothesis_ref") or path.parent.name
+    insert_payload(sqlite_path, "static_compiler_reports", str(ref), payload)
+    checks = 0
+    for check in payload.get("checks", []):
+        check_ref = check.get("wb_ref")
+        if check_ref:
+            insert_payload(sqlite_path, "static_check_results", str(check_ref), check)
+            checks += 1
+    return {"reports": 1, "checks": checks}
 
 
 def _insert_json_file_once(

@@ -23,6 +23,7 @@ from mwb.refs import stable_ref
 from mwb.session import SessionManager, latest_session
 from mwb.space_types import SpaceTypeService
 from mwb.sqlite_index import rebuild_sqlite_index
+from mwb.static_compiler import StaticCompiler
 from mwb.workflows.cards import card_from_run, write_card
 from mwb.workflows.draft_guard import check_draft_text, load_claim_cards
 from mwb.workflows.io import load_json_payload
@@ -43,6 +44,7 @@ graph_app = typer.Typer(help="Rebuild and query the local evidence graph.")
 ledger_app = typer.Typer(help="Validate Git-native research ledgers and proposals.")
 hypothesis_app = typer.Typer(help="Manage hypothesis lifecycle and alternatives.")
 space_app = typer.Typer(help="Check mechanistic tensor spaces and unit operations.")
+compile_app = typer.Typer(help="Compile static mechanistic plausibility checks.")
 app.add_typer(inspect_app, name="inspect")
 app.add_typer(adapter_app, name="adapter")
 app.add_typer(demo_app, name="demo")
@@ -51,6 +53,7 @@ app.add_typer(graph_app, name="graph")
 app.add_typer(ledger_app, name="ledger")
 app.add_typer(hypothesis_app, name="hypothesis")
 app.add_typer(space_app, name="space")
+app.add_typer(compile_app, name="compile")
 adapter_app.add_typer(conformance_app, name="conformance")
 console = Console()
 DEFAULT_ROOT = Path(".")
@@ -107,6 +110,7 @@ DecisionRefOption = Annotated[
 ]
 ReasonOption = Annotated[str | None, typer.Option("--reason", help="Transition rationale.")]
 SpaceCheckFileArgument = Annotated[Path, typer.Argument(help="Space check JSON file.")]
+CompileHypothesisFileArgument = Annotated[Path, typer.Argument(help="Hypothesis JSON file.")]
 
 
 @app.command()
@@ -233,6 +237,18 @@ def space_check(path: SpaceCheckFileArgument) -> None:
     service = SpaceTypeService(project)
     report = service.check_file(path)
     service.write_report(report)
+    console.print_json(json.dumps(report.model_dump(mode="json")))
+    if report.status == "fail":
+        raise typer.Exit(code=1)
+
+
+@compile_app.command("hypothesis")
+def compile_hypothesis(path: CompileHypothesisFileArgument) -> None:
+    """Run static algebraic plausibility checks for a hypothesis JSON file."""
+    project = ProjectManager.discover_or_create()
+    compiler = StaticCompiler(project)
+    report = compiler.compile_file(path)
+    compiler.write_report(report)
     console.print_json(json.dumps(report.model_dump(mode="json")))
     if report.status == "fail":
         raise typer.Exit(code=1)
