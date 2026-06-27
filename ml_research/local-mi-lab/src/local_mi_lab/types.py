@@ -27,6 +27,7 @@ class PromptRecord:
     family_index: int | None = None
     true_expected_next_token: str = ""
     paired_positive_example_id: str = ""
+    wrong_or_control_token: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -49,6 +50,10 @@ class PromptRecord:
         paired_positive_example_id = str(
             row.get("paired_positive_example_id")
             or _default_paired_positive_example_id(family, family_index, str(row["example_id"]))
+        )
+        wrong_or_control_token = str(
+            row.get("wrong_or_control_token")
+            or _default_wrong_or_control_token(str(row["expected_next_token"]), true_expected_next_token)
         )
         return cls(
             example_id=str(row["example_id"]),
@@ -77,6 +82,7 @@ class PromptRecord:
             family_index=family_index,
             true_expected_next_token=true_expected_next_token,
             paired_positive_example_id=paired_positive_example_id,
+            wrong_or_control_token=wrong_or_control_token,
         )
 
 
@@ -131,3 +137,9 @@ def _default_paired_positive_example_id(
     if family_index is None:
         return example_id if family == "positive_repeat_sequence" else ""
     return f"positive_repeat_sequence_{family_index:04d}"
+
+
+def _default_wrong_or_control_token(expected_next_token: str, true_expected_next_token: str) -> str:
+    if expected_next_token != true_expected_next_token:
+        return expected_next_token
+    return " X"

@@ -108,9 +108,12 @@ def build_patching_jobs(
                     "target_token": record.expected_next_token,
                     "true_expected_next_token": record.true_expected_next_token,
                     "wrong_or_control_token": (
-                        record.expected_next_token
-                        if record.expected_next_token != record.true_expected_next_token
-                        else ""
+                        record.wrong_or_control_token
+                        or (
+                            record.expected_next_token
+                            if record.expected_next_token != record.true_expected_next_token
+                            else ""
+                        )
                     ),
                     "component": component,
                     "position_label": position_label,

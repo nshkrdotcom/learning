@@ -116,6 +116,17 @@ def test_control_prompts_include_pairing_metadata() -> None:
         assert record.base_sequence_id
         assert record.family_index is not None
         assert record.true_expected_next_token == f" {record.sequence_tokens[-1]}"
+        assert record.wrong_or_control_token
         assert record.paired_positive_example_id == (
             f"positive_repeat_sequence_{record.family_index:04d}"
         )
+
+
+def test_control_prompts_include_wrong_or_control_token() -> None:
+    records = generate_induction_control_prompts(n_examples_per_family=1, seed=0)
+    by_family = {record.family: record for record in records}
+    assert by_family["positive_repeat_sequence"].wrong_or_control_token == " X"
+    assert by_family["random_expected_token_control"].wrong_or_control_token == " X"
+    assert by_family["distractor_repeat_control"].wrong_or_control_token != (
+        by_family["distractor_repeat_control"].true_expected_next_token
+    )

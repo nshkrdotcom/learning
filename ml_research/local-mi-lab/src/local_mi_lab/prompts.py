@@ -29,6 +29,7 @@ PROMPT_COLUMNS = [
     "family_index",
     "true_expected_next_token",
     "paired_positive_example_id",
+    "wrong_or_control_token",
 ]
 
 CONTROL_FAMILIES = [
@@ -96,6 +97,7 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
                 family_index=i,
                 true_expected_next_token=expected,
                 paired_positive_example_id=f"induction_{i:04d}",
+                wrong_or_control_token=" X",
             )
         )
     return records
@@ -135,6 +137,7 @@ def generate_text_prompts() -> list[PromptRecord]:
             is_positive_induction_example=False,
             should_show_induction_behavior=False,
             true_expected_next_token=" Paris",
+            wrong_or_control_token=" London",
         ),
         PromptRecord(
             example_id="text_0001",
@@ -147,6 +150,7 @@ def generate_text_prompts() -> list[PromptRecord]:
             is_positive_induction_example=False,
             should_show_induction_behavior=False,
             true_expected_next_token=" little",
+            wrong_or_control_token=" big",
         ),
     ]
 
@@ -219,6 +223,7 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
     source_token: str
     prompt_tokens: list[str]
     expected = true_expected
+    wrong_or_control_token = " X"
     repeated_prefix_length = 0
 
     if family == "positive_repeat_sequence":
@@ -240,6 +245,7 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
         prompt_tokens = [*sequence, sequence[1], sequence[0]]
         source_position = 0
         source_token = sequence[0]
+        wrong_or_control_token = _spaced_nontrue_token(sequence[1], true_expected)
         is_positive = False
         should_show = False
         notes = "Repeated tokens are shuffled, so prior occurrence does not license the expected token."
@@ -247,6 +253,7 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
         prompt_tokens = [*sequence, sequence[0], sequence[1]]
         source_position = 1
         source_token = sequence[1]
+        wrong_or_control_token = _spaced_nontrue_token(sequence[2 % len(sequence)], true_expected)
         repeated_prefix_length = 2
         is_positive = False
         should_show = False
@@ -260,12 +267,14 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
             prompt_tokens = [*sequence, sequence[-2], sequence[0]]
             source_position = 0
             source_token = sequence[0]
+        wrong_or_control_token = _spaced_nontrue_token(source_token, true_expected)
         is_positive = False
         should_show = False
         notes = "Approximate token frequencies are preserved without the positive induction structure."
     elif family == "random_expected_token_control":
         prompt_tokens = positive_prompt_tokens
         expected = " X"
+        wrong_or_control_token = expected
         source_position = len(sequence) - 2
         source_token = sequence[source_position]
         repeated_prefix_length = len(sequence) - 1
@@ -299,4 +308,10 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
         family_index=index,
         true_expected_next_token=true_expected,
         paired_positive_example_id=f"positive_repeat_sequence_{index:04d}",
+        wrong_or_control_token=wrong_or_control_token,
     )
+
+
+def _spaced_nontrue_token(token: str, true_expected: str) -> str:
+    spaced = f" {token}"
+    return spaced if spaced != true_expected else " X"
