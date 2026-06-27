@@ -16,7 +16,7 @@ For example, `0005.md` means `CANONICAL/0005.md`; `0430_revised_v6.md` means `TR
 
 ## Phase 12: Evidence Graph Query Core
 
-Status: complete in repo Phase 13 pending final commit and push.
+Status: complete in repo Phase 13 commit `e20d307`, pushed yes.
 
 ### Required Reading
 

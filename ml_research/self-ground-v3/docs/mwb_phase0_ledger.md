@@ -641,9 +641,9 @@ Known residual risk:
 
 ## Phase 13: Evidence Graph Query Core
 
-Status: complete pending QC and commit finalization
-Commit: pending
-Pushed: pending
+Status: complete
+Commit: `e20d307`
+Pushed: yes
 
 Required reading completed:
 - `/home/home/p/g/j/jido_brainstorm/nshkrdotcom/docs/20260625/0003.md` Evidence Core, persistence model, evidence graph, and SQLite schema sections.
@@ -679,7 +679,12 @@ git status --short --branch
 Observed result:
 - Phase 13 RGR tests first failed on missing `EvidenceEdge`, missing `EvidenceGraphService`, and missing `mwb graph`.
 - Focused Phase 13 test suite passed after implementation, `3 passed`.
-- Full QC pending final run in this commit.
+- `uv sync`: passed.
+- `uv run ruff check .`: passed.
+- `uv run pytest`: passed, `56 passed, 1 skipped`.
+- `uv run mwb graph rebuild`: passed and rebuilt 23 evidence edges across 16 nodes.
+- `uv run mwb doctor`: passed with `status: ok`.
+- `uv run mwb repair-index --output .mechanism/workbench.repaired.sqlite`: passed with `status: ok` and restored 23 `evidence_edges`.
 
 Known residual risk:
 - The graph records declared provenance and evidence relationships. It does not upgrade evidence tiers or make a claim scientifically true by itself.
