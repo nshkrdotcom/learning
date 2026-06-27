@@ -15,11 +15,76 @@ from local_mi_lab.plots import plot_patching_heatmap
 from local_mi_lab.tokens import token_id_for_single_token
 
 
-def patching_effect_size(clean_score: float, corrupt_score: float, patched_score: float) -> float:
+def attn_out_hook_name(layer: int) -> str:
+    return f"blocks.{layer}.hook_attn_out"
+
+
+def component_hook_name(component: str, layer: int) -> str:
+    if component == "resid_post":
+        return resid_post_hook_name(layer)
+    if component == "attn_out":
+        return attn_out_hook_name(layer)
+    raise ValueError(f"Unsupported patching component {component!r}")
+
+
+def patching_effect_size(
+    clean_score: float,
+    corrupt_score: float,
+    patched_score: float,
+) -> float | None:
     denominator = clean_score - corrupt_score
     if abs(denominator) < 1e-12:
-        return 0.0
+        return None
     return (patched_score - corrupt_score) / denominator
+
+
+def patching_effect(
+    clean_score: float,
+    corrupt_score: float,
+    patched_score: float,
+) -> dict[str, float | str | None]:
+    effect_size = patching_effect_size(clean_score, corrupt_score, patched_score)
+    if effect_size is None:
+        return {"effect_size": None, "effect_size_status": "denominator_zero"}
+    return {"effect_size": effect_size, "effect_size_status": "ok"}
+
+
+def validate_clean_corrupt_token_lengths(
+    clean_seq_len: int,
+    corrupt_seq_len: int,
+    allow_length_mismatch: bool,
+) -> None:
+    if clean_seq_len == corrupt_seq_len:
+        return
+    if allow_length_mismatch:
+        return
+    raise ValueError(
+        "clean_prompt and corrupt_prompt must tokenize to the same length unless "
+        "--allow-length-mismatch is passed. "
+        f"Got clean length {clean_seq_len}, corrupt length {corrupt_seq_len}."
+    )
+
+
+def resolve_patch_positions(
+    positions: list[str | int],
+    clean_seq_len: int,
+    corrupt_seq_len: int,
+    allow_length_mismatch: bool,
+) -> list[int]:
+    validate_clean_corrupt_token_lengths(clean_seq_len, corrupt_seq_len, allow_length_mismatch)
+    if positions == ["all"]:
+        return list(range(min(clean_seq_len, corrupt_seq_len)))
+
+    selected_positions: list[int] = []
+    for position in positions:
+        position_index = resolve_position_index(position, corrupt_seq_len)
+        if position_index < 0 or position_index >= clean_seq_len:
+            raise ValueError(
+                f"Patch position {position!r} resolves to {position_index}, which is not valid "
+                f"for clean sequence length {clean_seq_len}."
+            )
+        selected_positions.append(position_index)
+    return selected_positions
 
 
 def target_logit_score(model: Any, prompt: str, target_token_id: int) -> float:
@@ -37,6 +102,32 @@ def run_resid_post_patching(
     config: dict[str, Any],
     output_dir: Path,
     full_sweep: bool = False,
+    component: str = "resid_post",
+    allow_length_mismatch: bool = False,
+) -> pd.DataFrame:
+    return run_component_patching(
+        model=model,
+        clean_prompt=clean_prompt,
+        corrupt_prompt=corrupt_prompt,
+        target_token=target_token,
+        config=config,
+        output_dir=output_dir,
+        full_sweep=full_sweep,
+        component=component,
+        allow_length_mismatch=allow_length_mismatch,
+    )
+
+
+def run_component_patching(
+    model: Any,
+    clean_prompt: str,
+    corrupt_prompt: str,
+    target_token: str,
+    config: dict[str, Any],
+    output_dir: Path,
+    full_sweep: bool = False,
+    component: str = "resid_post",
+    allow_length_mismatch: bool = False,
 ) -> pd.DataFrame:
     target_id = token_id_for_single_token(model.tokenizer, target_token)
     if full_sweep:
@@ -52,27 +143,24 @@ def run_resid_post_patching(
 
     clean_tokens = model.to_tokens(clean_prompt)
     corrupt_tokens = model.to_tokens(corrupt_prompt)
+    clean_seq_len = int(clean_tokens.shape[1])
+    corrupt_seq_len = int(corrupt_tokens.shape[1])
+    selected_positions = resolve_patch_positions(
+        positions,
+        clean_seq_len=clean_seq_len,
+        corrupt_seq_len=corrupt_seq_len,
+        allow_length_mismatch=allow_length_mismatch,
+    )
     clean_score = target_logit_score(model, clean_prompt, target_id)
     corrupt_score = target_logit_score(model, corrupt_prompt, target_id)
 
-    selected_positions: list[int]
-    if positions == ["all"]:
-        selected_positions = list(range(corrupt_tokens.shape[1]))
-    else:
-        selected_positions = [
-            resolve_position_index(position, corrupt_tokens.shape[1]) for position in positions
-        ]
-
     rows: list[dict[str, Any]] = []
     for layer in tqdm(layers, desc="Activation patching"):
-        hook_name = resid_post_hook_name(layer)
+        hook_name = component_hook_name(component, layer)
         with torch.inference_mode():
             _, clean_cache = model.run_with_cache(clean_tokens, names_filter=[hook_name])
         clean_acts = clean_cache[hook_name].detach()
         for position_index in selected_positions:
-            if position_index >= clean_acts.shape[1]:
-                continue
-
             def patch_hook(
                 corrupt_act: torch.Tensor,
                 hook: Any,
@@ -99,13 +187,14 @@ def run_resid_post_patching(
                     "target_token_id": target_id,
                     "metric": "target_logit",
                     "patched_layer": layer,
-                    "patched_component": "resid_post",
+                    "patched_component": component,
                     "patched_position": position_index,
                     "baseline_clean_score": clean_score,
                     "baseline_corrupt_score": corrupt_score,
                     "patched_score": patched_score,
-                    "effect_size": patching_effect_size(clean_score, corrupt_score, patched_score),
+                    **patching_effect(clean_score, corrupt_score, patched_score),
                     "full_sweep": full_sweep,
+                    "allow_length_mismatch": allow_length_mismatch,
                 }
             )
 
@@ -129,9 +218,12 @@ def run_resid_post_patching(
         f"Corrupt prompt: `{corrupt_prompt}`",
         f"Target token: `{target_token}`",
         "Metric: target logit at the final position.",
+        f"Patched component: `{component}`",
         f"Full sweep: {full_sweep}",
+        f"Allow length mismatch: {allow_length_mismatch}",
         "",
         "This is causal intervention evidence for this prompt pair and metric only.",
+        "It is not a full IOI replication or a broad circuit claim.",
         "This is not a broad model claim.",
     ]
     (output_dir / "notes.md").write_text("\n".join(notes) + "\n", encoding="utf-8")
@@ -142,8 +234,12 @@ def run_resid_post_patching(
                 "corrupt_prompt": corrupt_prompt,
                 "target_token": target_token,
                 "metric": "target_logit",
+                "component": component,
                 "full_sweep": full_sweep,
                 "exploratory": full_sweep,
+                "allow_length_mismatch": allow_length_mismatch,
+                "clean_seq_len": clean_seq_len,
+                "corrupt_seq_len": corrupt_seq_len,
             },
             indent=2,
         )

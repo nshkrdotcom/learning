@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from local_mi_lab.attention import ATTENTION_LIMITATION
 from local_mi_lab.paths import relative_files, resolve_repo_path
 
 MANDATORY_LANGUAGE = [
@@ -26,6 +27,7 @@ def generate_run_summary(run_dir: str | Path) -> str:
     activation_manifest = read_json_if_present(root / "activations" / "manifest.json")
     activation_summary = read_json_if_present(root / "activation_summary.json")
     logit_lens = read_json_if_present(root / "logit_lens_summary.json")
+    attention = read_json_if_present(root / "attention_summary.json")
     patching_metadata = read_json_if_present(root / "patching_metadata.json")
     files = relative_files(root) if root.exists() else []
 
@@ -56,6 +58,10 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "",
         _logit_lens_text(logit_lens),
         "",
+        "## Attention patterns",
+        "",
+        _attention_text(attention),
+        "",
         "## Activation patching",
         "",
         _patching_text(root, patching_metadata),
@@ -70,7 +76,7 @@ def generate_run_summary(run_dir: str | Path) -> str:
         "",
         "## Next step",
         "",
-        _next_step_text(baseline, activation_manifest, logit_lens),
+        _next_step_text(baseline, activation_manifest, logit_lens, attention, root),
         "",
         MANDATORY_LANGUAGE[2],
     ]
@@ -144,6 +150,25 @@ def _logit_lens_text(summary: dict[str, Any] | None) -> str:
     )
 
 
+def _attention_text(summary: dict[str, Any] | None) -> str:
+    if summary is None:
+        return f"Missing: `attention_summary.json` was not found. {ATTENTION_LIMITATION}"
+    top_heads = summary.get("top_heads_by_previous_occurrence_attention") or []
+    if not top_heads:
+        return f"Attention summary present, but no top heads were recorded. {ATTENTION_LIMITATION}"
+    formatted = []
+    for head in top_heads[:5]:
+        formatted.append(
+            "L"
+            f"{int(head['layer'])}H{int(head['head'])}="
+            f"{float(head['mean_attention_to_previous_occurrence']):.3f}"
+        )
+    return (
+        "Attention summary present. Top induction-like attention pattern candidates by "
+        f"previous-occurrence attention: {', '.join(formatted)}. {ATTENTION_LIMITATION}"
+    )
+
+
 def _patching_text(root: Path, metadata: dict[str, Any] | None) -> str:
     if not (root / "patching_results.csv").exists():
         return "Missing: `patching_results.csv` was not found."
@@ -159,6 +184,8 @@ def _next_step_text(
     baseline: dict[str, Any] | None,
     activation: dict[str, Any] | None,
     logit_lens: dict[str, Any] | None,
+    attention: dict[str, Any] | None,
+    root: Path,
 ) -> str:
     if baseline is None:
         return "Run baseline behavior measurement before interpretability analysis."
@@ -166,4 +193,8 @@ def _next_step_text(
         return "Cache selected activations for the successful baseline run."
     if logit_lens is None:
         return "Run logit lens on the selected activation workflow."
-    return "Inspect the tables and plots, then run a small explicit activation patching task."
+    if attention is None:
+        return "Run attention-pattern inspection for induction-like attention candidates."
+    if not (root / "patching_results.csv").exists():
+        return "Run controlled activation patching on an explicit clean/corrupt prompt pair."
+    return "Inspect artifacts and write a short learning note."

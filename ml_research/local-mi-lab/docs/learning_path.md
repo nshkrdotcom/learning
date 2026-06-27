@@ -21,18 +21,18 @@ This is a six-stage path for local mechanistic-interpretability practice. Keep e
 ## Stage 3: Induction Heads
 
 - What to learn: repeated-token prompts, copy/repetition behavior, attention patterns that can support induction, and the difference between behavior and mechanism.
-- Script/notebook to run: `scripts/run_baseline_behavior.py`, `scripts/cache_activations.py`, and `notebooks/003_induction_heads.ipynb`.
-- Result to inspect: `baseline_by_example.csv`, selected activation files, and prompt failures.
+- Script/notebook to run: `scripts/run_baseline_behavior.py`, `scripts/cache_activations.py`, `scripts/run_attention_patterns.py`, and `notebooks/003_induction_heads.ipynb`.
+- Result to inspect: `baseline_by_example.csv`, selected activation files, prompt failures, `attention_patterns_by_head.csv`, `attention_summary.json`, and `figures/attention_induction_scores.png`.
 - Mistake to avoid: selecting only successful prompts and ignoring controls.
-- Completion: you have a baseline table showing whether GPT-2 small predicts repeated tokens more strongly than controls.
+- Completion: you have a baseline table showing whether GPT-2 small predicts repeated tokens more strongly than controls, plus descriptive attention-pattern candidates for further inspection.
 
 ## Stage 4: Activation Patching on a Known Task
 
 - What to learn: clean/corrupt prompt pairs, causal interventions, target metrics, and effect-size normalization.
-- Script/notebook to run: `scripts/run_activation_patching.py` and `notebooks/004_activation_patching.ipynb`.
+- Script/notebook to run: `scripts/run_activation_patching.py --config configs/gpt2_small_clean_corrupt_tiny.yaml` and `notebooks/004_activation_patching.ipynb`.
 - Result to inspect: `patching_results.csv`, `patching_heatmap.csv`, and `figures/patching_heatmap.png`.
 - Mistake to avoid: patching many sites first and then inventing a story after seeing a heatmap.
-- Completion: you can state which site was patched, what metric moved, and what the intervention does not prove.
+- Completion: you can state which site was patched, what metric moved, and what the intervention does not prove. This is tiny clean/corrupt patching practice, not a full IOI replication.
 
 ## Stage 5: Controls and False Positives
 
@@ -49,3 +49,5 @@ This is a six-stage path for local mechanistic-interpretability practice. Keep e
 - Result to inspect: one short Markdown run summary plus the CSV/JSON/PNG artifacts needed to audit it.
 - Mistake to avoid: starting with a broad claim about how the model works.
 - Completion: a short report says what was tested, what moved, what did not move, and what remains unknown.
+
+Attention-pattern evidence is descriptive. It can suggest where to inspect, but it is not causal evidence by itself. Residual/logit-lens artifacts are descriptive. Patching is causal only for the selected prompt pair, component, position, and metric. No broad mechanism claim is allowed.

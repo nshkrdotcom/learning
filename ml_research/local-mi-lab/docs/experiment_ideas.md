@@ -7,7 +7,7 @@ These are beginner-safe, local-only ideas ranked by suitability.
 1. GPT-2 small tokenization and logit basics.
 2. Logit lens on simple prompts.
 3. Induction-head inspection.
-4. Activation patching on tiny IOI-style examples.
+4. Activation patching on tiny clean/corrupt examples.
 
 ## Next
 
@@ -27,3 +27,5 @@ Do not start with negation-scope.
 Do not start with Gemma-2-2B.
 Do not start with SAEs.
 Do not start with a new framework.
+
+Attention inspection is descriptive. A high previous-occurrence attention score is an induction-like attention pattern candidate, not a mechanism claim. Tiny clean/corrupt patching is practice work, not a full IOI experiment.

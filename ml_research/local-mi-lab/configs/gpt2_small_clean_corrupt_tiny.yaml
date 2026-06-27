@@ -1,5 +1,5 @@
 experiment:
-  name: gpt2_small_ioi_tiny
+  name: gpt2_small_clean_corrupt_tiny
   seed: 0
 
 model:
@@ -19,9 +19,9 @@ resources:
   batch_size_auto: true
 
 task:
-  name: clean_corrupt_tiny_legacy_alias
+  name: clean_corrupt_tiny
   prompt_style: clean_corrupt_pair
-  notes: legacy alias for tiny clean/corrupt patching practice; not a full IOI experiment
+  notes: tiny clean/corrupt patching practice, not a full IOI experiment
   patching:
     clean_prompt: "When John and Mary went to the store, John gave a drink to Mary"
     corrupt_prompt: "When John and Mary went to the store, Mary gave a drink to John"

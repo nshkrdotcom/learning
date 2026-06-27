@@ -12,21 +12,22 @@ Scripts are the reproducible path. Notebooks are inspection front-ends that load
 
 ```bash
 uv sync
+uv run ruff check .
 uv run pytest
 uv run python scripts/check_model_capability.py --config configs/gpt2_small_induction.yaml
 uv run python scripts/build_toy_prompts.py --config configs/gpt2_small_induction.yaml
 uv run python scripts/run_baseline_behavior.py --config configs/gpt2_small_induction.yaml
+uv run python scripts/cache_activations.py --config configs/gpt2_small_induction.yaml --run runs/<run_id>
+uv run python scripts/run_logit_lens.py --config configs/gpt2_small_induction.yaml --run runs/<run_id>
+uv run python scripts/run_attention_patterns.py --config configs/gpt2_small_induction.yaml --run runs/<run_id>
+uv run python scripts/summarize_run.py --run runs/<run_id>
 ```
 
-Only after the baseline behavior run succeeds:
+Activation patching is separate and should be run only after baseline behavior, activation capture, logit lens, and attention-pattern inspection are working:
 
 ```bash
-uv run python scripts/cache_activations.py --config configs/gpt2_small_induction.yaml --run runs/<latest_induction_run>
-uv run python scripts/run_logit_lens.py --config configs/gpt2_small_induction.yaml --run runs/<latest_induction_run>
-uv run python scripts/summarize_run.py --run runs/<latest_induction_run>
+uv run python scripts/run_activation_patching.py --config configs/gpt2_small_clean_corrupt_tiny.yaml
 ```
-
-Activation patching is separate and should be run only after baseline behavior and activation capture are working.
 
 ## Repository Shape
 
@@ -41,4 +42,6 @@ Activation patching is separate and should be run only after baseline behavior a
 
 The first pass does not require SAEs, Gemma, nnsight, Neuronpedia, dashboards, databases, agent-managed IPython, or large model runs.
 
-Creating this repo is not MI progress. Passing tests is not MI progress. Capability checks are not MI progress. The first actual learning result is the baseline behavior table and the human inspection of activations and patching that follows.
+This is still practice work. Attention inspection is descriptive. Residual-stream cache and logit-lens artifacts are descriptive. Patching is causal only for the selected prompt pair, component, position, and metric. No broad mechanism claim is allowed.
+
+Creating this repo is not MI progress. Passing tests is not MI progress. Capability checks are not MI progress. The first actual learning result is the baseline behavior table and the human inspection of activations, attention patterns, and patching that follows.

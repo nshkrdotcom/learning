@@ -21,5 +21,8 @@ First-pass defaults:
 - GPT-2 small before Pythia-410M.
 - Selected layers before all layers.
 - Final token position before all positions.
+- Selected attention patterns before broad attention sweeps.
 - Initial prompt sets before full prompt sets.
 - Script artifacts before notebook inspection.
+
+Attention pattern CSVs are small for GPT-2 small selected-layer runs, but they should stay scoped to the current prompt set and selected layers. Do not cache every attention pattern for every layer and prompt by default.

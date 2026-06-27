@@ -47,3 +47,24 @@ def plot_patching_heatmap(heatmap_df: Any, path: Path) -> None:
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
+
+
+def plot_attention_induction_scores(df: Any, path: Path, top_k: int = 20) -> None:
+    grouped = (
+        df.groupby(["layer", "head"], as_index=False)
+        .agg(mean_attention=("attention_to_previous_occurrence", "mean"))
+        .sort_values("mean_attention", ascending=False)
+        .head(top_k)
+    )
+    labels = [f"L{int(row.layer)}H{int(row.head)}" for row in grouped.itertuples()]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.bar(labels, grouped["mean_attention"], color="#0b6e4f")
+    ax.set_xlabel("Head")
+    ax.set_ylabel("Mean attention to previous occurrence")
+    ax.set_title("Induction-like attention pattern candidates")
+    ax.set_ylim(0, max(1.0, float(grouped["mean_attention"].max()) * 1.1) if not grouped.empty else 1.0)
+    ax.tick_params(axis="x", rotation=45)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)

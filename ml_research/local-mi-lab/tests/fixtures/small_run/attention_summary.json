@@ -1,0 +1,20 @@
+{
+  "model": "gpt2-small",
+  "n_examples": 2,
+  "layers": [0, 2],
+  "n_rows": 48,
+  "mean_attention_to_previous_occurrence": 0.2,
+  "median_attention_to_previous_occurrence": 0.1,
+  "top_heads_by_previous_occurrence_attention": [
+    {
+      "layer": 2,
+      "head": 3,
+      "mean_attention_to_previous_occurrence": 0.8,
+      "median_attention_to_previous_occurrence": 0.75,
+      "mean_attention_entropy": 0.9,
+      "n_examples": 2
+    }
+  ],
+  "interpretation_note": "High scores are induction-like attention pattern candidates, not identified induction heads.",
+  "limitation": "Attention-pattern evidence is descriptive. It can suggest where to inspect, but it is not causal evidence by itself."
+}

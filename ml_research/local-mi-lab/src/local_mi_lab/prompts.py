@@ -15,6 +15,12 @@ PROMPT_COLUMNS = [
     "expected_next_token",
     "control_prompt",
     "notes",
+    "prompt_tokens_text",
+    "sequence_tokens",
+    "repeated_prefix_length",
+    "target_position_label",
+    "expected_source_token",
+    "expected_source_position_hint",
 ]
 
 BASE_SEQUENCES: tuple[tuple[str, ...], ...] = (
@@ -50,6 +56,7 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
         prompt_tokens = [*sequence, *sequence[:-1]]
         control_tokens = [*sequence, *sequence[:-2], _distractor_for(sequence)]
         expected = f" {sequence[-1]}"
+        expected_source_position = len(sequence) - 2
         records.append(
             PromptRecord(
                 example_id=f"induction_{i:04d}",
@@ -58,6 +65,12 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
                 expected_next_token=expected,
                 control_prompt=" ".join(control_tokens),
                 notes="Repeated-token induction practice prompt with a simple nonmatching control.",
+                prompt_tokens_text=list(prompt_tokens),
+                sequence_tokens=list(sequence),
+                repeated_prefix_length=len(sequence) - 1,
+                target_position_label="final",
+                expected_source_token=sequence[expected_source_position],
+                expected_source_position_hint=expected_source_position,
             )
         )
     return records
@@ -111,7 +124,7 @@ def write_prompts_csv(records: list[PromptRecord], path: str | Path) -> None:
         writer = csv.DictWriter(f, fieldnames=PROMPT_COLUMNS)
         writer.writeheader()
         for record in records:
-            writer.writerow(record.to_dict())
+            writer.writerow(record.to_csv_dict())
 
 
 def read_prompts_csv(path: str | Path) -> list[PromptRecord]:
