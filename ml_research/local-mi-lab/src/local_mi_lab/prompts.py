@@ -25,6 +25,10 @@ PROMPT_COLUMNS = [
     "is_positive_induction_example",
     "control_family",
     "should_show_induction_behavior",
+    "base_sequence_id",
+    "family_index",
+    "true_expected_next_token",
+    "paired_positive_example_id",
 ]
 
 CONTROL_FAMILIES = [
@@ -88,6 +92,10 @@ def generate_induction_prompts(n_examples: int, seed: int = 0) -> list[PromptRec
                 is_positive_induction_example=True,
                 control_family="",
                 should_show_induction_behavior=True,
+                base_sequence_id=f"induction_sequence_{i:04d}",
+                family_index=i,
+                true_expected_next_token=expected,
+                paired_positive_example_id=f"induction_{i:04d}",
             )
         )
     return records
@@ -126,6 +134,7 @@ def generate_text_prompts() -> list[PromptRecord]:
             notes="Human-readable factual next-token prompt for tokenizer inspection.",
             is_positive_induction_example=False,
             should_show_induction_behavior=False,
+            true_expected_next_token=" Paris",
         ),
         PromptRecord(
             example_id="text_0001",
@@ -137,6 +146,7 @@ def generate_text_prompts() -> list[PromptRecord]:
             notes="Human-readable continuation prompt for tokenizer inspection.",
             is_positive_induction_example=False,
             should_show_induction_behavior=False,
+            true_expected_next_token=" little",
         ),
     ]
 
@@ -285,4 +295,8 @@ def _control_record(family: str, sequence: tuple[str, ...], index: int) -> Promp
         is_positive_induction_example=is_positive,
         control_family="" if is_positive else family,
         should_show_induction_behavior=should_show,
+        base_sequence_id=f"base_sequence_{index:04d}",
+        family_index=index,
+        true_expected_next_token=true_expected,
+        paired_positive_example_id=f"positive_repeat_sequence_{index:04d}",
     )

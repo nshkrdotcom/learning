@@ -23,6 +23,10 @@ class PromptRecord:
     is_positive_induction_example: bool = True
     control_family: str = ""
     should_show_induction_behavior: bool = True
+    base_sequence_id: str = ""
+    family_index: int | None = None
+    true_expected_next_token: str = ""
+    paired_positive_example_id: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -35,16 +39,27 @@ class PromptRecord:
 
     @classmethod
     def from_mapping(cls, row: dict[str, Any]) -> PromptRecord:
+        family = str(row.get("family") or "positive_repeat_sequence")
+        sequence_tokens = _parse_string_list(row.get("sequence_tokens"))
+        family_index = _parse_family_index(row)
+        true_expected_next_token = str(
+            row.get("true_expected_next_token")
+            or (f" {sequence_tokens[-1]}" if sequence_tokens else row["expected_next_token"])
+        )
+        paired_positive_example_id = str(
+            row.get("paired_positive_example_id")
+            or _default_paired_positive_example_id(family, family_index, str(row["example_id"]))
+        )
         return cls(
             example_id=str(row["example_id"]),
             task=str(row["task"]),
-            family=str(row.get("family") or "positive_repeat_sequence"),
+            family=family,
             prompt=str(row["prompt"]),
             expected_next_token=str(row["expected_next_token"]),
             control_prompt=str(row["control_prompt"]),
             notes=str(row.get("notes", "")),
             prompt_tokens_text=_parse_string_list(row.get("prompt_tokens_text")),
-            sequence_tokens=_parse_string_list(row.get("sequence_tokens")),
+            sequence_tokens=sequence_tokens,
             repeated_prefix_length=_parse_optional_int(row.get("repeated_prefix_length")),
             target_position_label=str(row.get("target_position_label") or ""),
             expected_source_token=str(row.get("expected_source_token") or ""),
@@ -58,6 +73,10 @@ class PromptRecord:
             should_show_induction_behavior=_parse_bool(
                 row.get("should_show_induction_behavior", True)
             ),
+            base_sequence_id=str(row.get("base_sequence_id") or _default_base_sequence_id(family_index)),
+            family_index=family_index,
+            true_expected_next_token=true_expected_next_token,
+            paired_positive_example_id=paired_positive_example_id,
         )
 
 
@@ -89,3 +108,26 @@ def _parse_bool(value: Any) -> bool:
     if normalized in {"false", "0", "no"}:
         return False
     raise ValueError(f"Expected boolean value, got {value!r}")
+
+
+def _parse_family_index(row: dict[str, Any]) -> int | None:
+    parsed = _parse_optional_int(row.get("family_index"))
+    if parsed is not None:
+        return parsed
+    example_id = str(row.get("example_id") or "")
+    suffix = example_id.rsplit("_", maxsplit=1)[-1]
+    return int(suffix) if suffix.isdigit() else None
+
+
+def _default_base_sequence_id(family_index: int | None) -> str:
+    return f"base_sequence_{family_index:04d}" if family_index is not None else ""
+
+
+def _default_paired_positive_example_id(
+    family: str,
+    family_index: int | None,
+    example_id: str,
+) -> str:
+    if family_index is None:
+        return example_id if family == "positive_repeat_sequence" else ""
+    return f"positive_repeat_sequence_{family_index:04d}"

@@ -128,3 +128,51 @@ def plot_attention_by_family(by_family_df: Any, path: Path, top_k: int = 8) -> N
     fig.tight_layout()
     fig.savefig(path, dpi=160)
     plt.close(fig)
+
+
+def plot_controlled_patching_by_family(by_family_df: Any, path: Path) -> None:
+    if by_family_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "No controlled patching rows", ha="center", va="center")
+        ax.axis("off")
+        fig.tight_layout()
+        fig.savefig(path, dpi=160)
+        plt.close(fig)
+        return
+    summary = (
+        by_family_df.groupby("family", as_index=False)
+        .agg(mean_effect_size=("mean_effect_size", "mean"))
+        .sort_values("mean_effect_size", ascending=False)
+    )
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(summary["family"], summary["mean_effect_size"], color="#0b6e4f")
+    ax.axhline(0, color="black", linewidth=1)
+    ax.set_ylabel("Mean effect size")
+    ax.set_title("Controlled patching mean effect by family")
+    ax.tick_params(axis="x", rotation=35)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)
+
+
+def plot_controlled_patching_candidate_gap(by_candidate_df: Any, path: Path) -> None:
+    if by_candidate_df.empty:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "No candidate summary rows", ha="center", va="center")
+        ax.axis("off")
+        fig.tight_layout()
+        fig.savefig(path, dpi=160)
+        plt.close(fig)
+        return
+    top = by_candidate_df.head(20)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(top["candidate_id"], top["positive_minus_control_effect_gap"], color="#8f2d56")
+    ax.axhline(0, color="black", linewidth=1)
+    ax.set_ylabel("Positive-minus-control effect gap")
+    ax.set_title("Controlled patching candidate gaps")
+    ax.tick_params(axis="x", rotation=45)
+    ax.grid(axis="y", alpha=0.25)
+    fig.tight_layout()
+    fig.savefig(path, dpi=160)
+    plt.close(fig)

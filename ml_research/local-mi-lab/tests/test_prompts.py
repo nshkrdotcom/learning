@@ -108,3 +108,14 @@ def test_control_metadata_survives_csv_roundtrip(tmp_path) -> None:
     write_prompts_csv(records, path)
     loaded = read_prompts_csv(path)
     assert [record.to_dict() for record in loaded] == [record.to_dict() for record in records]
+
+
+def test_control_prompts_include_pairing_metadata() -> None:
+    records = generate_induction_control_prompts(n_examples_per_family=2, seed=0)
+    for record in records:
+        assert record.base_sequence_id
+        assert record.family_index is not None
+        assert record.true_expected_next_token == f" {record.sequence_tokens[-1]}"
+        assert record.paired_positive_example_id == (
+            f"positive_repeat_sequence_{record.family_index:04d}"
+        )
