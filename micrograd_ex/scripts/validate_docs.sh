@@ -9,6 +9,7 @@ test -f guides/api_reference.md
 test -f guides/troubleshooting.md
 
 grep -q "notebooks/micrograd_demo.livemd" README.md
+grep -q "notebooks/micrograd_extras.livemd" README.md
 grep -q "337" README.md
 grep -q "zero_grad" README.md
 grep -q "Value.backward" guides/elixir_design_notes.md

@@ -27,6 +27,8 @@ MicrogradEx is scalar educational autodiff. It is intentionally much slower than
 * reduce `steps`;
 * increase decision-boundary `h`.
 
+In `notebooks/micrograd_extras.livemd`, prefer `[8, 8, 1]` while experimenting. Move to `[32, 32, 1]` only after the smaller runs behave as expected.
+
 ## The decision boundary is slow
 
 The decision boundary evaluates the trained scalar model at every grid point. Smaller `h` values create many more forward passes.
@@ -36,6 +38,8 @@ Use a coarser grid:
 ```elixir
 PlotData.decision_boundary(model, dataset, h: 0.35)
 ```
+
+Avoid very small `h` values in the extras notebook unless you are ready to wait for many scalar forward passes.
 
 ## Parameter count is not 337
 

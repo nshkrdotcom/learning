@@ -132,3 +132,5 @@ Change one variable at a time:
 * `steps: 50`;
 * `alpha: 0.0`;
 * `h: 0.35` for a faster decision-boundary grid.
+
+For a broader set of experiments, open `notebooks/micrograd_extras.livemd`. It compares datasets, model sizes, regularization, learning-rate schedules, decision-boundary resolution, and a spiral dataset challenge.

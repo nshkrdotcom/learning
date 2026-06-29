@@ -53,6 +53,16 @@ Run the notebook from top to bottom. It will:
 
 The notebook uses `Mix.install/2` for Kino and Vega-Lite. Those visualization packages are not runtime dependencies of the core library.
 
+## Extra experiments
+
+After running the main demo, open:
+
+```text
+notebooks/micrograd_extras.livemd
+```
+
+The extras notebook explores dataset noise, model size, regularization, learning-rate schedules, decision-boundary resolution, and the spiral dataset. It is optional; the main demo remains the official parity path.
+
 ## Quick start: IEx
 
 ```bash
@@ -141,6 +151,7 @@ lib/
 
 notebooks/
   micrograd_demo.livemd
+  micrograd_extras.livemd
 
 guides/
   getting_started_with_livebook.md
