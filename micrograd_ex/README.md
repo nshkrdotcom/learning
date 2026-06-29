@@ -90,6 +90,23 @@ Value.grad(x, gradients)
 
 The gradient is `6.0` because `d(x^2)/dx = 2x`, and `x = 3`.
 
+## Livebook Demo
+
+The main demo is `notebooks/micrograd_demo.livemd`.
+
+It recreates the official micrograd learning workflow in pure Elixir:
+
+* generate a deterministic two-moons dataset;
+* train `MLP.new(2, [16, 16, 1])`;
+* confirm the official `337` parameter count;
+* optimize max-margin loss with L2 regularization;
+* plot loss and accuracy;
+* visualize the learned decision boundary.
+
+Open the notebook in Livebook and run it top-to-bottom. The notebook installs
+Kino and Vega-Lite locally with `Mix.install/2`; those visualization packages
+are not runtime dependencies of the core library.
+
 ## Port Of The Original Scalar Example
 
 The original README contains a deliberately mixed expression that uses
