@@ -13,6 +13,6 @@ runs/*
 !runs/.gitkeep
 reports/*
 !reports/.gitkeep
+!reports/baseline_harness_verification.md
 
 wandb/
-

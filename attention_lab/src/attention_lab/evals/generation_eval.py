@@ -26,6 +26,11 @@ def generate_text(
 ) -> list[str]:
     model.eval()
     start_ids = enc.encode(prompt)
+    if start_ids and max(start_ids) >= model.config.vocab_size:
+        raise ValueError(
+            f"Prompt contains token id {max(start_ids)} but model vocab_size is {model.config.vocab_size}. "
+            "Use a checkpoint/config with the matching tokenizer vocabulary."
+        )
     x = torch.tensor(start_ids, dtype=torch.long, device=device).unsqueeze(0).repeat(num_samples, 1)
     generator_device = device if device.startswith("cuda") else "cpu"
     sample_rng = torch.Generator(device=generator_device)

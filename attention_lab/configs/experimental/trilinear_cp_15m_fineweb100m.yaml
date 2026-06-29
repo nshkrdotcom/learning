@@ -1,3 +1,5 @@
+status: experimental_unimplemented
+
 run:
   name: trilinear_cp_15m_fineweb100m_seed1
   out_dir: runs/trilinear_cp_15m_fineweb100m_seed1
@@ -48,4 +50,3 @@ sample:
   top_k: 50
   temperature: 1.0
   seed: 42
-

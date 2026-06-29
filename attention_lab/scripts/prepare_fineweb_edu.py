@@ -1,5 +1,7 @@
 import argparse
+import os
 from pathlib import Path
+import sys
 
 import numpy as np
 import tiktoken
@@ -89,4 +91,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # Avoid a datasets/pyarrow native-extension finalization crash after successful writes.
+    os._exit(0)

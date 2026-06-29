@@ -13,7 +13,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from attention_lab.evals.generation_eval import generate_text
 from attention_lab.models.gpt import GPT, config_from_dict
-from attention_lab.training.checkpointing import load_checkpoint, save_checkpoint
+from attention_lab.training.checkpointing import load_checkpoint, restore_rng_state, save_checkpoint
 from attention_lab.training.config import load_config, save_config
 from attention_lab.training.data_loader import TokenShardLoader
 from attention_lab.training.environment import environment_text, git_commit_text
@@ -175,16 +175,16 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
     val_loader = TokenShardLoader(data_config["data_root"], B, T, rank, world_size, "val", master_process)
 
     model_config = config_from_dict(config["model"], data_config)
-    model = GPT(model_config)
-    model.to(device)
+    raw_model = GPT(model_config)
+    raw_model.to(device)
     if master_process:
-        print(f"model parameters: {model.num_parameters():,}")
+        print(f"model parameters: {raw_model.num_parameters():,}")
 
+    model: torch.nn.Module = raw_model
     if bool(train_config.get("compile", False)):
-        model = torch.compile(model)
+        model = torch.compile(raw_model)
     if ddp:
         model = DDP(model, device_ids=[int(os.environ["LOCAL_RANK"])])
-    raw_model = model.module if ddp else model
 
     optimizer = build_optimizer(
         raw_model,
@@ -200,6 +200,11 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
         checkpoint = load_checkpoint(resume_path, device=device)
         raw_model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
+        if checkpoint.get("train_loader_state") is not None:
+            train_loader.load_state_dict(checkpoint["train_loader_state"])
+        else:
+            raise ValueError("Checkpoint does not contain train_loader_state; exact resume is not possible.")
+        restore_rng_state(checkpoint)
         start_step = int(checkpoint["step"])
         last_train_loss = checkpoint.get("train_loss")
         if master_process:
@@ -307,6 +312,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                     step,
                     train_loss=last_train_loss,
                     val_loss=val_loss,
+                    train_loader_state=train_loader.state_dict(),
                 )
                 logger.log({"event": "checkpoint", "step": step, "checkpoint": str(checkpoint_path)})
     finally:

@@ -31,7 +31,7 @@ def default_output(checkpoint_path: Path) -> Path:
 
 @torch.no_grad()
 def run_hellaswag(args: argparse.Namespace) -> dict:
-    from hellaswag import iterate_examples, render_example
+    from attention_lab.evals.hellaswag_data import iterate_examples, render_example
 
     device = args.device
     if device == "auto":
