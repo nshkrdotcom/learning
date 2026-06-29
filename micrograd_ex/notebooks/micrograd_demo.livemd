@@ -23,6 +23,7 @@ alias MicrogradEx.Datasets
 alias MicrogradEx.Losses
 alias MicrogradEx.Trainer
 alias MicrogradEx.PlotData
+alias MicrogradEx.Graph
 ```
 
 ## 1. Scalar autodiff warmup
@@ -60,6 +61,26 @@ gradients = Value.backward(y)
   dy_dx: Value.grad(x, gradients),
   x_grad_field: x.grad
 }
+```
+
+## 1b. Inspect the scalar graph
+
+The graph rows show the scalar operations produced by the forward pass. The gradient column comes from the external `Gradients` table returned by `Value.backward/1`.
+
+```elixir
+Graph.nodes(y, gradients)
+|> Kino.DataTable.new()
+```
+
+```elixir
+Graph.edges(y)
+|> Kino.DataTable.new()
+```
+
+The DOT text can be copied into a Graphviz renderer if you want an image. MicrogradEx does not require Graphviz to inspect the graph.
+
+```elixir
+Graph.to_dot(y, gradients)
 ```
 
 ## 2. Make a two-moons dataset
