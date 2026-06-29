@@ -3,7 +3,7 @@ This is a web application written using the Phoenix web framework.
 ## ML Viz Lab Project Notes
 
 - The app lives at `/home/home/p/g/n/learning/ml_viz_lab` inside the parent `learning` git repo.
-- It depends on the sibling local Elixir library `../micrograd_ex`; modify it only when the user explicitly includes it in scope.
+- It depends on the sibling local Elixir library `../../micrograd_ex`. Modify it only when the user explicitly includes it in scope. It's currently using the github source so only change to path for development, if `micrograd_ex` changes, temporarily test it with a `../../micrograd_ex` path ref, then commit and push `../../micrograd_ex`, then switch back to the github ref in our `mix.exs`.
 - Keep subject-specific behavior behind `MlVizLab.Subjects.Adapter`. Micrograd-specific code belongs under `MlVizLab.Subjects.Micrograd`; the LiveView shell and frontend should consume generic `MlVizLab.Trace.*` data so a future subject such as Makemore can be added without rewiring the app.
 - Subjects are registered through `config :ml_viz_lab, :subjects`; do not hardcode `MlVizLab.Subjects.Micrograd` in `MlVizLab.Runs`, `MlVizLab.Subjects`, or `MlVizLabWeb.VizLive`.
 - The primary architecture is live AST execution under `MlVizLab.Execution.*`: configured source is instrumented, evaluated in a runtime process, paused at source spans, and advanced only by backend commands from LiveView.
