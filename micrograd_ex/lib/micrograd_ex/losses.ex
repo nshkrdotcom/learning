@@ -104,7 +104,7 @@ defmodule MicrogradEx.Losses do
       examples
       |> Enum.zip(scores)
       |> Enum.count(fn {{_x, y}, score} ->
-        y > 0.0 == score.data > 0.0
+        (y > 0.0) == (score.data > 0.0)
       end)
       |> Kernel./(length(examples))
 
