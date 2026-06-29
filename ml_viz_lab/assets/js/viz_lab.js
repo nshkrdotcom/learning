@@ -731,9 +731,22 @@ const VizLabHook = {
     const current = this.trace.lesson_id
     this.refs.programSelector.innerHTML = this.renderProgramSelectorHtml(current)
 
+    this.refs.programSelector.querySelectorAll("[data-subject-select]").forEach(select => {
+      select.addEventListener("change", () => {
+        const subject = this.subjects.find(item => item.id === select.value)
+        const lesson = subject?.lessons?.[0]
+        const params = new URLSearchParams(window.location.search)
+        params.set("subject", select.value)
+        if (lesson) params.set("lesson", lesson.id)
+        params.delete("step")
+        window.location.search = params.toString()
+      })
+    })
+
     this.refs.programSelector.querySelectorAll("[data-lesson]").forEach(button => {
       button.addEventListener("click", () => {
         const params = new URLSearchParams(window.location.search)
+        params.set("subject", this.trace.subject_id)
         params.set("lesson", button.dataset.lesson)
         params.delete("step")
         window.location.search = params.toString()
@@ -748,7 +761,17 @@ const VizLabHook = {
       groups.get(lesson.level).push(lesson)
     }
 
-    return Array.from(groups.entries()).map(([level, lessons]) => `
+    const subjectOptions = (this.subjects || []).map(subject => `
+      <option value="${escapeHtml(subject.id)}" ${subject.id === this.trace?.subject_id ? "selected" : ""}>
+        ${escapeHtml(subject.title)}
+      </option>
+    `).join("")
+
+    const subjectSelector = subjectOptions
+      ? `<label class="subject-select"><span>Subject</span><select data-subject-select>${subjectOptions}</select></label>`
+      : ""
+
+    return subjectSelector + Array.from(groups.entries()).map(([level, lessons]) => `
       <section>
         <h3>${escapeHtml(level)}</h3>
         ${lessons.map(lesson => `
@@ -890,7 +913,7 @@ const VizLabHook = {
   },
 
   updateUrl() {
-    writeStepToUrl(this.trace.lesson_id, this.step)
+    writeStepToUrl(this.trace.lesson_id, this.step, this.trace.subject_id)
   },
 
   currentEvent() {

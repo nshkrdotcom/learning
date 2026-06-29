@@ -13,7 +13,7 @@ function buildSourceLineIndex(events) {
   for (const event of events || []) {
     for (const source of [event.source, event.implementation_source]) {
       if (!source) continue
-      const key = `${source.file}:${source.line}`
+      const key = sourceRefKey(source)
       if (!index.has(key)) index.set(key, event.index)
     }
   }
@@ -21,5 +21,9 @@ function buildSourceLineIndex(events) {
   return index
 }
 
-export {buildSourceLineIndex, parsePayload}
+function sourceRefKey(source) {
+  if (!source) return null
+  return `${source.file}:${source.line_start || source.line}`
+}
 
+export {buildSourceLineIndex, sourceRefKey, parsePayload}

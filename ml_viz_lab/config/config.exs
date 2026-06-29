@@ -10,6 +10,15 @@ import Config
 config :ml_viz_lab,
   generators: [timestamp_type: :utc_datetime]
 
+config :ml_viz_lab, :subjects, [
+  %{
+    id: "micrograd",
+    module: MlVizLab.Subjects.Micrograd,
+    enabled: true,
+    default: true
+  }
+]
+
 # Configure the endpoint
 config :ml_viz_lab, MlVizLabWeb.Endpoint,
   url: [host: "localhost"],

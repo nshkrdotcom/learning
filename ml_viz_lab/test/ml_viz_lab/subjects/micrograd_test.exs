@@ -35,6 +35,19 @@ defmodule MlVizLab.Subjects.MicrogradTest do
     assert node(trace, "x").category == "input"
     assert node(trace, "x").creation_event_index == 0
     assert node(trace, "x").first_backward_event_index == 4
+
+    assert Enum.map(trace.events, & &1.type) --
+             [
+               "leaf_created",
+               "operation_created",
+               "topological_order",
+               "output_gradient_seeded",
+               "gradient_contribution"
+             ] == []
+
+    assert Enum.any?(trace.events, &(&1.provenance[:instrumented] == true))
+    assert Enum.any?(trace.events, &(&1.source.file == "lesson.ex" and &1.source.line > 1))
+    assert Enum.any?(trace.events, &(&1.implementation_source.file == "value.ex"))
   end
 
   test "sum rule and composed chain rule lessons expose expected gradients" do
@@ -59,6 +72,15 @@ defmodule MlVizLab.Subjects.MicrogradTest do
       |> Enum.filter(&(&1.gradient.node_id == node(trace, "x").id))
 
     assert length(repeated_edge_events) >= 4
+
+    assert Enum.all?(repeated_edge_events, fn event ->
+             is_number(event.gradient.upstream) and
+               is_number(event.gradient.local_gradient) and
+               is_number(event.gradient.contribution) and
+               is_number(event.gradient.before) and
+               is_number(event.gradient.after) and
+               event.gradient.edge_id in event.related_edges
+           end)
   end
 
   test "relu lesson records stopped and passing gradients" do
@@ -104,6 +126,7 @@ defmodule MlVizLab.Subjects.MicrogradTest do
     assert_in_delta weight_update.new_data, 1.2, 1.0e-12
     assert bias_update.old_data == 0.0
     assert_in_delta bias_update.new_data, 0.6, 1.0e-12
+    assert Enum.all?(updates, &(&1.provenance[:instrumented] == true))
   end
 
   test "compressed linear training records decreasing loss" do
@@ -111,6 +134,27 @@ defmodule MlVizLab.Subjects.MicrogradTest do
 
     losses = Enum.map(trace.events, & &1.metrics.loss)
     assert List.first(losses) > List.last(losses)
+    assert Enum.all?(trace.events, &(&1.compression.mode == "epoch_summary"))
+    assert Enum.all?(trace.events, &(&1.provenance[:instrumented] == true))
+  end
+
+  test "core lessons emit verified lesson and implementation source spans" do
+    for lesson_id <- ["x_squared", "repeated_parent", "single_neuron", "one_training_step"] do
+      trace = Subjects.generate_trace("micrograd", lesson_id)
+      source_by_id = Map.new(trace.sources, &{&1.id, &1})
+
+      source_lines =
+        trace.events
+        |> Enum.map(& &1.source.line)
+        |> Enum.reject(&is_nil/1)
+
+      assert Enum.uniq(source_lines) != [1]
+
+      for event <- trace.events do
+        assert source_ref_valid?(event.source, source_by_id)
+        assert source_ref_valid?(event.implementation_source, source_by_id)
+      end
+    end
   end
 
   test "run context returns success and error payloads with stable run ids" do

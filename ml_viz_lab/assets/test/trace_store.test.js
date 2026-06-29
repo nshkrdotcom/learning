@@ -1,5 +1,5 @@
 import {describe, expect, test} from "vitest"
-import {buildSourceLineIndex, parsePayload} from "../js/viz/trace_store"
+import {buildSourceLineIndex, sourceRefKey, parsePayload} from "../js/viz/trace_store"
 
 describe("trace store helpers", () => {
   test("parses JSON payloads with fallback", () => {
@@ -18,5 +18,10 @@ describe("trace store helpers", () => {
     expect(index.get("value.ex:10")).toBe(4)
     expect(index.get("value.ex:11")).toBe(5)
   })
-})
 
+  test("source ref keys prefer explicit line starts", () => {
+    expect(sourceRefKey({file: "lesson.ex", line_start: 4, line: 2})).toBe("lesson.ex:4")
+    expect(sourceRefKey({file: "lesson.ex", line: 2})).toBe("lesson.ex:2")
+    expect(sourceRefKey(null)).toBe(null)
+  })
+})

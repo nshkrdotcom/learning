@@ -5,6 +5,9 @@ This is a web application written using the Phoenix web framework.
 - The app lives at `/home/home/p/g/n/learning/ml_viz_lab` inside the parent `learning` git repo.
 - It depends on the sibling local Elixir library `../micrograd_ex`; do not modify `../micrograd_ex` while working on this app unless explicitly asked.
 - Keep subject-specific behavior behind `MlVizLab.Subjects.Adapter`. Micrograd-specific code belongs under `MlVizLab.Subjects.Micrograd`; the LiveView shell and frontend should consume generic `MlVizLab.Trace.*` data so a future subject such as Makemore can be added without rewiring the app.
+- Subjects are registered through `config :ml_viz_lab, :subjects`; do not hardcode `MlVizLab.Subjects.Micrograd` in `MlVizLab.Runs`, `MlVizLab.Subjects`, or `MlVizLabWeb.VizLive`.
+- Core Micrograd lessons use `MlVizLab.Subjects.Micrograd.Runner` with `InstrumentedValue` and `InstrumentedNN`. These wrappers must call real `MicrogradEx` functions and record semantic events through `MlVizLab.Instrumentation.Recorder`.
+- Playback is immutable trace replay. Do not implement browser-controlled raw BEAM stepping for this app; execute once, record semantic events, verify them, then scrub client-side.
 - The current browser experience is intentionally controls-first. Do not add real LLM/API integration unless explicitly requested; the LLM panel is a reserved surface only.
 
 ## Installed Tooling And Dependency Notes
@@ -16,6 +19,7 @@ This is a web application written using the Phoenix web framework.
   - Dev/test packages include `playwright`, `vitest`, and `pngjs`.
 - Playwright Chromium binaries were installed with `npx --prefix assets playwright install chromium`, which places browser binaries in `~/.cache/ms-playwright/`.
 - If browser tests fail on a fresh machine because no browser binary exists, run `npx --prefix assets playwright install chromium`.
+- No additional machine-level tooling was installed for the instrumented-runner phase. The existing Vitest/Playwright/npm setup remains the source of truth.
 
 ## Verification Commands
 
@@ -23,6 +27,30 @@ This is a web application written using the Phoenix web framework.
 - Asset build: `mix assets.build`
 - JS unit tests: `npm test --prefix assets`
 - Browser smoke tests require a running server at `http://localhost:4000`, then run `npm run test:e2e --prefix assets`.
+
+## Architecture Tasks
+
+### Add a Subject
+
+- Implement `MlVizLab.Subjects.Adapter`: metadata, capabilities, lessons, concepts, sources, and `run/2`.
+- Return `%MlVizLab.Trace.Run{}` through `{:ok, trace}` and preserve the `:run_id` passed by `MlVizLab.Runs`.
+- Register the subject in `config :ml_viz_lab, :subjects`.
+- Add tests proving `Subjects.all/0`, `Subjects.default_subject/0`, `Subjects.sources/2`, and `Runs.generate/4` work without Micrograd-specific code.
+
+### Add a Micrograd Lesson
+
+- Add lesson metadata in `MlVizLab.Subjects.Micrograd.lessons/0`.
+- Prefer a fully instrumented clause in `MlVizLab.Subjects.Micrograd.Runner`.
+- Use `InstrumentedValue` for scalar operations and `InstrumentedNN` for model forward/update steps.
+- Give each operation a plausible lesson source token so source spans advance through the generated lesson script.
+- Verify gradients and updates against real `MicrogradEx` execution in `test/ml_viz_lab/subjects/micrograd_test.exs`.
+
+### Verify Trace Authenticity
+
+- Forward events should come from wrapper calls made while the lesson executes.
+- Backward contribution events should replay `MicrogradEx.Gradients.topological_ids/1` and match `MicrogradEx.Value.backward/1`.
+- Source refs must validate against `trace.sources`; implementation refs should point to real `../micrograd_ex/lib/...` files.
+- Numeric values should be asserted in tests; do not move math into frontend JS.
 
 ## Project guidelines
 

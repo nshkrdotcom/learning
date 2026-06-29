@@ -213,6 +213,28 @@ input {
   cursor: pointer;
 }
 
+.subject-select {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subject-select select {
+  width: 100%;
+  border: 1px solid #2a2c3f;
+  border-radius: 6px;
+  background: #191a25;
+  color: #f5f5fb;
+  padding: 7px 8px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .seg,
 .icon-btn {
   min-width: 32px;
