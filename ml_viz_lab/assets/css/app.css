@@ -300,6 +300,25 @@ input {
   font-size: 11px;
 }
 
+.live-controls button:disabled,
+.control-btn:disabled,
+.timeline-scrubber:disabled,
+.speed-control select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.live-error {
+  margin-top: 8px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 6px;
+  background: rgba(127, 29, 29, 0.22);
+  color: #fecaca;
+  padding: 7px;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .live-binding {
   display: grid;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.6fr) minmax(0, 1.5fr);
@@ -484,6 +503,17 @@ input {
 
 .mini-dot.hidden-dot {
   opacity: 0.18;
+}
+
+.live-mini-row {
+  display: block;
+  padding: 6px 8px 0;
+  color: #f5f5fb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .selection-card {

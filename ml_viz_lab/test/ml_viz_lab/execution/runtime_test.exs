@@ -77,4 +77,62 @@ defmodule MlVizLab.Execution.RuntimeTest do
 
     assert_receive {:execution_event, %{type: :stopped, command_id: "stop-1"}}
   end
+
+  test "runtime exceptions become structured error events" do
+    source = """
+    x = 1
+    raise "boom"
+    """
+
+    session_id = "runtime-error-#{System.unique_integer([:positive])}"
+
+    {:ok, runtime_pid} =
+      Runtime.start_link(session_id: session_id, controller_pid: self(), source: source)
+
+    assert_receive {:execution_event, %{type: :runtime_started}}
+    assert_receive {:execution_event, %{type: :paused, span: %{line_start: 1}}}
+    Runtime.continue(runtime_pid, session_id, "cmd-1")
+    assert_receive {:execution_event, %{type: :binding_snapshot}}
+    assert_receive {:execution_event, %{type: :paused, span: %{line_start: 2}}}
+
+    Runtime.continue(runtime_pid, session_id, "cmd-2")
+
+    assert_receive {:execution_event,
+                    %{
+                      type: :error,
+                      session_id: ^session_id,
+                      runtime_pid: ^runtime_pid,
+                      error: %{type: "RuntimeError", message: "boom"}
+                    }}
+  end
+
+  test "runtime pause timeout becomes a structured error event" do
+    previous = Process.flag(:trap_exit, true)
+    session_id = "runtime-timeout-#{System.unique_integer([:positive])}"
+
+    try do
+      {:ok, runtime_pid} =
+        Runtime.start_link(
+          session_id: session_id,
+          controller_pid: self(),
+          source: "x = 1",
+          pause_timeout_ms: 1
+        )
+
+      assert_receive {:execution_event, %{type: :runtime_started}}
+      assert_receive {:execution_event, %{type: :paused}}
+
+      assert_receive {:execution_event,
+                      %{
+                        type: :error,
+                        session_id: ^session_id,
+                        runtime_pid: ^runtime_pid,
+                        error: %{type: "PauseTimeout", message: "runtime pause timed out"}
+                      }}
+
+      assert_receive {:EXIT, ^runtime_pid, :normal}
+    after
+      Process.flag(:trap_exit, previous)
+    end
+  end
 end

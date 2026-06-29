@@ -202,6 +202,19 @@ defmodule MlVizLab.Execution.Session do
     {state, event}
   end
 
+  defp apply_runtime_event(state, %{type: :stopped} = event, _domain_adapter) do
+    event = Event.new(event)
+
+    state =
+      state
+      |> Map.put(:status, :stopped)
+      |> Map.put(:completed_at, DateTime.utc_now())
+      |> Map.put(:updated_at, DateTime.utc_now())
+      |> record_event(event)
+
+    {state, event}
+  end
+
   defp apply_runtime_event(state, %{type: :completed} = event, domain_adapter) do
     domain_snapshot = domain_snapshot(domain_adapter, event.raw_binding)
 

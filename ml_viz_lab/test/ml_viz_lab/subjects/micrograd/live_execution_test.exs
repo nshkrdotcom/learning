@@ -15,10 +15,15 @@ defmodule MlVizLab.Subjects.Micrograd.LiveExecutionTest do
   end
 
   test "domain snapshots derive Micrograd graph from live bindings" do
+    empty = DomainSnapshot.from_binding([])
+    assert empty.phase == "pre_run"
+    assert empty.graph.nodes == []
+
     x = MicrogradEx.Value.new(3.0, label: "x")
     first = DomainSnapshot.from_binding(x: x)
 
     assert first.domain == "micrograd"
+    assert first.phase == "forward"
     assert Enum.any?(first.values, &(&1.name == "x" and &1.data == 3.0))
     assert length(first.graph.nodes) == 1
 
@@ -30,9 +35,12 @@ defmodule MlVizLab.Subjects.Micrograd.LiveExecutionTest do
     assert Enum.any?(second.values, &(&1.name == "y" and &1.data == 9.0))
 
     gradients = MicrogradEx.Value.backward(y)
-    final = DomainSnapshot.from_binding(x: x, y: y, gradients: gradients)
+    final = DomainSnapshot.from_binding(x: x, y: y, viz_value_0: x, gradients: gradients)
 
+    assert final.phase == "backward"
     assert final.gradients[x.id] == 6.0
+    assert final.gradients[y.id] == 1.0
     assert final.active_value_name == "y"
+    refute Enum.any?(final.values, &(&1.name == "viz_value_0"))
   end
 end

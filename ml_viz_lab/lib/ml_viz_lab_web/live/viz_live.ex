@@ -6,6 +6,8 @@ defmodule MlVizLabWeb.VizLive do
   alias MlVizLab.Runs
   alias MlVizLab.Subjects
 
+  require Logger
+
   @impl true
   def mount(_params, _session, socket) do
     subject_id = Subjects.default_subject()
@@ -18,7 +20,16 @@ defmodule MlVizLabWeb.VizLive do
      |> assign(:execution_mode, "replay")
      |> assign(:live_session_id, nil)
      |> assign(:live_session_pid, nil)
+     |> assign(:live_runtime_pid, nil)
      |> assign(:live_status, "idle")
+     |> assign(:live_current_span, nil)
+     |> assign(:live_step_index, 0)
+     |> assign(:live_source, nil)
+     |> assign(:live_bindings, %{})
+     |> assign(:live_domain_snapshot, nil)
+     |> assign(:live_events, [])
+     |> assign(:live_error, nil)
+     |> assign(:live_generation, 0)
      |> assign(:live_state_json, "null")
      |> assign(:live_source_json, "null")
      |> assign(:run_id, nil)
@@ -47,6 +58,8 @@ defmodule MlVizLabWeb.VizLive do
     lesson_id = socket.assigns.lesson_id
     session_id = Controller.new_session_id(subject_id, lesson_id)
 
+    Logger.info("[live] start_live session_id=#{session_id} lesson=#{lesson_id}")
+
     with {:ok, source} <- live_source(subject_id, lesson_id),
          {:ok, domain_adapter} <- live_domain_adapter(subject_id),
          {:ok, session_pid} <-
@@ -63,7 +76,7 @@ defmodule MlVizLabWeb.VizLive do
           type: "session_requested",
           session_id: session_id,
           status: "starting",
-          source: source,
+          source: source_payload(source),
           subject_id: subject_id,
           lesson_id: lesson_id,
           mode: "live_ast"
@@ -73,11 +86,22 @@ defmodule MlVizLabWeb.VizLive do
        socket
        |> assign(:live_session_id, session_id)
        |> assign(:live_session_pid, session_pid)
+       |> assign(:live_runtime_pid, nil)
        |> assign(:live_status, "starting")
+       |> assign(:live_current_span, nil)
+       |> assign(:live_step_index, 0)
+       |> assign(:live_bindings, %{})
+       |> assign(:live_domain_snapshot, nil)
+       |> assign(:live_error, nil)
+       |> assign(:live_events, [])
        |> assign(:live_state_json, Jason.encode!(event))
        |> push_event("execution_event", event)}
     else
       {:error, error} ->
+        Logger.warning(
+          "[live] command_error command=start reason=#{inspect(error)} session_id=#{inspect(session_id)}"
+        )
+
         event =
           normalize_execution_event(%{
             type: "error",
@@ -91,6 +115,7 @@ defmodule MlVizLabWeb.VizLive do
         {:noreply,
          socket
          |> assign(:live_status, "error")
+         |> assign(:live_error, event["error"])
          |> assign(:live_state_json, Jason.encode!(event))
          |> push_event("execution_event", event)}
     end
@@ -109,7 +134,27 @@ defmodule MlVizLabWeb.VizLive do
   end
 
   def handle_event("reset_live", _params, socket) do
-    {:noreply, setup_live(socket, socket.assigns.subject_id, socket.assigns.lesson_id)}
+    if socket.assigns.live_session_pid do
+      _ = Session.stop(socket.assigns.live_session_pid)
+    end
+
+    socket = setup_live(socket, socket.assigns.subject_id, socket.assigns.lesson_id)
+
+    event =
+      normalize_execution_event(%{
+        type: "reset",
+        status: "idle",
+        session_id: nil,
+        subject_id: socket.assigns.subject_id,
+        lesson_id: socket.assigns.lesson_id,
+        source: socket.assigns.live_source,
+        generation: socket.assigns.live_generation
+      })
+
+    {:noreply,
+     socket
+     |> assign(:live_state_json, Jason.encode!(event))
+     |> push_event("execution_event", event)}
   end
 
   @impl true
@@ -117,12 +162,20 @@ defmodule MlVizLabWeb.VizLive do
     if event[:session_id] == socket.assigns.live_session_id do
       normalized = normalize_execution_event(event)
 
+      Logger.info(
+        "[live] runtime_event type=#{normalized["type"]} session_id=#{normalized["session_id"]} runtime_pid=#{inspect(normalized["runtime_pid"])}"
+      )
+
       {:noreply,
        socket
-       |> assign(:live_status, normalized["status"] || normalized["type"])
+       |> apply_live_event_assigns(normalized)
        |> assign(:live_state_json, Jason.encode!(normalized))
        |> push_event("execution_event", normalized)}
     else
+      Logger.warning(
+        "[live] stale_event ignored event_session=#{inspect(event[:session_id])} current_session=#{inspect(socket.assigns.live_session_id)}"
+      )
+
       {:noreply, socket}
     end
   end
@@ -199,13 +252,20 @@ defmodule MlVizLabWeb.VizLive do
             </div>
           </header>
           <div id="source-tabs" class="source-tabs"></div>
-          <div class="code-wrap">
-            <div id="code-editor" class="code-editor"></div>
-            <aside id="variable-inspector" class="variable-inspector"></aside>
+          <div class="code-wrap" data-testid="code-panel">
+            <div
+              id="code-editor"
+              class="code-editor"
+              data-testid="code-editor"
+              phx-update="ignore"
+            >
+            </div>
+            <aside id="variable-inspector" class="variable-inspector" data-testid="bindings-panel">
+            </aside>
           </div>
         </section>
 
-        <section class="panel graph-panel">
+        <section class="panel graph-panel" data-testid="graph-panel">
           <header class="panel-header graph-header">
             <div>
               <p id="phase-label" class="panel-kicker">Initialization</p>
@@ -246,14 +306,14 @@ defmodule MlVizLabWeb.VizLive do
               <button type="button" class="icon-btn" data-reset-camera title="Reset camera">[]</button>
             </div>
           </header>
-          <div class="graph-canvas-wrap">
+          <div class="graph-canvas-wrap" id="graph-canvas-wrap" phx-update="ignore">
             <canvas id="graph-canvas"></canvas>
-            <div id="graph-minimap" class="graph-minimap"></div>
+            <div id="graph-minimap" class="graph-minimap" data-testid="graph-summary"></div>
             <div id="selection-card" class="selection-card is-empty"></div>
           </div>
         </section>
 
-        <section class="panel teaching-panel">
+        <section class="panel teaching-panel" data-testid="teaching-panel">
           <header class="panel-header">
             <div>
               <p class="panel-kicker">Lesson</p>
@@ -268,13 +328,13 @@ defmodule MlVizLabWeb.VizLive do
             </div>
             <dl>
               <div>
-                <dt>status</dt><dd id="live-status">idle</dd>
+                <dt>status</dt><dd id="live-status" data-testid="live-status">idle</dd>
               </div>
               <div>
-                <dt>session</dt><dd id="live-session">-</dd>
+                <dt>session</dt><dd id="live-session" data-testid="session-id">-</dd>
               </div>
               <div>
-                <dt>pid</dt><dd id="live-pid">-</dd>
+                <dt>pid</dt><dd id="live-pid" data-testid="runtime-pid">-</dd>
               </div>
               <div>
                 <dt>span</dt><dd id="live-span">-</dd>
@@ -286,12 +346,37 @@ defmodule MlVizLabWeb.VizLive do
                 <dt>last</dt><dd id="live-command">-</dd>
               </div>
             </dl>
+            <div id="live-error" class="live-error" data-testid="live-error" hidden></div>
             <div class="live-controls">
-              <button type="button" data-live-action="start">Start live</button>
-              <button type="button" data-live-action="step">Next</button>
-              <button type="button" data-live-action="continue">Continue</button>
-              <button type="button" data-live-action="stop">Stop</button>
-              <button type="button" data-live-action="reset">Reset</button>
+              <button
+                type="button"
+                data-live-action="start"
+                data-testid="live-start"
+                aria-label="Start live execution"
+              >Start live</button>
+              <button
+                type="button"
+                data-live-action="step"
+                data-testid="live-step"
+                aria-label="Step live execution"
+              >Next</button>
+              <button
+                type="button"
+                data-live-action="continue"
+                data-testid="live-continue"
+                aria-label="Continue live execution"
+              >Continue</button>
+              <button
+                type="button"
+                data-live-action="stop"
+                data-testid="live-stop"
+                aria-label="Stop live execution"
+              >Stop</button>
+              <button
+                type="button"
+                data-live-action="reset"
+                aria-label="Reset live execution"
+              >Reset</button>
             </div>
           </div>
           <div id="progress-strip" class="progress-strip"></div>
@@ -315,7 +400,14 @@ defmodule MlVizLabWeb.VizLive do
           <button type="button" class="control-btn" data-action="start" title="Start">|&lt;</button>
           <button type="button" class="control-btn" data-action="back10" title="Back 10">&lt;&lt;</button>
           <button type="button" class="control-btn" data-action="back1" title="Back 1">&lt;</button>
-          <button type="button" class="control-btn primary" data-action="toggle" title="Play">Play</button>
+          <button
+            type="button"
+            class="control-btn primary"
+            data-action="toggle"
+            data-testid="cinema-play"
+            title="Play"
+            aria-label="Play or continue"
+          >Play</button>
           <button type="button" class="control-btn" data-action="forward1" title="Forward 1">&gt;</button>
           <button type="button" class="control-btn" data-action="forward10" title="Forward 10">&gt;&gt;</button>
           <button type="button" class="control-btn" data-action="end" title="End">&gt;|</button>
@@ -356,7 +448,16 @@ defmodule MlVizLabWeb.VizLive do
       |> assign(:execution_mode, "replay")
       |> assign(:live_session_id, nil)
       |> assign(:live_session_pid, nil)
+      |> assign(:live_runtime_pid, nil)
       |> assign(:live_status, "idle")
+      |> assign(:live_current_span, nil)
+      |> assign(:live_step_index, 0)
+      |> assign(:live_source, nil)
+      |> assign(:live_bindings, %{})
+      |> assign(:live_domain_snapshot, nil)
+      |> assign(:live_events, [])
+      |> assign(:live_error, nil)
+      |> assign(:live_generation, socket.assigns[:live_generation] || 0)
       |> assign(:live_state_json, "null")
       |> assign(:live_source_json, "null")
       |> assign(:run_id, run_id)
@@ -374,6 +475,8 @@ defmodule MlVizLabWeb.VizLive do
   end
 
   defp setup_live(socket, subject_id, lesson_id) do
+    Logger.info("[live] setup_live subject=#{subject_id} lesson=#{lesson_id}")
+
     lessons = Subjects.lessons(subject_id)
 
     source =
@@ -382,6 +485,9 @@ defmodule MlVizLabWeb.VizLive do
         {:error, _error} -> ""
       end
 
+    source_payload = source_payload(source)
+    generation = (socket.assigns[:live_generation] || 0) + 1
+
     socket
     |> assign(:page_title, "ML Viz Lab")
     |> assign(:subject_id, subject_id)
@@ -389,12 +495,18 @@ defmodule MlVizLabWeb.VizLive do
     |> assign(:execution_mode, "live")
     |> assign(:live_session_id, nil)
     |> assign(:live_session_pid, nil)
+    |> assign(:live_runtime_pid, nil)
     |> assign(:live_status, "idle")
+    |> assign(:live_current_span, nil)
+    |> assign(:live_step_index, 0)
+    |> assign(:live_source, source_payload)
+    |> assign(:live_bindings, %{})
+    |> assign(:live_domain_snapshot, nil)
+    |> assign(:live_events, [])
+    |> assign(:live_error, nil)
+    |> assign(:live_generation, generation)
     |> assign(:live_state_json, "null")
-    |> assign(
-      :live_source_json,
-      Jason.encode!(%{file: "lesson.ex", title: "lesson.ex", source: source})
-    )
+    |> assign(:live_source_json, Jason.encode!(source_payload))
     |> assign(:run_id, nil)
     |> assign(:run_status, "idle")
     |> assign(:trace, nil)
@@ -406,6 +518,10 @@ defmodule MlVizLabWeb.VizLive do
   defp command_live(socket, command) do
     session = socket.assigns.live_session_pid
 
+    Logger.info(
+      "[live] command command=#{command} session_id=#{inspect(socket.assigns.live_session_id)} pid=#{inspect(session)} status=#{inspect(socket.assigns.live_status)}"
+    )
+
     result =
       cond do
         is_nil(session) -> {:error, :no_live_session}
@@ -414,23 +530,64 @@ defmodule MlVizLabWeb.VizLive do
         command == :stop -> Session.stop(session)
       end
 
-    status = if match?(:ok, result), do: "command_sent", else: "error"
+    event =
+      case result do
+        :ok ->
+          %{
+            type: "command_sent",
+            status: "command_sent",
+            command: Atom.to_string(command),
+            session_id: socket.assigns.live_session_id,
+            subject_id: socket.assigns.subject_id,
+            lesson_id: socket.assigns.lesson_id,
+            error: nil
+          }
 
-    event = %{
-      type: "command_sent",
-      status: status,
-      command: Atom.to_string(command),
-      session_id: socket.assigns.live_session_id,
-      subject_id: socket.assigns.subject_id,
-      lesson_id: socket.assigns.lesson_id,
-      error: if(match?(:ok, result), do: nil, else: normalize_error(result))
-    }
+        {:error, reason} ->
+          Logger.warning(
+            "[live] command_error command=#{command} reason=#{inspect(reason)} session_id=#{inspect(socket.assigns.live_session_id)}"
+          )
+
+          command_error_event(socket, command, reason)
+      end
 
     event = normalize_execution_event(event)
+
+    socket =
+      if event["type"] == "command_error" do
+        socket
+        |> assign(:live_error, event["error"])
+        |> assign(:live_status, event["status"] || socket.assigns.live_status)
+      else
+        socket
+      end
 
     socket
     |> assign(:live_state_json, Jason.encode!(event))
     |> push_event("execution_event", event)
+  end
+
+  defp command_error_event(socket, command, reason) do
+    message =
+      case {command, reason} do
+        {:continue, :no_live_session} -> "Start live execution before continuing."
+        {:step, :no_live_session} -> "Start live execution before stepping."
+        {:stop, :no_live_session} -> "Start live execution before stopping."
+        {_command, :not_paused} -> "Live execution must be paused before this command."
+        {_command, reason} -> "Live command failed: #{inspect(reason)}"
+      end
+
+    %{
+      type: "command_error",
+      status: socket.assigns.live_status || "idle",
+      command: Atom.to_string(command),
+      reason: Atom.to_string(reason),
+      message: message,
+      session_id: socket.assigns.live_session_id,
+      subject_id: socket.assigns.subject_id,
+      lesson_id: socket.assigns.lesson_id,
+      error: %{type: "CommandError", message: message}
+    }
   end
 
   defp default_lesson_id(subject_id) do
@@ -471,6 +628,33 @@ defmodule MlVizLabWeb.VizLive do
     |> Jason.decode!()
   end
 
+  defp apply_live_event_assigns(socket, normalized) do
+    socket
+    |> assign(:live_status, normalized["status"] || normalized["type"])
+    |> assign(:live_runtime_pid, normalized["runtime_pid"] || socket.assigns.live_runtime_pid)
+    |> assign(:live_current_span, normalized["span"] || socket.assigns.live_current_span)
+    |> assign(:live_step_index, normalized["current_step"] || socket.assigns.live_step_index)
+    |> assign(:live_bindings, normalized["bindings"] || socket.assigns.live_bindings)
+    |> assign(
+      :live_domain_snapshot,
+      normalized["domain_snapshot"] || socket.assigns.live_domain_snapshot
+    )
+    |> assign(:live_error, normalized["error"])
+    |> assign(:live_events, [normalized | socket.assigns.live_events] |> Enum.take(200))
+  end
+
+  defp source_payload(source) do
+    %{
+      id: "lesson.ex",
+      file: "lesson.ex",
+      title: "lesson.ex",
+      source: source || "",
+      language: "elixir"
+    }
+  end
+
+  defp stringify_execution_values(nil), do: nil
+  defp stringify_execution_values(value) when is_boolean(value), do: value
   defp stringify_execution_values(%DateTime{} = value), do: DateTime.to_iso8601(value)
 
   defp stringify_execution_values(%_module{} = value),

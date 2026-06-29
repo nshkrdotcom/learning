@@ -9,7 +9,19 @@ import {clamp, escapeHtml, formatNumber, titleCase} from "./viz/format"
 import {initialPlayback, nextLoopStep, playbackReducer} from "./viz/playback"
 import {readStepFromUrl, writeStepToUrl} from "./viz/url_state"
 import {buildSourceLineIndex, parsePayload} from "./viz/trace_store"
-import {bindingRows, initialLiveState, reduceExecutionEvent} from "./viz/live_state"
+import {
+  bindingRows,
+  canSendLiveAction,
+  initialLiveState,
+  normalizeSource,
+  reduceExecutionEvent,
+} from "./viz/live_state"
+
+function liveDebug(...args) {
+  if (window.VIZ_LIVE_DEBUG === true) {
+    console.debug("[ml-viz-live]", ...args)
+  }
+}
 
 const activeLineEffect = StateEffect.define()
 
@@ -48,6 +60,13 @@ const VizLabHook = {
     this.speed = 1
     this.timer = null
     this.codeMode = "lesson"
+    this.code = {
+      activeSourceId: null,
+      activeLineStart: null,
+      activeLineEnd: null,
+      lastKnownGoodSource: normalizeSource(parsePayload(this.el.dataset.liveSource, null)),
+      error: null,
+    }
     this.viewMode = "execution"
     this.showLabels = true
     this.showLocalDerivatives = true
@@ -85,7 +104,14 @@ const VizLabHook = {
       liveSpan: this.el.querySelector("#live-span"),
       liveStep: this.el.querySelector("#live-step"),
       liveCommand: this.el.querySelector("#live-command"),
+      liveError: this.el.querySelector("#live-error"),
     }
+
+    liveDebug("hook mounted", {
+      executionMode: this.executionMode,
+      source: this.live.source,
+      status: this.live.status,
+    })
 
     this.handleEvent("trace_ready", payload => {
       this.executionMode = "replay"
@@ -94,7 +120,10 @@ const VizLabHook = {
       this.loadTrace(payload.trace)
     })
 
-    this.handleEvent("execution_event", payload => this.applyExecutionEvent(payload))
+    this.handleEvent("execution_event", payload => {
+      liveDebug("LiveView event received", payload)
+      this.applyExecutionEvent(payload)
+    })
 
     const initialTrace = parsePayload(this.el.dataset.trace, null)
     if (initialTrace && initialTrace.events && initialTrace.events.length > 0) {
@@ -159,6 +188,7 @@ const VizLabHook = {
   },
 
   renderLiveIdle() {
+    liveDebug("render live idle", this.live)
     this.stop()
     this.disposeGraph()
     if (!this.controlsBound) {
@@ -179,6 +209,7 @@ const VizLabHook = {
     this.renderLiveCode()
     this.renderLiveBindings()
     this.renderLiveGraph()
+    this.renderLiveTeaching()
   },
 
   disposeGraph() {
@@ -397,13 +428,18 @@ const VizLabHook = {
       if (event.target.matches("input, textarea, select")) return
       if (event.key === " ") {
         event.preventDefault()
-        this.toggle()
+        if (this.executionMode === "live") this.handleAction("toggle")
+        else this.toggle()
       } else if (event.key === "ArrowRight") {
         event.preventDefault()
-        this.setStep(this.step + (event.shiftKey ? 10 : 1), true)
+        if (this.executionMode === "live") {
+          if (!event.shiftKey) this.handleLiveAction("step")
+        } else {
+          this.setStep(this.step + (event.shiftKey ? 10 : 1), true)
+        }
       } else if (event.key === "ArrowLeft") {
         event.preventDefault()
-        this.setStep(this.step - (event.shiftKey ? 10 : 1), true)
+        if (this.executionMode !== "live") this.setStep(this.step - (event.shiftKey ? 10 : 1), true)
       } else if (event.key === "Home") {
         event.preventDefault()
         if (this.executionMode === "live") this.handleLiveAction("start")
@@ -424,7 +460,7 @@ const VizLabHook = {
     if (this.executionMode === "live") {
       switch (action) {
         case "start": return this.handleLiveAction("start")
-        case "toggle": return this.handleLiveAction("continue")
+        case "toggle": return this.handleLiveToggle()
         case "forward1": return this.handleLiveAction("step")
         case "end": return this.handleLiveAction("stop")
         default: return
@@ -446,6 +482,12 @@ const VizLabHook = {
   },
 
   handleLiveAction(action) {
+    if (!canSendLiveAction(this.live, action)) {
+      liveDebug("blocked live action", {action, live: this.live})
+      this.renderLiveStatus()
+      return
+    }
+
     const eventName = {
       start: "start_live",
       step: "step_live",
@@ -455,14 +497,24 @@ const VizLabHook = {
     }[action]
 
     if (!eventName) return
+    liveDebug("live action sent", {action, eventName, sessionId: this.live.sessionId})
     this.live = {...this.live, lastCommand: action, status: action === "start" ? "starting" : "command_sent"}
     this.renderLiveStatus()
+    this.updateLiveControlState()
     this.pushEvent(eventName, {})
+  },
+
+  handleLiveToggle() {
+    if (canSendLiveAction(this.live, "continue")) return this.handleLiveAction("continue")
+    if (canSendLiveAction(this.live, "start")) return this.handleLiveAction("start")
+    if (canSendLiveAction(this.live, "stop") && this.live.status === "running") return this.handleLiveAction("stop")
+    this.renderLiveStatus()
   },
 
   applyExecutionEvent(payload) {
     this.executionMode = "live"
     this.live = reduceExecutionEvent(this.live, payload)
+    if (this.live.source) this.code.lastKnownGoodSource = this.live.source
     this.currentSubjectId = payload.subject_id || this.currentSubjectId
     this.currentLessonId = payload.lesson_id || this.currentLessonId
 
@@ -476,6 +528,7 @@ const VizLabHook = {
     this.renderLiveBindings()
     this.renderLiveGraph()
     this.renderLiveTeaching(payload)
+    this.updateLiveControlState()
   },
 
   toggleLoopPhase() {
@@ -1033,25 +1086,44 @@ const VizLabHook = {
     this.refs.liveStep.textContent = String(this.live.currentStep || 0)
     this.refs.liveCommand.textContent = this.live.lastCommand || "-"
     this.refs.stepCounter.textContent = `Live step ${this.live.currentStep || 0}`
+    if (this.refs.liveError) {
+      const message = this.live.error?.message || ""
+      this.refs.liveError.hidden = !message
+      this.refs.liveError.textContent = message
+    }
+    this.updateLiveControlState()
   },
 
   renderLiveCode() {
-    const source = this.live.source || parsePayload(this.el.dataset.liveSource, null)
+    const source = normalizeSource(this.live.source) ||
+      normalizeSource(parsePayload(this.el.dataset.liveSource, null)) ||
+      this.preserveLastKnownSource()
+
     if (!source) {
-      this.refs.codeTitle.textContent = "lesson.ex"
-      this.refs.sourceTabs.innerHTML = ""
-      this.refs.codeEditor.innerHTML = `<div class="loading-panel">Live source unavailable for this lesson.</div>`
+      this.renderCodeError({message: "Live source unavailable for this lesson."})
       return
     }
 
-    const line = this.live.span?.line_start || this.live.span?.line || 1
-    if (this.activeFile !== "live:lesson.ex" || !this.editor) {
-      this.activeFile = "live:lesson.ex"
+    this.setCodeSource(source)
+    this.setActiveSpan(this.live.span)
+  },
+
+  ensureCodeEditor(source = this.code.lastKnownGoodSource) {
+    const normalized = normalizeSource(source)
+    if (!normalized) return null
+
+    const sourceId = `live:${normalized.id || normalized.file || "lesson.ex"}`
+    const editorDetached = this.editor && this.editor.dom.parentNode !== this.refs.codeEditor
+    const sourceChanged = this.activeFile !== sourceId ||
+      this.editor?.state?.doc?.toString() !== normalized.source
+
+    if (!this.editor || editorDetached || sourceChanged) {
       if (this.editor) this.editor.destroy()
-      this.refs.sourceTabs.innerHTML = `<button type="button" class="source-tab active">lesson.ex</button>`
+      this.refs.codeEditor.innerHTML = ""
+      this.activeFile = sourceId
       this.editor = new EditorView({
         state: EditorState.create({
-          doc: source.source,
+          doc: normalized.source,
           extensions: [
             lineNumbers(),
             elixir(),
@@ -1067,12 +1139,55 @@ const VizLabHook = {
         }),
         parent: this.refs.codeEditor,
       })
+      liveDebug("CodeMirror source set", {sourceId, length: normalized.source.length})
+    }
+
+    return this.editor
+  },
+
+  setCodeSource(sourcePayload) {
+    const source = normalizeSource(sourcePayload)
+    if (!source) {
+      this.renderCodeError({message: "Malformed live source payload."})
+      return
+    }
+
+    this.code.lastKnownGoodSource = source
+    this.code.error = null
+    this.refs.codeTitle.textContent = source.title || "lesson.ex"
+    this.refs.sourceTabs.innerHTML = `<button type="button" class="source-tab active">${escapeHtml(source.title || "lesson.ex")}</button>`
+    this.ensureCodeEditor(source)
+  },
+
+  setActiveSpan(span) {
+    const editor = this.ensureCodeEditor()
+    if (!editor) return
+
+    const line = span?.line_start || span?.line || 1
+    this.code.activeLineStart = line
+    this.code.activeLineEnd = span?.line_end || line
+    editor.dispatch({effects: activeLineEffect.of(line)})
+    const codeLine = editor.state.doc.line(Math.min(line, editor.state.doc.lines))
+    editor.dispatch({selection: {anchor: codeLine.from}, scrollIntoView: true})
+  },
+
+  renderCodeError(error) {
+    this.code.error = error
+    const source = this.preserveLastKnownSource()
+    if (source) {
+      this.setCodeSource(source)
+      this.setActiveSpan(this.live.span)
+      liveDebug("source preservation on error", error)
+      return
     }
 
     this.refs.codeTitle.textContent = "lesson.ex"
-    this.editor.dispatch({effects: activeLineEffect.of(line)})
-    const codeLine = this.editor.state.doc.line(Math.min(line, this.editor.state.doc.lines))
-    this.editor.dispatch({selection: {anchor: codeLine.from}, scrollIntoView: true})
+    this.refs.sourceTabs.innerHTML = ""
+    this.refs.codeEditor.innerHTML = `<div class="loading-panel">${escapeHtml(error?.message || "Live source unavailable.")}</div>`
+  },
+
+  preserveLastKnownSource() {
+    return normalizeSource(this.code.lastKnownGoodSource)
   },
 
   renderLiveBindings() {
@@ -1089,13 +1204,22 @@ const VizLabHook = {
 
   renderLiveTeaching(event = {}) {
     const span = this.live.span
-    this.refs.lessonTitle.textContent = "x_squared live"
+    const phase = this.live.domainSnapshot?.phase || livePhase(this.live)
+    const focused = this.live.domainSnapshot?.active_value_name || this.live.domainSnapshot?.activeNodeId
+    this.refs.lessonTitle.textContent = `${this.currentLessonId} live`
     this.refs.lessonCard.innerHTML = `
       <div class="lesson-card-header">
         <span>${escapeHtml(this.live.status || "idle")}</span>
         <strong>${escapeHtml(event.type || "Live AST execution")}</strong>
       </div>
-      <p class="lesson-copy">${span ? `Paused at ${escapeHtml(span.file || "lesson.ex")}:${span.line_start || span.line || 1}. Backend state changed only after a live event arrived.` : "Start live execution to create a backend session."}</p>
+      <dl class="fact-grid">
+        <div><dt>mode</dt><dd>live</dd></div>
+        <div><dt>step</dt><dd>${escapeHtml(String(this.live.currentStep || 0))}</dd></div>
+        <div><dt>phase</dt><dd>${escapeHtml(phase)}</dd></div>
+        <div><dt>focus</dt><dd>${escapeHtml(focused || "-")}</dd></div>
+      </dl>
+      <p class="lesson-copy">${escapeHtml(liveExplanation(this.live, event, this.currentLessonId))}</p>
+      ${span ? `<p class="lesson-copy">Source span: ${escapeHtml(span.file || "lesson.ex")}:${span.line_start || span.line || 1}</p>` : ""}
       ${event.error ? `<p class="lesson-copy">${escapeHtml(event.error.message || String(event.error))}</p>` : ""}
     `
   },
@@ -1121,11 +1245,18 @@ const VizLabHook = {
       ctx.fillStyle = "#8888aa"
       ctx.font = "14px ui-sans-serif, system-ui"
       ctx.fillText("Live graph appears as execution reaches Micrograd values.", 24, 36)
+      this.refs.minimap.innerHTML = `<span class="live-mini-row">No live nodes yet</span>`
       return
     }
 
     const nodes = domain.graph.nodes
     const edges = domain.graph.edges || []
+    this.refs.phaseLabel.textContent = titleCase(domain.phase || livePhase(this.live))
+    this.refs.graphTitle.textContent = "Live Micrograd graph"
+    this.refs.minimap.innerHTML = nodes.map(node => {
+      const grad = domain.gradients?.[String(node.id)] ?? domain.gradients?.[node.id]
+      return `<span class="live-mini-row">${escapeHtml(node.title || node.display_id)} ${formatNumber(node.data)} grad ${grad == null ? "-" : formatNumber(grad)}</span>`
+    }).join("")
     const positions = new Map()
     const spacing = Math.max(120, Math.min(180, (width - 80) / Math.max(nodes.length, 1)))
     nodes.forEach((node, index) => positions.set(String(node.id), {x: 50 + index * spacing, y: height / 2}))
@@ -1163,6 +1294,48 @@ const VizLabHook = {
     }
     ctx.textAlign = "left"
   },
+
+  updateLiveControlState() {
+    if (this.executionMode !== "live") return
+
+    for (const button of this.el.querySelectorAll("[data-live-action]")) {
+      const action = button.dataset.liveAction
+      button.disabled = !canSendLiveAction(this.live, action)
+      button.setAttribute("aria-disabled", String(button.disabled))
+    }
+
+    const cinemaState = {
+      start: canSendLiveAction(this.live, "start"),
+      back10: false,
+      back1: false,
+      toggle: canSendLiveAction(this.live, "start") ||
+        canSendLiveAction(this.live, "continue") ||
+        (this.live.status === "running" && canSendLiveAction(this.live, "stop")),
+      forward1: canSendLiveAction(this.live, "step"),
+      forward10: false,
+      end: canSendLiveAction(this.live, "stop"),
+      loop_phase: false,
+      follow: true,
+      compare: false,
+    }
+
+    for (const button of this.el.querySelectorAll("[data-action]")) {
+      const action = button.dataset.action
+      if (!(action in cinemaState)) continue
+      button.disabled = !cinemaState[action]
+      button.setAttribute("aria-disabled", String(button.disabled))
+      if (action === "toggle") {
+        button.textContent = canSendLiveAction(this.live, "start")
+          ? "Start"
+          : this.live.status === "running"
+            ? "Stop"
+            : "Play"
+      }
+    }
+
+    if (this.refs.scrubber) this.refs.scrubber.disabled = true
+    if (this.refs.speedSelect) this.refs.speedSelect.disabled = true
+  },
 }
 
 function colorForNode(node) {
@@ -1181,6 +1354,47 @@ function labelText(node, grad, showGradients = true) {
   const title = node.title || node.display_id
   const gradText = showGradients ? `\ngrad ${grad == null ? "-" : formatNumber(grad)}` : ""
   return `${title}\n${node.op}  data ${formatNumber(node.data)}${gradText}`
+}
+
+function livePhase(live) {
+  if (!live.sessionId) return "pre_run"
+  if (live.status === "completed") return "completed"
+  if (live.bindings?.gradients) return "backward"
+  if (live.bindings?.y) return "forward"
+  if (live.bindings?.x) return "forward"
+  return "pre_run"
+}
+
+function liveExplanation(live, event = {}, lessonId = "x_squared") {
+  if (event?.type === "command_error") {
+    return event.error?.message || event.message || "That live command is not valid for the current backend state."
+  }
+
+  if (lessonId !== "x_squared") {
+    if (!live.sessionId) return "Start live execution to create a backend session for this lesson."
+    if (live.status === "paused") return "The backend is paused at the current source span and waiting for the next command."
+    if (live.status === "completed") return "The backend runtime completed the configured lesson source."
+    return "Live execution is synchronized from backend runtime events."
+  }
+
+  if (!live.sessionId) {
+    return "This lesson will create x, compute y = x^2, then run backward."
+  }
+
+  const line = live.span?.line_start || live.span?.line
+  const hasX = Boolean(live.bindings?.x)
+  const hasY = Boolean(live.bindings?.y)
+  const hasGradients = Boolean(live.bindings?.gradients)
+
+  if (live.status === "completed" || hasGradients) {
+    return "The gradient table now says dy/dx = 6."
+  }
+  if (line === 3 && hasY) return "The next expression starts reverse-mode autodiff."
+  if (hasY) return "y is an operation node with data 9 and a dependency on x."
+  if (line === 2 && hasX) return "The next expression computes y = x^2."
+  if (hasX) return "x now exists as a scalar node with data 3."
+  if (line === 1) return "The next expression creates a leaf scalar Value."
+  return "The backend is paused at the current source span and waiting for the next command."
 }
 
 function makeTextSprite(text, width = 220, height = 72, fontSize = 20) {

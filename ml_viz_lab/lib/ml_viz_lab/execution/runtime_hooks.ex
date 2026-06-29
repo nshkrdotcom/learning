@@ -57,7 +57,7 @@ defmodule MlVizLab.Execution.RuntimeHooks do
           }
         })
 
-        exit(:pause_timeout)
+        exit(:normal)
     end
   end
 

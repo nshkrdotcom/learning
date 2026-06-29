@@ -17,6 +17,8 @@ For the live backend stepping demo, open:
 
 <http://localhost:4000/?subject=micrograd&lesson=x_squared&mode=live>
 
+In live mode the first visible action is `Start live`. The bottom cinema Play button is also safe in live mode: before a session exists it starts live execution instead of sending `continue_live`.
+
 ## Installed Tooling And Dependencies
 
 This project was created with Phoenix 1.8.8. During implementation, these machine-level tools were installed or refreshed:
@@ -41,7 +43,7 @@ Use `mix setup` for Elixir dependencies and npm install. Use `npx --prefix asset
 - `MlVizLab.Subjects.Micrograd.LiveLesson` provides configured raw MicrogradEx lesson source. The live `x_squared` path calls `MicrogradEx.Value` directly; it does not use Micrograd wrapper modules.
 - `MlVizLab.Subjects.Micrograd.DomainSnapshot` observes live bindings and derives Micrograd graph/gradient state for the visual pane.
 - `MlVizLabWeb.VizLive` supports both `mode=live` and replay mode. In live mode, controls send `start_live`, `step_live`, `continue_live`, `stop_live`, and `reset_live`; stale session events are ignored.
-- `assets/js/viz_lab.js` has separate paths for `applyExecutionEvent(event)` in live mode and `loadTrace(trace)` in replay mode.
+- `assets/js/viz_lab.js` has separate paths for `applyExecutionEvent(event)` in live mode and `loadTrace(trace)` in replay mode. CodeMirror and graph-owned DOM are isolated from LiveView patches.
 - `MlVizLab.Runs`, `MlVizLab.Trace.*`, `MlVizLab.Instrumentation.*`, and the Micrograd instrumented runner remain as recorded replay/compatibility infrastructure.
 
 Live AST execution is not raw BEAM instruction stepping. It is source-level semantic stepping over configured scripts. BEAM tracing may later supplement process/message visibility, but source spans and local bindings come from AST instrumentation.
@@ -82,6 +84,8 @@ With a Phoenix server running on `localhost:4000`, run browser smoke coverage:
 ```sh
 npm run test:e2e --prefix assets
 ```
+
+Use `window.VIZ_LIVE_DEBUG = true` in the browser console before interacting with the live page to enable frontend debug logs prefixed with `[ml-viz-live]`.
 
 The tests verify that every lesson generates a typed source-backed trace, key gradients and parameter updates match MicrogradEx, compressed training loss decreases, playback reducers behave correctly, all lessons render in Chromium, and graph canvases are visibly nonblank.
 

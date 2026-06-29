@@ -74,11 +74,28 @@ async function verifyLiveExecution() {
 
   await page.goto(`${baseUrl}/?subject=micrograd&lesson=x_squared&mode=live`, {waitUntil: "networkidle"})
   await page.waitForSelector("#viz-lab[data-execution-mode='live']")
+  await page.waitForFunction(() => document.querySelector("[data-testid='code-editor']")?.textContent?.includes("MicrogradEx.Value.new"))
+  await page.waitForFunction(() => document.querySelector("[data-testid='live-status']")?.textContent === "idle")
+  if (!(await page.locator("[data-testid='live-step']").isDisabled())) {
+    throw new Error("live x_squared: Step was enabled before a backend session existed")
+  }
 
-  await page.locator("[data-live-action='start']").click()
-  await page.locator("#live-status").waitFor({state: "visible"})
-  await page.waitForFunction(() => document.querySelector("#live-status")?.textContent === "paused")
+  await page.locator("[data-testid='cinema-play']").click()
+  await page.waitForFunction(() => document.querySelector("[data-testid='code-editor']")?.textContent?.includes("MicrogradEx.Value.new"))
+  await page.waitForFunction(() => document.querySelector("[data-testid='live-status']")?.textContent === "paused")
+  await page.waitForFunction(() => document.querySelector("[data-testid='session-id']")?.textContent?.includes("micrograd:x_squared:live:"))
+  await page.waitForFunction(() => document.querySelector("[data-testid='runtime-pid']")?.textContent?.includes("#PID"))
+
+  await page.locator("[data-live-action='reset']").click()
+  await page.waitForFunction(() => document.querySelector("[data-testid='live-status']")?.textContent === "idle")
+  await page.waitForFunction(() => document.querySelector("[data-testid='code-editor']")?.textContent?.includes("MicrogradEx.Value.new"))
+
+  await page.locator("[data-testid='live-start']").click()
+  await page.locator("[data-testid='live-status']").waitFor({state: "visible"})
+  await page.waitForFunction(() => document.querySelector("[data-testid='live-status']")?.textContent === "paused")
   await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:1"))
+  await page.waitForFunction(() => document.querySelector("[data-testid='session-id']")?.textContent?.includes("micrograd:x_squared:live:"))
+  await page.waitForFunction(() => document.querySelector("[data-testid='runtime-pid']")?.textContent?.includes("#PID"))
 
   let bindings = await page.locator("#variable-inspector").innerText()
   if (bindings.includes("Value(label: x") || bindings.includes("Value(label: y") || bindings.includes("Gradients")) {
@@ -91,15 +108,27 @@ async function verifyLiveExecution() {
   if (bindings.includes("Value(label: y") || bindings.includes("gradients")) {
     throw new Error(`live x_squared: y/gradients visible after first step: ${bindings}`)
   }
+  let graph = await page.locator("[data-testid='graph-summary']").innerText()
+  if (!graph.includes("x") || graph.includes("y = x")) {
+    throw new Error(`live x_squared: graph did not show x-only state: ${graph}`)
+  }
   await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:2"))
 
   await page.locator("[data-live-action='step']").click()
   await page.waitForFunction(() => document.querySelector("#variable-inspector")?.textContent?.includes("Value(label: y"))
+  graph = await page.locator("[data-testid='graph-summary']").innerText()
+  if (!graph.includes("x") || !graph.includes("y = x^2")) {
+    throw new Error(`live x_squared: graph did not show x and y state: ${graph}`)
+  }
   await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:3"))
 
   await page.locator("[data-live-action='step']").click()
   await page.waitForFunction(() => document.querySelector("#variable-inspector")?.textContent?.includes("Gradients"))
   await page.waitForFunction(() => document.querySelector("#live-status")?.textContent === "completed")
+  graph = await page.locator("[data-testid='graph-summary']").innerText()
+  if (!graph.includes("grad 6")) {
+    throw new Error(`live x_squared: graph did not show x gradient 6: ${graph}`)
+  }
 
   const canvasPng = PNG.sync.read(await page.locator("#graph-canvas").screenshot())
   const colors = sampledColorCount(canvasPng)

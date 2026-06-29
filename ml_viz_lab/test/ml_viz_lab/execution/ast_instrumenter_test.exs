@@ -24,4 +24,19 @@ defmodule MlVizLab.Execution.AstInstrumenterTest do
 
     assert message =~ "syntax error"
   end
+
+  test "comments and blank lines do not produce expression spans" do
+    source = """
+    # setup x
+    x = 1
+
+    # derive y
+    y = x + 2
+    """
+
+    assert {:ok, _quoted, spans} = AstInstrumenter.instrument_source(source, file: "lesson.ex")
+
+    assert Enum.map(spans, & &1.line_start) == [2, 5]
+    assert Enum.all?(spans, &(&1.file == "lesson.ex"))
+  end
 end
