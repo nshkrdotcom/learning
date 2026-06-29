@@ -104,10 +104,7 @@ defmodule MicrogradEx.Losses do
       examples
       |> Enum.zip(scores)
       |> Enum.count(fn {{_x, y}, score} ->
-        expected_positive? = y > 0.0
-        predicted_positive? = score.data > 0.0
-
-        expected_positive? == predicted_positive?
+        (y > 0.0) == (score.data > 0.0)
       end)
       |> Kernel./(length(examples))
 

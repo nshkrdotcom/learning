@@ -96,6 +96,7 @@ Graph.nodes(y, gradients)
 
 ```elixir
 Graph.edges(y)
+|> Enum.map(&Map.take(&1, [:from, :to, :child_op, :local_gradient]))
 |> Kino.DataTable.new()
 ```
 
@@ -210,7 +211,7 @@ loss_rows = PlotData.loss_history(run)
 Vl.new(width: 640, height: 280)
 |> Vl.data_from_values(loss_rows)
 |> Vl.mark(:line)
-|> Vl.encode_field(:x, "step", type: :quantitative)
+|> Vl.encode_field(:x, "step", type: :quantitative, axis: [tickCount: 10])
 |> Vl.encode_field(:y, "value", type: :quantitative)
 |> Vl.encode_field(:color, "metric", type: :nominal)
 ```
@@ -223,11 +224,13 @@ accuracy_rows = PlotData.accuracy_history(run)
 Vl.new(width: 640, height: 280)
 |> Vl.data_from_values(accuracy_rows)
 |> Vl.mark(:line)
-|> Vl.encode_field(:x, "step", type: :quantitative)
+|> Vl.encode_field(:x, "step", type: :quantitative, axis: [tickCount: 10])
 |> Vl.encode_field(:y, "value", type: :quantitative, title: "accuracy (%)")
 ```
 
 ## 9. Visualize the decision boundary
+
+Background color is the model prediction; outlined points are the training labels.
 
 ```elixir
 boundary =
@@ -264,11 +267,10 @@ Python micrograd mutates `Value.grad`; MicrogradEx returns a `Gradients` table. 
 
 ## 11. Try it yourself
 
-```elixir
-# Try changing one value at a time:
-# - noise: 0.2
-# - MLP.new(2, [8, 8, 1])
-# - steps: 50
-# - alpha: 0.0
-# - h: 0.15
-```
+Try changing one value at a time in the cells above:
+
+* `noise: 0.2`
+* `MLP.new(2, [8, 8, 1])`
+* `steps: 50`
+* `alpha: 0.0`
+* `h: 0.15`
