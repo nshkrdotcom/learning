@@ -1,0 +1,23 @@
+construct,raw_string,token_ids,decoded_text,n_tokens,is_single_token,usable_as_target
+certainty, certain,1728, certain,1,True,True
+certainty, uncertain,8627, uncertain,1,True,True
+certainty, sure,1654, sure,1,True,True
+certainty, unsure,22147, unsure,1,True,True
+certainty, definite,21892, definite,1,True,True
+certainty, doubtful,31608, doubtful,1,True,True
+certainty, confident,6563, confident,1,True,True
+certainty, hesitant,32848, hesitant,1,True,True
+certainty, clear,1598, clear,1,True,True
+certainty, unclear,10061, unclear,1,True,True
+certainty, obvious,3489, obvious,1,True,True
+certainty, ambiguous,27102, ambiguous,1,True,True
+sentiment, great,1049, great,1,True,True
+sentiment, terrible,7818, terrible,1,True,True
+sentiment, good,922, good,1,True,True
+sentiment, bad,2089, bad,1,True,True
+sentiment, excellent,6275, excellent,1,True,True
+sentiment, awful,12659, awful,1,True,True
+sentiment, amazing,4998, amazing,1,True,True
+sentiment, poor,3595, poor,1,True,True
+sentiment, wonderful,7932, wonderful,1,True,True
+sentiment, disappointing,17185, disappointing,1,True,True

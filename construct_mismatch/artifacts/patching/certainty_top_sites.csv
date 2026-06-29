@@ -1,0 +1,13 @@
+construct,pair_id,decoupling_axis,top_layer,top_position,top_recovery,axis_top_site_stability
+certainty,certainty_decoupling_contrast_001,contrast,6,7,1.142087370383012,0.5
+certainty,certainty_decoupling_contrast_002,contrast,6,6,1.2746268806772196,0.5
+certainty,certainty_decoupling_format_shift_001,format_shift,11,11,1.0,0.5
+certainty,certainty_decoupling_format_shift_002,format_shift,4,8,-10.224888438254617,0.5
+certainty,certainty_decoupling_lexical_reversal_001,lexical_reversal,1,12,5.946460711725542,0.5
+certainty,certainty_decoupling_lexical_reversal_002,lexical_reversal,6,12,-0.9114546972783751,0.5
+certainty,certainty_decoupling_negation_001,negation,2,4,1.3189986968512288,0.5
+certainty,certainty_decoupling_negation_002,negation,3,4,1.520593189625108,0.5
+certainty,certainty_decoupling_quotation_001,quotation,3,13,75.24043286954453,0.5
+certainty,certainty_decoupling_quotation_002,quotation,10,13,3.1877412492355672,0.5
+certainty,certainty_heldout_ordinary_001,ordinary,1,7,0.7291798019983237,0.5
+certainty,certainty_heldout_ordinary_002,ordinary,0,3,0.8944298739862556,0.5

@@ -1,0 +1,7 @@
+construct,method,object_classification
+certainty,direction,robust_construct_variable
+certainty,probe,predictive_noncausal_detector
+certainty,patching,prompt_local_dependency
+sentiment,direction,ordinary_only_proxy
+sentiment,probe,predictive_noncausal_detector
+sentiment,patching,prompt_local_dependency

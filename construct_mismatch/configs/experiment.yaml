@@ -1,0 +1,19 @@
+constructs:
+  - certainty
+  - sentiment
+required_decoupling_axes:
+  - lexical_reversal
+  - negation
+  - quotation
+  - contrast
+  - format_shift
+ordinary_axis: ordinary
+behavior:
+  usable_accuracy_threshold: 0.55
+  usable_mean_signed_logit_diff_threshold: 0.0
+direction:
+  alphas: [-3.0, -1.0, 0.0, 1.0, 3.0]
+probe:
+  max_iter: 1000
+patching:
+  max_pairs_per_axis: 2

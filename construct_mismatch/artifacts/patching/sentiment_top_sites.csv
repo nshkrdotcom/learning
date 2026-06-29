@@ -1,0 +1,13 @@
+construct,pair_id,decoupling_axis,top_layer,top_position,top_recovery,axis_top_site_stability
+sentiment,sentiment_decoupling_contrast_001,contrast,0,8,-1.9659874598493374,0.5
+sentiment,sentiment_decoupling_contrast_002,contrast,6,5,-3.657623621945716,0.5
+sentiment,sentiment_decoupling_format_shift_001,format_shift,1,6,3.7731638675428854,0.5
+sentiment,sentiment_decoupling_format_shift_002,format_shift,11,9,1.0,0.5
+sentiment,sentiment_decoupling_lexical_reversal_001,lexical_reversal,0,8,2.3399828237366203,0.5
+sentiment,sentiment_decoupling_lexical_reversal_002,lexical_reversal,9,13,1.4170770971321145,0.5
+sentiment,sentiment_decoupling_negation_001,negation,9,7,1.0190784424798802,0.5
+sentiment,sentiment_decoupling_negation_002,negation,11,7,1.0,0.5
+sentiment,sentiment_decoupling_quotation_001,quotation,9,10,2.488664799968351,0.5
+sentiment,sentiment_decoupling_quotation_002,quotation,10,11,1.0532888768640682,0.5
+sentiment,sentiment_heldout_ordinary_001,ordinary,11,3,1.0,0.5
+sentiment,sentiment_heldout_ordinary_002,ordinary,11,4,1.0,0.5
