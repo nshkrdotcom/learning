@@ -27,6 +27,20 @@ The main user experience is `notebooks/micrograd_demo.livemd`, which mirrors the
 
 ## Quick start: Livebook demo
 
+Install livebook if needed:
+
+```bash
+mix do local.rebar --force, local.hex --force
+mix escript.install hex livebook
+```
+
+Path may not be found. If needed:
+
+```bash
+asdf reshim elixir
+```
+
+
 Clone the repo and open the main notebook:
 
 ```bash

@@ -1,5 +1,7 @@
 # MicrogradEx Livebook Demo
 
+## Section
+
 This notebook recreates the official micrograd demo in pure Elixir. It uses scalar reverse-mode autodiff, a tiny MLP, deterministic two-moons data, max-margin classification loss, and immutable model updates.
 
 Livebook, Kino, and Vega-Lite are used only for workflow and visualization. The dataset, loss, training loop, and plot rows come from regular tested library modules.
