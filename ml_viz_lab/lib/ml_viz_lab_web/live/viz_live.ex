@@ -1,6 +1,8 @@
 defmodule MlVizLabWeb.VizLive do
   use MlVizLabWeb, :live_view
 
+  alias MlVizLab.Execution.Controller
+  alias MlVizLab.Execution.Session
   alias MlVizLab.Runs
   alias MlVizLab.Subjects
 
@@ -13,6 +15,12 @@ defmodule MlVizLabWeb.VizLive do
      |> assign(:page_title, "ML Viz Lab")
      |> assign(:subject_id, subject_id)
      |> assign(:lesson_id, default_lesson_id(subject_id))
+     |> assign(:execution_mode, "replay")
+     |> assign(:live_session_id, nil)
+     |> assign(:live_session_pid, nil)
+     |> assign(:live_status, "idle")
+     |> assign(:live_state_json, "null")
+     |> assign(:live_source_json, "null")
      |> assign(:run_id, nil)
      |> assign(:run_status, "idle")
      |> assign(:trace, nil)
@@ -26,7 +34,97 @@ defmodule MlVizLabWeb.VizLive do
     subject_id = params["subject"] || socket.assigns[:subject_id] || Subjects.default_subject()
     lesson_id = params["lesson"] || socket.assigns[:lesson_id] || default_lesson_id(subject_id)
 
-    {:noreply, start_trace(socket, subject_id, lesson_id)}
+    if params["mode"] == "live" do
+      {:noreply, setup_live(socket, subject_id, lesson_id)}
+    else
+      {:noreply, start_trace(socket, subject_id, lesson_id)}
+    end
+  end
+
+  @impl true
+  def handle_event("start_live", _params, socket) do
+    subject_id = socket.assigns.subject_id
+    lesson_id = socket.assigns.lesson_id
+    session_id = Controller.new_session_id(subject_id, lesson_id)
+
+    with {:ok, source} <- live_source(subject_id, lesson_id),
+         {:ok, domain_adapter} <- live_domain_adapter(subject_id),
+         {:ok, session_pid} <-
+           Controller.start_session(
+             session_id: session_id,
+             subject_id: subject_id,
+             lesson_id: lesson_id,
+             source: source,
+             owner_pid: self(),
+             domain_adapter: domain_adapter
+           ) do
+      event =
+        normalize_execution_event(%{
+          type: "session_requested",
+          session_id: session_id,
+          status: "starting",
+          source: source,
+          subject_id: subject_id,
+          lesson_id: lesson_id,
+          mode: "live_ast"
+        })
+
+      {:noreply,
+       socket
+       |> assign(:live_session_id, session_id)
+       |> assign(:live_session_pid, session_pid)
+       |> assign(:live_status, "starting")
+       |> assign(:live_state_json, Jason.encode!(event))
+       |> push_event("execution_event", event)}
+    else
+      {:error, error} ->
+        event =
+          normalize_execution_event(%{
+            type: "error",
+            status: "error",
+            session_id: session_id,
+            subject_id: subject_id,
+            lesson_id: lesson_id,
+            error: normalize_error(error)
+          })
+
+        {:noreply,
+         socket
+         |> assign(:live_status, "error")
+         |> assign(:live_state_json, Jason.encode!(event))
+         |> push_event("execution_event", event)}
+    end
+  end
+
+  def handle_event("step_live", _params, socket) do
+    {:noreply, command_live(socket, :step)}
+  end
+
+  def handle_event("continue_live", _params, socket) do
+    {:noreply, command_live(socket, :continue)}
+  end
+
+  def handle_event("stop_live", _params, socket) do
+    {:noreply, command_live(socket, :stop)}
+  end
+
+  def handle_event("reset_live", _params, socket) do
+    {:noreply, setup_live(socket, socket.assigns.subject_id, socket.assigns.lesson_id)}
+  end
+
+  @impl true
+  def handle_info({:execution_event, event}, socket) do
+    if event[:session_id] == socket.assigns.live_session_id do
+      normalized = normalize_execution_event(event)
+
+      {:noreply,
+       socket
+       |> assign(:live_status, normalized["status"] || normalized["type"])
+       |> assign(:live_state_json, Jason.encode!(normalized))
+       |> push_event("execution_event", normalized)}
+    else
+      {:noreply, socket}
+    end
   end
 
   @impl true
@@ -81,6 +179,9 @@ defmodule MlVizLabWeb.VizLive do
       data-trace={@trace_json}
       data-lessons={@lessons_json}
       data-subjects={@subjects_json}
+      data-execution-mode={@execution_mode}
+      data-live-source={@live_source_json}
+      data-live-state={@live_state_json}
       data-run-id={@run_id}
       data-run-status={@run_status}
       class="viz-app"
@@ -160,6 +261,39 @@ defmodule MlVizLabWeb.VizLive do
             </div>
           </header>
           <div id="program-selector" class="program-selector"></div>
+          <div id="execution-status-card" class="execution-status-card">
+            <div>
+              <span class="status-pill">REPLAY</span>
+              <strong>Recorded replay</strong>
+            </div>
+            <dl>
+              <div>
+                <dt>status</dt><dd id="live-status">idle</dd>
+              </div>
+              <div>
+                <dt>session</dt><dd id="live-session">-</dd>
+              </div>
+              <div>
+                <dt>pid</dt><dd id="live-pid">-</dd>
+              </div>
+              <div>
+                <dt>span</dt><dd id="live-span">-</dd>
+              </div>
+              <div>
+                <dt>step</dt><dd id="live-step">0</dd>
+              </div>
+              <div>
+                <dt>last</dt><dd id="live-command">-</dd>
+              </div>
+            </dl>
+            <div class="live-controls">
+              <button type="button" data-live-action="start">Start live</button>
+              <button type="button" data-live-action="step">Next</button>
+              <button type="button" data-live-action="continue">Continue</button>
+              <button type="button" data-live-action="stop">Stop</button>
+              <button type="button" data-live-action="reset">Reset</button>
+            </div>
+          </div>
           <div id="progress-strip" class="progress-strip"></div>
           <div id="lesson-card" class="lesson-card"></div>
           <div id="concept-drawer" class="concept-drawer"></div>
@@ -219,6 +353,12 @@ defmodule MlVizLabWeb.VizLive do
       |> assign(:page_title, "ML Viz Lab")
       |> assign(:subject_id, subject_id)
       |> assign(:lesson_id, lesson_id)
+      |> assign(:execution_mode, "replay")
+      |> assign(:live_session_id, nil)
+      |> assign(:live_session_pid, nil)
+      |> assign(:live_status, "idle")
+      |> assign(:live_state_json, "null")
+      |> assign(:live_source_json, "null")
       |> assign(:run_id, run_id)
       |> assign(:run_status, "loading")
       |> assign(:trace, nil)
@@ -233,10 +373,128 @@ defmodule MlVizLabWeb.VizLive do
     end
   end
 
+  defp setup_live(socket, subject_id, lesson_id) do
+    lessons = Subjects.lessons(subject_id)
+
+    source =
+      case live_source(subject_id, lesson_id) do
+        {:ok, source} -> source
+        {:error, _error} -> ""
+      end
+
+    socket
+    |> assign(:page_title, "ML Viz Lab")
+    |> assign(:subject_id, subject_id)
+    |> assign(:lesson_id, lesson_id)
+    |> assign(:execution_mode, "live")
+    |> assign(:live_session_id, nil)
+    |> assign(:live_session_pid, nil)
+    |> assign(:live_status, "idle")
+    |> assign(:live_state_json, "null")
+    |> assign(
+      :live_source_json,
+      Jason.encode!(%{file: "lesson.ex", title: "lesson.ex", source: source})
+    )
+    |> assign(:run_id, nil)
+    |> assign(:run_status, "idle")
+    |> assign(:trace, nil)
+    |> assign(:trace_json, "null")
+    |> assign(:lessons_json, Jason.encode!(lessons))
+    |> assign(:subjects_json, Jason.encode!(Subjects.all()))
+  end
+
+  defp command_live(socket, command) do
+    session = socket.assigns.live_session_pid
+
+    result =
+      cond do
+        is_nil(session) -> {:error, :no_live_session}
+        command == :step -> Session.step(session)
+        command == :continue -> Session.continue(session)
+        command == :stop -> Session.stop(session)
+      end
+
+    status = if match?(:ok, result), do: "command_sent", else: "error"
+
+    event = %{
+      type: "command_sent",
+      status: status,
+      command: Atom.to_string(command),
+      session_id: socket.assigns.live_session_id,
+      subject_id: socket.assigns.subject_id,
+      lesson_id: socket.assigns.lesson_id,
+      error: if(match?(:ok, result), do: nil, else: normalize_error(result))
+    }
+
+    event = normalize_execution_event(event)
+
+    socket
+    |> assign(:live_state_json, Jason.encode!(event))
+    |> push_event("execution_event", event)
+  end
+
   defp default_lesson_id(subject_id) do
     subject_id
     |> Subjects.lessons()
     |> List.first()
     |> Map.fetch!(:id)
   end
+
+  defp live_source(subject_id, lesson_id) do
+    adapter = Subjects.get!(subject_id)
+
+    if function_exported?(adapter, :live_source, 1) do
+      {:ok, adapter.live_source(lesson_id)}
+    else
+      {:error, %{type: "NoLiveSource", message: "subject #{subject_id} has no live source"}}
+    end
+  rescue
+    exception -> {:error, exception}
+  end
+
+  defp live_domain_adapter(subject_id) do
+    adapter = Subjects.get!(subject_id)
+
+    if function_exported?(adapter, :live_domain_adapter, 0) do
+      {:ok, adapter.live_domain_adapter()}
+    else
+      {:ok, nil}
+    end
+  rescue
+    exception -> {:error, exception}
+  end
+
+  defp normalize_execution_event(event) do
+    event
+    |> stringify_execution_values()
+    |> Jason.encode!()
+    |> Jason.decode!()
+  end
+
+  defp stringify_execution_values(%DateTime{} = value), do: DateTime.to_iso8601(value)
+
+  defp stringify_execution_values(%_module{} = value),
+    do: value |> Map.from_struct() |> stringify_execution_values()
+
+  defp stringify_execution_values(value) when is_map(value) do
+    value
+    |> Enum.reject(fn {key, _value} -> key == :__struct__ end)
+    |> Map.new(fn {key, nested} -> {key, stringify_execution_values(nested)} end)
+  end
+
+  defp stringify_execution_values(value) when is_list(value),
+    do: Enum.map(value, &stringify_execution_values/1)
+
+  defp stringify_execution_values(value) when is_atom(value), do: Atom.to_string(value)
+  defp stringify_execution_values(value), do: value
+
+  defp normalize_error({:error, error}), do: normalize_error(error)
+
+  defp normalize_error(%{type: type, message: message}),
+    do: %{type: to_string(type), message: message}
+
+  defp normalize_error(%module{} = exception) when is_exception(exception),
+    do: %{type: module |> Module.split() |> List.last(), message: Exception.message(exception)}
+
+  defp normalize_error(error), do: %{type: "Error", message: inspect(error)}
 end

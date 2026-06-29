@@ -235,6 +235,82 @@ input {
   text-transform: none;
 }
 
+.execution-status-card {
+  margin: 10px 12px;
+  padding: 10px;
+  border: 1px solid #2a2c3f;
+  border-radius: 8px;
+  background: #101119;
+}
+
+.execution-status-card > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.status-pill {
+  border: 1px solid #16a34a;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #bbf7d0;
+  background: rgba(22, 163, 74, 0.12);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.execution-status-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+}
+
+.execution-status-card dt {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.execution-status-card dd {
+  margin: 1px 0 0;
+  color: #f5f5fb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-controls {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.live-controls button {
+  border: 1px solid #2a2c3f;
+  border-radius: 6px;
+  background: #191a25;
+  color: #d9d9e4;
+  padding: 6px 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.live-binding {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.6fr) minmax(0, 1.5fr);
+}
+
+.empty-copy {
+  margin: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .seg,
 .icon-btn {
   min-width: 32px;

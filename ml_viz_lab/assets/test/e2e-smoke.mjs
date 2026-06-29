@@ -58,8 +58,56 @@ try {
     console.log(`${lesson}: ${title} ${before} -> ${end}`)
     await page.close()
   }
+
+  await verifyLiveExecution()
 } finally {
   await browser.close()
+}
+
+async function verifyLiveExecution() {
+  const page = await browser.newPage({viewport: {width: 1360, height: 860}})
+  const errors = []
+  page.on("pageerror", error => errors.push(error.message))
+  page.on("console", message => {
+    if (message.type() === "error") errors.push(message.text())
+  })
+
+  await page.goto(`${baseUrl}/?subject=micrograd&lesson=x_squared&mode=live`, {waitUntil: "networkidle"})
+  await page.waitForSelector("#viz-lab[data-execution-mode='live']")
+
+  await page.locator("[data-live-action='start']").click()
+  await page.locator("#live-status").waitFor({state: "visible"})
+  await page.waitForFunction(() => document.querySelector("#live-status")?.textContent === "paused")
+  await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:1"))
+
+  let bindings = await page.locator("#variable-inspector").innerText()
+  if (bindings.includes("Value(label: x") || bindings.includes("Value(label: y") || bindings.includes("Gradients")) {
+    throw new Error(`live x_squared: future bindings visible before first step: ${bindings}`)
+  }
+
+  await page.locator("[data-live-action='step']").click()
+  await page.waitForFunction(() => document.querySelector("#variable-inspector")?.textContent?.includes("Value(label: x"))
+  bindings = await page.locator("#variable-inspector").innerText()
+  if (bindings.includes("Value(label: y") || bindings.includes("gradients")) {
+    throw new Error(`live x_squared: y/gradients visible after first step: ${bindings}`)
+  }
+  await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:2"))
+
+  await page.locator("[data-live-action='step']").click()
+  await page.waitForFunction(() => document.querySelector("#variable-inspector")?.textContent?.includes("Value(label: y"))
+  await page.waitForFunction(() => document.querySelector("#live-span")?.textContent?.includes("lesson.ex:3"))
+
+  await page.locator("[data-live-action='step']").click()
+  await page.waitForFunction(() => document.querySelector("#variable-inspector")?.textContent?.includes("Gradients"))
+  await page.waitForFunction(() => document.querySelector("#live-status")?.textContent === "completed")
+
+  const canvasPng = PNG.sync.read(await page.locator("#graph-canvas").screenshot())
+  const colors = sampledColorCount(canvasPng)
+  if (colors < 3) throw new Error(`live x_squared: canvas appears blank or too flat (${colors} colors)`)
+  if (errors.length) throw new Error(`live x_squared: ${errors.join("\n")}`)
+
+  console.log("live x_squared: backend lockstep x -> y -> gradients")
+  await page.close()
 }
 
 function sampledColorCount(png) {

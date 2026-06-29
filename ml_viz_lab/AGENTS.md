@@ -3,11 +3,14 @@ This is a web application written using the Phoenix web framework.
 ## ML Viz Lab Project Notes
 
 - The app lives at `/home/home/p/g/n/learning/ml_viz_lab` inside the parent `learning` git repo.
-- It depends on the sibling local Elixir library `../micrograd_ex`; do not modify `../micrograd_ex` while working on this app unless explicitly asked.
+- It depends on the sibling local Elixir library `../micrograd_ex`; modify it only when the user explicitly includes it in scope.
 - Keep subject-specific behavior behind `MlVizLab.Subjects.Adapter`. Micrograd-specific code belongs under `MlVizLab.Subjects.Micrograd`; the LiveView shell and frontend should consume generic `MlVizLab.Trace.*` data so a future subject such as Makemore can be added without rewiring the app.
 - Subjects are registered through `config :ml_viz_lab, :subjects`; do not hardcode `MlVizLab.Subjects.Micrograd` in `MlVizLab.Runs`, `MlVizLab.Subjects`, or `MlVizLabWeb.VizLive`.
-- Core Micrograd lessons use `MlVizLab.Subjects.Micrograd.Runner` with `InstrumentedValue` and `InstrumentedNN`. These wrappers must call real `MicrogradEx` functions and record semantic events through `MlVizLab.Instrumentation.Recorder`.
-- Playback is immutable trace replay. Do not implement browser-controlled raw BEAM stepping for this app; execute once, record semantic events, verify them, then scrub client-side.
+- The primary architecture is live AST execution under `MlVizLab.Execution.*`: configured source is instrumented, evaluated in a runtime process, paused at source spans, and advanced only by backend commands from LiveView.
+- `MlVizLab.Execution.RuntimeHooks.pause/3` must genuinely block the runtime process until a `step_live`, `continue_live`, or `stop_live` command reaches it.
+- Micrograd live lessons should use raw `MicrogradEx` calls in `MlVizLab.Subjects.Micrograd.LiveLesson`; Micrograd graph/gradient visualization should be derived by `MlVizLab.Subjects.Micrograd.DomainSnapshot` from live bindings.
+- The older `MlVizLab.Subjects.Micrograd.Runner`, `InstrumentedValue`, and `InstrumentedNN` path remains replay/compatibility infrastructure. Do not extend wrappers as the main stepping model unless explicitly working on replay mode.
+- Replay is immutable trace playback. Live mode is backend-controlled stepping and cannot rewind without reset/re-run. Keep the UI distinction honest.
 - The current browser experience is intentionally controls-first. Do not add real LLM/API integration unless explicitly requested; the LLM panel is a reserved surface only.
 
 ## Installed Tooling And Dependency Notes
@@ -20,6 +23,7 @@ This is a web application written using the Phoenix web framework.
 - Playwright Chromium binaries were installed with `npx --prefix assets playwright install chromium`, which places browser binaries in `~/.cache/ms-playwright/`.
 - If browser tests fail on a fresh machine because no browser binary exists, run `npx --prefix assets playwright install chromium`.
 - No additional machine-level tooling was installed for the instrumented-runner phase. The existing Vitest/Playwright/npm setup remains the source of truth.
+- No additional machine-level tooling was installed for the live AST execution phase.
 
 ## Verification Commands
 
@@ -34,22 +38,23 @@ This is a web application written using the Phoenix web framework.
 
 - Implement `MlVizLab.Subjects.Adapter`: metadata, capabilities, lessons, concepts, sources, and `run/2`.
 - Return `%MlVizLab.Trace.Run{}` through `{:ok, trace}` and preserve the `:run_id` passed by `MlVizLab.Runs`.
+- For live mode, expose configured source through `live_source/1` and optionally return a domain adapter from `live_domain_adapter/0`.
 - Register the subject in `config :ml_viz_lab, :subjects`.
 - Add tests proving `Subjects.all/0`, `Subjects.default_subject/0`, `Subjects.sources/2`, and `Runs.generate/4` work without Micrograd-specific code.
 
 ### Add a Micrograd Lesson
 
 - Add lesson metadata in `MlVizLab.Subjects.Micrograd.lessons/0`.
-- Prefer a fully instrumented clause in `MlVizLab.Subjects.Micrograd.Runner`.
-- Use `InstrumentedValue` for scalar operations and `InstrumentedNN` for model forward/update steps.
-- Give each operation a plausible lesson source token so source spans advance through the generated lesson script.
-- Verify gradients and updates against real `MicrogradEx` execution in `test/ml_viz_lab/subjects/micrograd_test.exs`.
+- Add raw live source in `MlVizLab.Subjects.Micrograd.LiveLesson` when the lesson should support backend lockstep.
+- Keep source safe and configured; never evaluate browser-provided arbitrary code.
+- Add or update replay trace coverage only when replay mode also needs the lesson.
+- Verify live stepping and Micrograd domain snapshots in `test/ml_viz_lab/subjects/micrograd/live_execution_test.exs` or adjacent tests.
 
 ### Verify Trace Authenticity
 
-- Forward events should come from wrapper calls made while the lesson executes.
-- Backward contribution events should replay `MicrogradEx.Gradients.topological_ids/1` and match `MicrogradEx.Value.backward/1`.
-- Source refs must validate against `trace.sources`; implementation refs should point to real `../micrograd_ex/lib/...` files.
+- Live execution authenticity is proved by runtime pause/continue tests: future bindings must not appear until the backend receives a command and executes the next expression.
+- Micrograd live snapshots must come from real `MicrogradEx.Value` and `MicrogradEx.Gradients` values observed in bindings.
+- Replay authenticity still requires wrapper/trace events to match real `MicrogradEx.Value.backward/1` and verified source spans.
 - Numeric values should be asserted in tests; do not move math into frontend JS.
 
 ## Project guidelines

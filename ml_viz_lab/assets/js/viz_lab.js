@@ -9,6 +9,7 @@ import {clamp, escapeHtml, formatNumber, titleCase} from "./viz/format"
 import {initialPlayback, nextLoopStep, playbackReducer} from "./viz/playback"
 import {readStepFromUrl, writeStepToUrl} from "./viz/url_state"
 import {buildSourceLineIndex, parsePayload} from "./viz/trace_store"
+import {bindingRows, initialLiveState, reduceExecutionEvent} from "./viz/live_state"
 
 const activeLineEffect = StateEffect.define()
 
@@ -38,6 +39,10 @@ const VizLabHook = {
     this.trace = null
     this.lessons = parsePayload(this.el.dataset.lessons, [])
     this.subjects = parsePayload(this.el.dataset.subjects, [])
+    this.executionMode = this.el.dataset.executionMode || "replay"
+    this.currentSubjectId = new URLSearchParams(window.location.search).get("subject") || this.subjects[0]?.id || "micrograd"
+    this.currentLessonId = new URLSearchParams(window.location.search).get("lesson") || this.lessons[0]?.id || "x_squared"
+    this.live = initialLiveState(parsePayload(this.el.dataset.liveSource, null))
     this.playback = initialPlayback(0, 0)
     this.step = 0
     this.speed = 1
@@ -73,17 +78,29 @@ const VizLabHook = {
       scrubber: this.el.querySelector("#timeline-scrubber"),
       stepCounter: this.el.querySelector("#step-counter"),
       speedSelect: this.el.querySelector("#speed-select"),
+      executionStatusCard: this.el.querySelector("#execution-status-card"),
+      liveStatus: this.el.querySelector("#live-status"),
+      liveSession: this.el.querySelector("#live-session"),
+      livePid: this.el.querySelector("#live-pid"),
+      liveSpan: this.el.querySelector("#live-span"),
+      liveStep: this.el.querySelector("#live-step"),
+      liveCommand: this.el.querySelector("#live-command"),
     }
 
     this.handleEvent("trace_ready", payload => {
+      this.executionMode = "replay"
       this.lessons = payload.lessons || this.lessons
       this.subjects = payload.subjects || this.subjects
       this.loadTrace(payload.trace)
     })
 
+    this.handleEvent("execution_event", payload => this.applyExecutionEvent(payload))
+
     const initialTrace = parsePayload(this.el.dataset.trace, null)
     if (initialTrace && initialTrace.events && initialTrace.events.length > 0) {
       this.loadTrace(initialTrace)
+    } else if (this.executionMode === "live") {
+      this.renderLiveIdle()
     } else {
       this.renderLoading()
     }
@@ -100,6 +117,7 @@ const VizLabHook = {
   loadTrace(trace) {
     this.stop()
     this.disposeGraph()
+    this.executionMode = "replay"
     if (this.editor) {
       this.editor.destroy()
       this.editor = null
@@ -138,6 +156,29 @@ const VizLabHook = {
     this.refs.lessonCard.innerHTML = `<p class="lesson-copy">The backend is running the lesson and building an immutable timeline.</p>`
     this.refs.checkpointRow.innerHTML = ""
     this.refs.stepCounter.textContent = "Step - / -"
+  },
+
+  renderLiveIdle() {
+    this.stop()
+    this.disposeGraph()
+    if (!this.controlsBound) {
+      this.bindControls()
+      this.controlsBound = true
+    }
+
+    this.refs.lessonTitle.textContent = "Live AST execution"
+    this.refs.graphTitle.textContent = "Live domain state"
+    this.refs.phaseLabel.textContent = "Live"
+    this.refs.programSelector.innerHTML = this.renderProgramSelectorHtml(this.currentLessonId)
+    this.bindProgramSelector()
+    this.refs.progressStrip.innerHTML = ""
+    this.refs.lessonCard.innerHTML = `<p class="lesson-copy">Start live execution to pause the backend before the first expression.</p>`
+    this.refs.checkpointRow.innerHTML = ""
+    this.refs.stepCounter.textContent = "Live step 0"
+    this.renderLiveStatus()
+    this.renderLiveCode()
+    this.renderLiveBindings()
+    this.renderLiveGraph()
   },
 
   disposeGraph() {
@@ -309,6 +350,10 @@ const VizLabHook = {
       }
     })
 
+    this.el.querySelectorAll("[data-live-action]").forEach(button => {
+      button.addEventListener("click", () => this.handleLiveAction(button.dataset.liveAction))
+    })
+
     this.refs.scrubber.addEventListener("input", event => this.setStep(Number(event.target.value), false))
 
     this.el.querySelectorAll("[data-code-mode]").forEach(button => {
@@ -361,11 +406,13 @@ const VizLabHook = {
         this.setStep(this.step - (event.shiftKey ? 10 : 1), true)
       } else if (event.key === "Home") {
         event.preventDefault()
-        this.setStep(0, false)
+        if (this.executionMode === "live") this.handleLiveAction("start")
+        else this.setStep(0, false)
       } else if (event.key === "End") {
         event.preventDefault()
-        this.setStep(this.trace.events.length - 1, false)
+        if (this.trace) this.setStep(this.trace.events.length - 1, false)
       } else if (/^[1-9]$/.test(event.key)) {
+        if (!this.trace) return
         const checkpoint = this.trace.checkpoints[Number(event.key) - 1]
         if (checkpoint) this.setStep(checkpoint.step, false)
       }
@@ -374,6 +421,16 @@ const VizLabHook = {
   },
 
   handleAction(action) {
+    if (this.executionMode === "live") {
+      switch (action) {
+        case "start": return this.handleLiveAction("start")
+        case "toggle": return this.handleLiveAction("continue")
+        case "forward1": return this.handleLiveAction("step")
+        case "end": return this.handleLiveAction("stop")
+        default: return
+      }
+    }
+
     switch (action) {
       case "start": return this.setStep(0, false)
       case "back10": return this.setStep(this.step - 10, false)
@@ -386,6 +443,39 @@ const VizLabHook = {
       case "follow": return this.toggleFollow()
       case "compare": return this.toggleCompare()
     }
+  },
+
+  handleLiveAction(action) {
+    const eventName = {
+      start: "start_live",
+      step: "step_live",
+      continue: "continue_live",
+      stop: "stop_live",
+      reset: "reset_live",
+    }[action]
+
+    if (!eventName) return
+    this.live = {...this.live, lastCommand: action, status: action === "start" ? "starting" : "command_sent"}
+    this.renderLiveStatus()
+    this.pushEvent(eventName, {})
+  },
+
+  applyExecutionEvent(payload) {
+    this.executionMode = "live"
+    this.live = reduceExecutionEvent(this.live, payload)
+    this.currentSubjectId = payload.subject_id || this.currentSubjectId
+    this.currentLessonId = payload.lesson_id || this.currentLessonId
+
+    if (!this.controlsBound) {
+      this.bindControls()
+      this.controlsBound = true
+    }
+
+    this.renderLiveStatus()
+    this.renderLiveCode()
+    this.renderLiveBindings()
+    this.renderLiveGraph()
+    this.renderLiveTeaching(payload)
   },
 
   toggleLoopPhase() {
@@ -731,6 +821,10 @@ const VizLabHook = {
     const current = this.trace.lesson_id
     this.refs.programSelector.innerHTML = this.renderProgramSelectorHtml(current)
 
+    this.bindProgramSelector()
+  },
+
+  bindProgramSelector() {
     this.refs.programSelector.querySelectorAll("[data-subject-select]").forEach(select => {
       select.addEventListener("change", () => {
         const subject = this.subjects.find(item => item.id === select.value)
@@ -738,6 +832,7 @@ const VizLabHook = {
         const params = new URLSearchParams(window.location.search)
         params.set("subject", select.value)
         if (lesson) params.set("lesson", lesson.id)
+        if (this.executionMode === "live") params.set("mode", "live")
         params.delete("step")
         window.location.search = params.toString()
       })
@@ -746,7 +841,12 @@ const VizLabHook = {
     this.refs.programSelector.querySelectorAll("[data-lesson]").forEach(button => {
       button.addEventListener("click", () => {
         const params = new URLSearchParams(window.location.search)
-        params.set("subject", this.trace.subject_id)
+        if (this.executionMode === "live") {
+          params.set("subject", this.currentSubjectId)
+          params.set("mode", "live")
+        } else {
+          params.set("subject", this.trace.subject_id)
+        }
         params.set("lesson", button.dataset.lesson)
         params.delete("step")
         window.location.search = params.toString()
@@ -761,8 +861,9 @@ const VizLabHook = {
       groups.get(lesson.level).push(lesson)
     }
 
+    const selectedSubject = this.trace?.subject_id || this.live?.subject_id || this.currentSubjectId
     const subjectOptions = (this.subjects || []).map(subject => `
-      <option value="${escapeHtml(subject.id)}" ${subject.id === this.trace?.subject_id ? "selected" : ""}>
+      <option value="${escapeHtml(subject.id)}" ${subject.id === selectedSubject ? "selected" : ""}>
         ${escapeHtml(subject.title)}
       </option>
     `).join("")
@@ -918,6 +1019,149 @@ const VizLabHook = {
 
   currentEvent() {
     return this.trace.events[this.step]
+  },
+
+  renderLiveStatus() {
+    if (!this.refs.executionStatusCard) return
+    const span = this.live.span
+    this.refs.executionStatusCard.querySelector(".status-pill").textContent = "LIVE"
+    this.refs.executionStatusCard.querySelector("strong").textContent = "Live AST execution"
+    this.refs.liveStatus.textContent = this.live.status || "idle"
+    this.refs.liveSession.textContent = this.live.sessionId || "-"
+    this.refs.livePid.textContent = this.live.runtimePid || "-"
+    this.refs.liveSpan.textContent = span ? `${span.file || "lesson.ex"}:${span.line_start || span.line || 1}` : "-"
+    this.refs.liveStep.textContent = String(this.live.currentStep || 0)
+    this.refs.liveCommand.textContent = this.live.lastCommand || "-"
+    this.refs.stepCounter.textContent = `Live step ${this.live.currentStep || 0}`
+  },
+
+  renderLiveCode() {
+    const source = this.live.source || parsePayload(this.el.dataset.liveSource, null)
+    if (!source) {
+      this.refs.codeTitle.textContent = "lesson.ex"
+      this.refs.sourceTabs.innerHTML = ""
+      this.refs.codeEditor.innerHTML = `<div class="loading-panel">Live source unavailable for this lesson.</div>`
+      return
+    }
+
+    const line = this.live.span?.line_start || this.live.span?.line || 1
+    if (this.activeFile !== "live:lesson.ex" || !this.editor) {
+      this.activeFile = "live:lesson.ex"
+      if (this.editor) this.editor.destroy()
+      this.refs.sourceTabs.innerHTML = `<button type="button" class="source-tab active">lesson.ex</button>`
+      this.editor = new EditorView({
+        state: EditorState.create({
+          doc: source.source,
+          extensions: [
+            lineNumbers(),
+            elixir(),
+            syntaxHighlighting(defaultHighlightStyle),
+            EditorState.readOnly.of(true),
+            EditorView.editable.of(false),
+            activeLineField,
+            EditorView.theme({
+              "&": {height: "100%"},
+              ".cm-scroller": {fontFamily: "'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace"},
+            }),
+          ],
+        }),
+        parent: this.refs.codeEditor,
+      })
+    }
+
+    this.refs.codeTitle.textContent = "lesson.ex"
+    this.editor.dispatch({effects: activeLineEffect.of(line)})
+    const codeLine = this.editor.state.doc.line(Math.min(line, this.editor.state.doc.lines))
+    this.editor.dispatch({selection: {anchor: codeLine.from}, scrollIntoView: true})
+  },
+
+  renderLiveBindings() {
+    const rows = bindingRows(this.live.bindings).map(row => `
+      <div class="var-row live-binding" data-binding="${escapeHtml(row.name)}">
+        <span>${escapeHtml(row.name)}</span>
+        <b>${escapeHtml(row.kind || "")}</b>
+        <em>${escapeHtml(row.summary || "")}</em>
+      </div>
+    `).join("")
+
+    this.refs.variableInspector.innerHTML = `<div class="inspector-title">Live bindings</div>${rows || `<p class="empty-copy">No bindings yet</p>`}`
+  },
+
+  renderLiveTeaching(event = {}) {
+    const span = this.live.span
+    this.refs.lessonTitle.textContent = "x_squared live"
+    this.refs.lessonCard.innerHTML = `
+      <div class="lesson-card-header">
+        <span>${escapeHtml(this.live.status || "idle")}</span>
+        <strong>${escapeHtml(event.type || "Live AST execution")}</strong>
+      </div>
+      <p class="lesson-copy">${span ? `Paused at ${escapeHtml(span.file || "lesson.ex")}:${span.line_start || span.line || 1}. Backend state changed only after a live event arrived.` : "Start live execution to create a backend session."}</p>
+      ${event.error ? `<p class="lesson-copy">${escapeHtml(event.error.message || String(event.error))}</p>` : ""}
+    `
+  },
+
+  renderLiveGraph() {
+    const canvas = this.refs.canvas
+    const wrap = canvas.parentElement
+    const width = Math.max(wrap.clientWidth, 300)
+    const height = Math.max(wrap.clientHeight, 260)
+    canvas.width = Math.floor(width * Math.min(window.devicePixelRatio || 1, 2))
+    canvas.height = Math.floor(height * Math.min(window.devicePixelRatio || 1, 2))
+    canvas.style.width = `${width}px`
+    canvas.style.height = `${height}px`
+    const ctx = canvas.getContext("2d")
+    const scale = canvas.width / width
+    ctx.setTransform(scale, 0, 0, scale, 0, 0)
+    ctx.clearRect(0, 0, width, height)
+    ctx.fillStyle = "#0e0e12"
+    ctx.fillRect(0, 0, width, height)
+
+    const domain = this.live.domainSnapshot
+    if (!domain?.graph?.nodes?.length) {
+      ctx.fillStyle = "#8888aa"
+      ctx.font = "14px ui-sans-serif, system-ui"
+      ctx.fillText("Live graph appears as execution reaches Micrograd values.", 24, 36)
+      return
+    }
+
+    const nodes = domain.graph.nodes
+    const edges = domain.graph.edges || []
+    const positions = new Map()
+    const spacing = Math.max(120, Math.min(180, (width - 80) / Math.max(nodes.length, 1)))
+    nodes.forEach((node, index) => positions.set(String(node.id), {x: 50 + index * spacing, y: height / 2}))
+
+    for (const edge of edges) {
+      const from = positions.get(String(edge.from))
+      const to = positions.get(String(edge.to))
+      if (!from || !to) continue
+      ctx.strokeStyle = "#16a34a"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(from.x + 36, from.y)
+      ctx.lineTo(to.x - 36, to.y)
+      ctx.stroke()
+      ctx.fillStyle = "#9ca3af"
+      ctx.font = "12px ui-monospace, monospace"
+      ctx.fillText(edge.label || "", (from.x + to.x) / 2 - 12, from.y - 16)
+    }
+
+    for (const node of nodes) {
+      const pos = positions.get(String(node.id))
+      const grad = domain.gradients?.[String(node.id)] ?? domain.gradients?.[node.id]
+      ctx.fillStyle = node.kind === "leaf" ? "#4b50c8" : "#c8930a"
+      ctx.strokeStyle = node.is_output ? "#ffffff" : "#252638"
+      ctx.lineWidth = node.is_output ? 3 : 1
+      roundRect(ctx, pos.x - 44, pos.y - 28, 88, 56, 8)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = "#f5f5fb"
+      ctx.font = "12px ui-monospace, monospace"
+      ctx.textAlign = "center"
+      ctx.fillText(String(node.title || node.display_id).slice(0, 14), pos.x, pos.y - 8)
+      ctx.fillText(`data ${formatNumber(node.data)}`, pos.x, pos.y + 8)
+      ctx.fillText(`grad ${grad == null ? "-" : formatNumber(grad)}`, pos.x, pos.y + 23)
+    }
+    ctx.textAlign = "left"
   },
 }
 

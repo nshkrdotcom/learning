@@ -9,6 +9,8 @@ defmodule MlVizLab.Subjects.Micrograd do
   alias MicrogradEx.NN.Neuron
   alias MicrogradEx.Value
   alias MlVizLab.Subjects.Micrograd.Concepts
+  alias MlVizLab.Subjects.Micrograd.DomainSnapshot
+  alias MlVizLab.Subjects.Micrograd.LiveLesson
   alias MlVizLab.Subjects.Micrograd.Runner
   alias MlVizLab.Subjects.Micrograd.SourceCatalog
   alias MlVizLab.Subjects.Micrograd.TraceBuilder
@@ -146,6 +148,9 @@ defmodule MlVizLab.Subjects.Micrograd do
       {:error, error} -> raise error
     end
   end
+
+  def live_source(lesson_id), do: LiveLesson.source!(lesson_id)
+  def live_domain_adapter, do: DomainSnapshot
 
   defp lesson(id, title, level, description) do
     %{id: id, title: title, level: level, description: description}

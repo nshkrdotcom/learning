@@ -11,6 +11,7 @@ defmodule MlVizLab.Application do
       MlVizLabWeb.Telemetry,
       {DNSCluster, query: Application.get_env(:ml_viz_lab, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: MlVizLab.PubSub},
+      MlVizLab.Execution.SessionSupervisor,
       # Start a worker by calling: MlVizLab.Worker.start_link(arg)
       # {MlVizLab.Worker, arg},
       # Start to serve requests, typically the last entry
