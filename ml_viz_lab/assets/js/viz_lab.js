@@ -5,6 +5,10 @@ import {EditorState, StateEffect, StateField} from "@codemirror/state"
 import {EditorView, Decoration, lineNumbers} from "@codemirror/view"
 import {syntaxHighlighting, defaultHighlightStyle} from "@codemirror/language"
 import {elixir} from "codemirror-lang-elixir"
+import {clamp, escapeHtml, formatNumber, titleCase} from "./viz/format"
+import {initialPlayback, nextLoopStep, playbackReducer} from "./viz/playback"
+import {readStepFromUrl, writeStepToUrl} from "./viz/url_state"
+import {buildSourceLineIndex, parsePayload} from "./viz/trace_store"
 
 const activeLineEffect = StateEffect.define()
 
@@ -31,20 +35,24 @@ const activeLineField = StateField.define({
 
 const VizLabHook = {
   mounted() {
-    this.trace = JSON.parse(this.el.dataset.trace)
-    this.lessons = JSON.parse(this.el.dataset.lessons)
-    this.subjects = JSON.parse(this.el.dataset.subjects)
-    this.step = Number(new URLSearchParams(window.location.search).get("step") || 0)
-    this.step = clamp(this.step, 0, this.trace.events.length - 1)
+    this.trace = null
+    this.lessons = parsePayload(this.el.dataset.lessons, [])
+    this.subjects = parsePayload(this.el.dataset.subjects, [])
+    this.playback = initialPlayback(0, 0)
+    this.step = 0
     this.speed = 1
     this.timer = null
     this.codeMode = "lesson"
     this.viewMode = "execution"
     this.showLabels = true
+    this.showLocalDerivatives = true
+    this.showGradients = true
     this.explanationLevel = "intuition"
     this.activeFile = null
     this.manualSourceFile = null
     this.selected = null
+    this.compareStep = null
+    this.controlsBound = false
 
     this.refs = {
       codeTitle: this.el.querySelector("#code-title"),
@@ -67,27 +75,88 @@ const VizLabHook = {
       speedSelect: this.el.querySelector("#speed-select"),
     }
 
-    this.sourceById = new Map(this.trace.sources.map(source => [source.id, source]))
-    this.eventBySourceLine = new Map()
-    for (const event of this.trace.events) {
-      for (const source of [event.source, event.implementation_source]) {
-        const key = `${source.file}:${source.line}`
-        if (!this.eventBySourceLine.has(key)) this.eventBySourceLine.set(key, event.index)
-      }
-    }
+    this.handleEvent("trace_ready", payload => {
+      this.lessons = payload.lessons || this.lessons
+      this.subjects = payload.subjects || this.subjects
+      this.loadTrace(payload.trace)
+    })
 
-    this.initCode()
-    this.initGraph()
-    this.bindControls()
-    this.renderAll(false)
+    const initialTrace = parsePayload(this.el.dataset.trace, null)
+    if (initialTrace && initialTrace.events && initialTrace.events.length > 0) {
+      this.loadTrace(initialTrace)
+    } else {
+      this.renderLoading()
+    }
   },
 
   destroyed() {
     this.stop()
     if (this.editor) this.editor.destroy()
-    if (this.renderer) this.renderer.dispose()
+    this.disposeGraph()
     window.removeEventListener("resize", this.resizeHandler)
     window.removeEventListener("keydown", this.keyHandler)
+  },
+
+  loadTrace(trace) {
+    this.stop()
+    this.disposeGraph()
+    if (this.editor) {
+      this.editor.destroy()
+      this.editor = null
+    }
+
+    this.trace = trace
+    this.sourceById = new Map(this.trace.sources.map(source => [source.id, source]))
+    this.eventBySourceLine = buildSourceLineIndex(this.trace.events)
+    this.playback = initialPlayback(this.trace.events.length, readStepFromUrl())
+    this.step = this.playback.step
+    this.speed = this.playback.speed
+    this.activeFile = null
+    this.selected = null
+    this.compareStep = null
+
+    if (!this.controlsBound) {
+      this.bindControls()
+      this.controlsBound = true
+    }
+
+    this.initCode()
+    this.initGraph()
+    this.renderAll(false)
+  },
+
+  renderLoading() {
+    this.refs.lessonTitle.textContent = "Loading trace"
+    this.refs.codeTitle.textContent = "lesson.ex"
+    this.refs.sourceTabs.innerHTML = ""
+    this.refs.codeEditor.innerHTML = `<div class="loading-panel">Generating trace from the selected subject...</div>`
+    this.refs.variableInspector.innerHTML = `<div class="inspector-title">Values</div>`
+    this.refs.graphTitle.textContent = "Preparing graph"
+    this.refs.phaseLabel.textContent = "Loading"
+    this.refs.programSelector.innerHTML = this.renderProgramSelectorHtml(null)
+    this.refs.progressStrip.innerHTML = ""
+    this.refs.lessonCard.innerHTML = `<p class="lesson-copy">The backend is running the lesson and building an immutable timeline.</p>`
+    this.refs.checkpointRow.innerHTML = ""
+    this.refs.stepCounter.textContent = "Step - / -"
+  },
+
+  disposeGraph() {
+    if (this.animationFrame) {
+      cancelAnimationFrame(this.animationFrame)
+      this.animationFrame = null
+    }
+    if (this.controls) {
+      this.controls.dispose()
+      this.controls = null
+    }
+    if (this.renderer) {
+      this.renderer.dispose()
+      this.renderer = null
+    }
+    this.scene = null
+    this.camera = null
+    this.nodeObjects = new Map()
+    this.edgeObjects = new Map()
   },
 
   initCode() {
@@ -240,7 +309,6 @@ const VizLabHook = {
       }
     })
 
-    this.refs.scrubber.max = Math.max(this.trace.events.length - 1, 0)
     this.refs.scrubber.addEventListener("input", event => this.setStep(Number(event.target.value), false))
 
     this.el.querySelectorAll("[data-code-mode]").forEach(button => {
@@ -263,7 +331,19 @@ const VizLabHook = {
       this.showLabels = !this.showLabels
       event.currentTarget.classList.toggle("active", this.showLabels)
       for (const object of this.nodeObjects.values()) object.label.visible = this.showLabels
-      for (const object of this.edgeObjects.values()) object.label.visible = this.showLabels
+      for (const object of this.edgeObjects.values()) object.label.visible = this.showLabels && this.showLocalDerivatives
+    })
+
+    this.el.querySelector("[data-toggle-derivatives]").addEventListener("click", event => {
+      this.showLocalDerivatives = !this.showLocalDerivatives
+      event.currentTarget.classList.toggle("active", this.showLocalDerivatives)
+      this.renderGraph(false)
+    })
+
+    this.el.querySelector("[data-toggle-gradients]").addEventListener("click", event => {
+      this.showGradients = !this.showGradients
+      event.currentTarget.classList.toggle("active", this.showGradients)
+      this.renderGraph(false)
     })
 
     this.el.querySelector("[data-reset-camera]").addEventListener("click", () => this.resetCamera())
@@ -302,7 +382,31 @@ const VizLabHook = {
       case "forward1": return this.setStep(this.step + 1, true)
       case "forward10": return this.setStep(this.step + 10, false)
       case "end": return this.setStep(this.trace.events.length - 1, false)
+      case "loop_phase": return this.toggleLoopPhase()
+      case "follow": return this.toggleFollow()
+      case "compare": return this.toggleCompare()
     }
+  },
+
+  toggleLoopPhase() {
+    if (!this.trace) return
+    this.playback = playbackReducer(this.playback, {type: "loop_phase"}, this.trace.events.length, this.trace.checkpoints)
+    this.el.querySelectorAll("[data-action='loop_phase']").forEach(button => button.classList.toggle("active", this.playback.loopPhase))
+  },
+
+  toggleFollow() {
+    if (!this.trace) return
+    this.playback = playbackReducer(this.playback, {type: "follow"}, this.trace.events.length, this.trace.checkpoints)
+    this.el.querySelectorAll("[data-action='follow']").forEach(button => button.classList.toggle("active", this.playback.follow))
+    this.renderGraph(false)
+  },
+
+  toggleCompare() {
+    if (!this.trace) return
+    this.compareStep = this.compareStep == null ? this.step : null
+    this.el.querySelectorAll("[data-action='compare']").forEach(button => button.classList.toggle("active", this.compareStep != null))
+    this.renderSelection()
+    this.renderTeaching()
   },
 
   toggle() {
@@ -311,6 +415,7 @@ const VizLabHook = {
   },
 
   play() {
+    if (!this.trace) return
     this.manualSourceFile = null
     this.el.querySelector("[data-action='toggle']").textContent = "Pause"
     const tick = () => {
@@ -318,7 +423,7 @@ const VizLabHook = {
         this.stop()
         return
       }
-      this.setStep(this.step + 1, true, false)
+      this.setStep(nextLoopStep(this.playback, this.trace.events), true, false)
       this.timer = window.setTimeout(tick, Math.max(60, 600 / this.speed))
     }
     this.timer = window.setTimeout(tick, Math.max(60, 600 / this.speed))
@@ -332,7 +437,9 @@ const VizLabHook = {
   },
 
   setStep(nextStep, animated = false, updateUrl = true) {
+    if (!this.trace) return
     this.step = clamp(nextStep, 0, this.trace.events.length - 1)
+    this.playback = playbackReducer(this.playback, {type: "jump", step: this.step}, this.trace.events.length, this.trace.checkpoints)
     this.renderAll(animated)
     if (updateUrl) this.updateUrl()
   },
@@ -346,6 +453,7 @@ const VizLabHook = {
 
   renderControls() {
     this.refs.scrubber.value = this.step
+    this.refs.scrubber.max = Math.max(this.trace.events.length - 1, 0)
     this.refs.stepCounter.textContent = `Step ${this.step + 1} / ${this.trace.events.length}`
     this.refs.checkpointRow.innerHTML = this.trace.checkpoints.map((checkpoint, index) => {
       const active = checkpoint.step <= this.step ? "active" : ""
@@ -468,7 +576,7 @@ const VizLabHook = {
       object.group.scale.set(1, 1, 1)
       object.material.color.set(colorForNode(object.node))
       object.material.emissive.set(isActive ? "#6b3d00" : "#000000")
-      updateTextSprite(object.label, labelText(object.node, grad), 240, 82)
+      updateTextSprite(object.label, labelText(object.node, grad, this.showGradients), 240, 82)
     }
 
     for (const [id, object] of this.edgeObjects) {
@@ -477,13 +585,21 @@ const VizLabHook = {
       const isVisible = structural || (fromVisible && toVisible)
       const isActive = event.snapshot.active_edge === id
       object.line.visible = isVisible
-      object.label.visible = isVisible && this.showLabels
+      object.label.visible = isVisible && this.showLabels && this.showLocalDerivatives
       object.material.color.set(isActive ? "#16a34a" : "#44485f")
       object.material.opacity = isActive ? 1 : 0.55
     }
 
     this.renderMinimap(visible, structural)
     this.renderSelection()
+    if (this.playback.follow) this.focusActiveNode(event.snapshot.active_node)
+  },
+
+  focusActiveNode(nodeId) {
+    if (!this.controls || nodeId == null) return
+    const pos = this.layout.get(String(nodeId))
+    if (!pos) return
+    this.controls.target.lerp(new THREE.Vector3(pos.x, pos.y, 0), 0.16)
   },
 
   renderMinimap(visible, structural) {
@@ -526,6 +642,7 @@ const VizLabHook = {
       </div>
       <p class="lesson-copy">${escapeHtml(current)}</p>
       ${this.renderEventFact(event)}
+      ${this.renderCompareFact()}
       <div class="concept-list">
         ${(event.concepts || []).map(id => {
           const concept = this.trace.concepts.find(item => item.id === id)
@@ -592,15 +709,46 @@ const VizLabHook = {
     return ""
   },
 
+  renderCompareFact() {
+    if (this.compareStep == null || !this.trace.events[this.compareStep]) return ""
+
+    const from = this.trace.events[this.compareStep]
+    const to = this.currentEvent()
+    const fromNodes = new Set((from.snapshot.visible_nodes || []).map(String))
+    const toNodes = new Set((to.snapshot.visible_nodes || []).map(String))
+    const newNodes = [...toNodes].filter(id => !fromNodes.has(id)).length
+    const gradientDelta = Object.keys(to.snapshot.gradients || {}).length - Object.keys(from.snapshot.gradients || {}).length
+
+    return `
+      <div class="compare-card">
+        <strong>Compare step ${this.compareStep + 1} to ${this.step + 1}</strong>
+        <span>${newNodes} new nodes, ${gradientDelta} gradient entries changed</span>
+      </div>
+    `
+  },
+
   renderProgramSelector() {
     const current = this.trace.lesson_id
+    this.refs.programSelector.innerHTML = this.renderProgramSelectorHtml(current)
+
+    this.refs.programSelector.querySelectorAll("[data-lesson]").forEach(button => {
+      button.addEventListener("click", () => {
+        const params = new URLSearchParams(window.location.search)
+        params.set("lesson", button.dataset.lesson)
+        params.delete("step")
+        window.location.search = params.toString()
+      })
+    })
+  },
+
+  renderProgramSelectorHtml(current) {
     const groups = new Map()
     for (const lesson of this.lessons) {
       if (!groups.has(lesson.level)) groups.set(lesson.level, [])
       groups.get(lesson.level).push(lesson)
     }
 
-    this.refs.programSelector.innerHTML = Array.from(groups.entries()).map(([level, lessons]) => `
+    return Array.from(groups.entries()).map(([level, lessons]) => `
       <section>
         <h3>${escapeHtml(level)}</h3>
         ${lessons.map(lesson => `
@@ -611,15 +759,6 @@ const VizLabHook = {
         `).join("")}
       </section>
     `).join("")
-
-    this.refs.programSelector.querySelectorAll("[data-lesson]").forEach(button => {
-      button.addEventListener("click", () => {
-        const params = new URLSearchParams(window.location.search)
-        params.set("lesson", button.dataset.lesson)
-        params.delete("step")
-        window.location.search = params.toString()
-      })
-    })
   },
 
   renderProgress() {
@@ -704,6 +843,7 @@ const VizLabHook = {
           <div class="edge-list">
             ${edges.map(edge => `<button type="button" data-edge="${edge.id}">${escapeHtml(edge.label || edge.id)}</button>`).join("")}
           </div>
+          ${this.renderCompareFact()}
         </article>
       `
       this.refs.selectionCard.querySelector(".drawer-close").addEventListener("click", () => {
@@ -724,6 +864,7 @@ const VizLabHook = {
             <div><dt>to</dt><dd>${escapeHtml(String(edge.to))}</dd></div>
             <div><dt>local</dt><dd>${edge.local_gradient == null ? "-" : formatNumber(edge.local_gradient)}</dd></div>
           </dl>
+          ${this.renderCompareFact()}
         </article>
       `
       this.refs.selectionCard.querySelector(".drawer-close").addEventListener("click", () => {
@@ -749,10 +890,7 @@ const VizLabHook = {
   },
 
   updateUrl() {
-    const params = new URLSearchParams(window.location.search)
-    params.set("lesson", this.trace.lesson_id)
-    params.set("step", String(this.step))
-    history.replaceState(null, "", `${window.location.pathname}?${params}`)
+    writeStepToUrl(this.trace.lesson_id, this.step)
   },
 
   currentEvent() {
@@ -772,10 +910,10 @@ function colorForNode(node) {
   return "#64748b"
 }
 
-function labelText(node, grad) {
+function labelText(node, grad, showGradients = true) {
   const title = node.title || node.display_id
-  const gradText = grad == null ? "-" : formatNumber(grad)
-  return `${title}\n${node.op}  data ${formatNumber(node.data)}\ngrad ${gradText}`
+  const gradText = showGradients ? `\ngrad ${grad == null ? "-" : formatNumber(grad)}` : ""
+  return `${title}\n${node.op}  data ${formatNumber(node.data)}${gradText}`
 }
 
 function makeTextSprite(text, width = 220, height = 72, fontSize = 20) {
@@ -825,30 +963,6 @@ function roundRect(ctx, x, y, width, height, radius) {
   ctx.arcTo(x, y + height, x, y, radius)
   ctx.arcTo(x, y, x + width, y, radius)
   ctx.closePath()
-}
-
-function formatNumber(value) {
-  if (value == null || Number.isNaN(Number(value))) return "-"
-  const number = Number(value)
-  if (Math.abs(number) >= 1000 || Math.abs(number) < 0.001 && number !== 0) return number.toExponential(2)
-  return number.toFixed(4).replace(/\.?0+$/, "")
-}
-
-function titleCase(value) {
-  return String(value || "").replace(/_/g, " ").replace(/\b\w/g, letter => letter.toUpperCase())
-}
-
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;")
 }
 
 export {VizLabHook}

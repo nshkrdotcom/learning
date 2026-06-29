@@ -1,5 +1,29 @@
 This is a web application written using the Phoenix web framework.
 
+## ML Viz Lab Project Notes
+
+- The app lives at `/home/home/p/g/n/learning/ml_viz_lab` inside the parent `learning` git repo.
+- It depends on the sibling local Elixir library `../micrograd_ex`; do not modify `../micrograd_ex` while working on this app unless explicitly asked.
+- Keep subject-specific behavior behind `MlVizLab.Subjects.Adapter`. Micrograd-specific code belongs under `MlVizLab.Subjects.Micrograd`; the LiveView shell and frontend should consume generic `MlVizLab.Trace.*` data so a future subject such as Makemore can be added without rewiring the app.
+- The current browser experience is intentionally controls-first. Do not add real LLM/API integration unless explicitly requested; the LLM panel is a reserved surface only.
+
+## Installed Tooling And Dependency Notes
+
+- Hex was refreshed during setup with `mix local.hex --force`.
+- Phoenix generator archive `phx_new 1.8.8` was installed with `mix archive.install hex phx_new --force`.
+- Project-local npm packages are in `assets/package.json` and `assets/package-lock.json`.
+  - Runtime packages include `three`, `dagre`, CodeMirror 6 packages, and `codemirror-lang-elixir`.
+  - Dev/test packages include `playwright`, `vitest`, and `pngjs`.
+- Playwright Chromium binaries were installed with `npx --prefix assets playwright install chromium`, which places browser binaries in `~/.cache/ms-playwright/`.
+- If browser tests fail on a fresh machine because no browser binary exists, run `npx --prefix assets playwright install chromium`.
+
+## Verification Commands
+
+- Elixir/unit checks: `mix format --check-formatted && mix compile --warnings-as-errors && mix test`
+- Asset build: `mix assets.build`
+- JS unit tests: `npm test --prefix assets`
+- Browser smoke tests require a running server at `http://localhost:4000`, then run `npm run test:e2e --prefix assets`.
+
 ## Project guidelines
 
 - Use `mix precommit` alias when you are done with all changes and fix any pending issues

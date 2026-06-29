@@ -223,6 +223,7 @@ input {
 
 .seg.active,
 .icon-btn.active,
+.control-btn.active,
 .checkpoint.active,
 .depth-tabs button.active,
 .program-card.active {
@@ -284,6 +285,15 @@ input {
 .code-editor .cm-viz-active-line {
   background: #2d2510;
   box-shadow: inset 3px 0 0 #f5a623;
+}
+
+.loading-panel {
+  display: grid;
+  min-height: 100%;
+  place-items: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .variable-inspector {
@@ -570,6 +580,26 @@ input {
   gap: 6px;
 }
 
+.compare-card {
+  display: grid;
+  gap: 3px;
+  margin: 12px 0;
+  border: 1px solid #34435f;
+  border-radius: 6px;
+  background: #121c26;
+  padding: 9px;
+}
+
+.compare-card strong {
+  color: #dcecff;
+  font-size: 12px;
+}
+
+.compare-card span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .concept-list button {
   padding: 6px 8px;
   color: #fff0c8;
@@ -643,7 +673,7 @@ input {
 
 .cinema-controls {
   display: grid;
-  grid-template-columns: repeat(7, auto) auto minmax(180px, 1fr) auto;
+  grid-template-columns: repeat(9, auto) auto minmax(180px, 1fr) auto;
   align-items: center;
   gap: 7px;
   padding: 9px 12px 12px;
