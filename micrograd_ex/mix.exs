@@ -7,7 +7,8 @@ defmodule MicrogradEx.MixProject do
       version: "0.1.0",
       elixir: "~> 1.20",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      docs: docs()
     ]
   end
 
@@ -21,8 +22,24 @@ defmodule MicrogradEx.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:ex_doc, "~> 0.40.3", only: :dev, runtime: false}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: [
+        "README.md",
+        "guides/getting_started_with_livebook.md",
+        "guides/micrograd_demo_walkthrough.md",
+        "guides/elixir_design_notes.md",
+        "guides/api_reference.md",
+        "guides/troubleshooting.md"
+      ],
+      groups_for_extras: [
+        Guides: Path.wildcard("guides/*.md")
+      ]
     ]
   end
 end

@@ -1,301 +1,213 @@
 # MicrogradEx
 
-MicrogradEx is an Elixir-native port of Andrej Karpathy's
-[micrograd](https://github.com/karpathy/micrograd): a tiny scalar automatic
-differentiation engine with a small neural-network library built on top.
+MicrogradEx is a small educational scalar autodiff and neural-network library in Elixir, inspired by Andrej Karpathy's [micrograd](https://github.com/karpathy/micrograd).
 
-The goal is educational clarity. The engine works over scalar values, builds a
-dynamic computation graph during the forward pass, and runs reverse-mode
-automatic differentiation during the backward pass. The neural-network layer
-then composes those scalar operations into neurons, layers, and multi-layer
-perceptrons.
+It implements reverse-mode autodiff over scalar `Value` nodes, a tiny neural-network layer, and a Livebook-first recreation of the classic micrograd two-moons classification demo.
 
-## What Is Included
+The goal is not performance. The goal is to make the mechanics of backpropagation visible in idiomatic Elixir.
 
-This project ports the full core scope of original micrograd:
+## What is this?
 
-* `MicrogradEx.Value` for scalar values and operations:
-  `add`, `sub`, `mul`, `divide`, `pow`, `relu`, `neg`, and `sum`.
-* `MicrogradEx.Gradients` for immutable gradient results from `backward/1`.
-* `MicrogradEx.NN.Neuron`, `MicrogradEx.NN.Layer`, and `MicrogradEx.NN.MLP`.
-* `MicrogradEx.NN.apply_gradients/3` for SGD-style immutable parameter updates.
-* Tests that cover the original micrograd reference expressions, gradient
-  accumulation through shared graph nodes, ReLU behavior, MLP structure, seeded
-  initialization, immutable parameter updates, and a real training loop.
+MicrogradEx is a pure-Elixir learning project for reverse-mode automatic differentiation. It keeps the same educational scope as the original Python micrograd: scalar values, explicit computation graphs, neurons, layers, and small MLPs.
 
-It intentionally does not try to become a tensor library. Like the original,
-every neuron is decomposed into scalar additions, multiplications, powers, and
-activations so the chain rule remains visible.
+The main user experience is `notebooks/micrograd_demo.livemd`, which mirrors the official micrograd workflow in pure Elixir: make a two-moons dataset, train `MLP.new(2, [16, 16, 1])`, plot loss and accuracy, and visualize a decision boundary.
 
-## Why The API Is Different From Python
+## What this repo includes
 
-Python micrograd relies on mutable objects:
+* scalar `Value` objects with reverse-mode autodiff;
+* immutable `Gradients` tables returned from `Value.backward/1`;
+* tiny neural-network modules: `Neuron`, `Layer`, and `MLP`;
+* deterministic pure-Elixir dataset generators: moons, spiral, and blobs;
+* max-margin classification loss with L2 regularization;
+* immutable SGD-style training;
+* plot-data helpers for Livebook/Vega-Lite;
+* scalar graph inspection and DOT export;
+* a flagship Livebook demo;
+* ExDoc guides.
 
-```python
-loss.backward()
-print(weight.grad)
-weight.data += -learning_rate * weight.grad
-```
+## Quick start: Livebook demo
 
-Elixir data is immutable, so MicrogradEx uses returned values instead:
-
-```elixir
-loss = ...
-gradients = MicrogradEx.Value.backward(loss)
-weight_gradient = MicrogradEx.Value.grad(weight, gradients)
-model = MicrogradEx.NN.apply_gradients(model, gradients, learning_rate)
-```
-
-That is the central design difference. The math is the same, but the state flow
-is explicit and functional:
-
-1. The forward pass returns a new `Value` containing the graph needed for
-   backpropagation.
-2. The backward pass returns a new `Gradients` table.
-3. A training step returns a new model with updated parameter values.
-
-This is more idiomatic Elixir than trying to simulate Python's in-place
-mutation.
-
-## Quick Start
-
-Run the test suite:
+Clone the repo and open the main notebook:
 
 ```bash
-mix test
+git clone <repo-url>
+cd micrograd_ex
+livebook server
 ```
 
-Open an interactive shell:
+Then open:
+
+```text
+notebooks/micrograd_demo.livemd
+```
+
+Run the notebook from top to bottom. It will:
+
+1. build a two-moons dataset;
+2. inspect a scalar autodiff graph;
+3. initialize `MLP.new(2, [16, 16, 1])`;
+4. confirm the model has `337` parameters;
+5. train for 100 steps;
+6. plot loss and accuracy;
+7. visualize the learned decision boundary.
+
+The notebook uses `Mix.install/2` for Kino and Vega-Lite. Those visualization packages are not runtime dependencies of the core library.
+
+## Quick start: IEx
 
 ```bash
 iex -S mix
 ```
 
-Compute a derivative:
-
 ```elixir
-alias MicrogradEx.Value
-
-x = Value.new(3.0, label: "x")
-y = Value.pow(x, 2)
-
-gradients = Value.backward(y)
-
-y.data
-#=> 9.0
-
-Value.grad(x, gradients)
-#=> 6.0
-```
-
-The gradient is `6.0` because `d(x^2)/dx = 2x`, and `x = 3`.
-
-## Livebook Demo
-
-The main demo is `notebooks/micrograd_demo.livemd`.
-
-It recreates the official micrograd learning workflow in pure Elixir:
-
-* generate a deterministic two-moons dataset;
-* train `MLP.new(2, [16, 16, 1])`;
-* confirm the official `337` parameter count;
-* optimize max-margin loss with L2 regularization;
-* plot loss and accuracy;
-* visualize the learned decision boundary.
-
-Open the notebook in Livebook and run it top-to-bottom. The notebook installs
-Kino and Vega-Lite locally with `Mix.install/2`; those visualization packages
-are not runtime dependencies of the core library.
-
-## Port Of The Original Scalar Example
-
-The original README contains a deliberately mixed expression that uses
-addition, multiplication, power, division, negation, and ReLU. In Elixir the
-same computation is written with functions because Elixir does not support
-operator overloading for custom structs:
-
-```elixir
-alias MicrogradEx.Value
-
-a = Value.new(-4.0)
-b = Value.new(2.0)
-
-c = Value.add(a, b)
-d = Value.add(Value.mul(a, b), Value.pow(b, 3))
-
-c = Value.add(Value.add(c, c), 1.0)
-c = Value.add(Value.add(Value.add(c, 1.0), c), Value.neg(a))
-
-d = Value.add(Value.add(d, Value.mul(d, 2.0)), Value.relu(Value.add(b, a)))
-d = Value.add(Value.add(d, Value.mul(3.0, d)), Value.relu(Value.sub(b, a)))
-
-e = Value.sub(c, d)
-f = Value.pow(e, 2)
-g = Value.add(Value.divide(f, 2.0), Value.divide(10.0, f))
-
-gradients = Value.backward(g)
-
-Float.round(g.data, 4)
-#=> 24.7041
-
-Float.round(Value.grad(a, gradients), 4)
-#=> 138.8338
-
-Float.round(Value.grad(b, gradients), 4)
-#=> 645.5773
-```
-
-## How Backpropagation Works Here
-
-Each `Value` stores:
-
-* `data`: the scalar result of the forward computation.
-* `graph`: a map of graph node ids to immutable node records.
-* `id`: the id of the current output node.
-* `label`: optional debugging text.
-* `grad`: a display-only field, left at `0.0` unless you explicitly annotate a
-  value with `Value.with_grad/2`.
-
-Each operation records local derivative edges. For example:
-
-* `a + b` records `da = 1` and `db = 1`.
-* `a * b` records `da = b` and `db = a`.
-* `x ** n` records `dx = n * x ** (n - 1)`.
-* `relu(x)` records `dx = 1` when the output is positive and `0` otherwise.
-
-`Value.backward(output)` topologically walks the graph from output to leaves.
-At each node it multiplies the upstream gradient by the local derivative for
-each parent edge and adds that contribution into the gradient table. Repeated
-parent edges are preserved, so expressions like `x * x` correctly produce
-`2x`, and `x + x` correctly produces `2`.
-
-## Neural Networks
-
-The neural-network API mirrors the original project:
-
-```elixir
-alias MicrogradEx.NN
 alias MicrogradEx.NN.MLP
+alias MicrogradEx.{Datasets, Losses, Trainer}
 
-model = MLP.new(3, [4, 4, 1], seed: {101, 102, 103})
+dataset = Datasets.moons(100, noise: 0.1, seed: {1337, 1337, 1337})
+model = MLP.new(2, [16, 16, 1], seed: {1337, 1337, 1337})
 
-prediction = NN.forward(model, [2.0, -1.0, 0.5])
+initial = Losses.max_margin(model, dataset.xs, dataset.ys)
 
-prediction.data
-#=> some scalar output
-
-NN.parameter_count(model)
-#=> 41
-```
-
-For an MLP with input width `3` and layer widths `[4, 4, 1]`, the parameter
-count is:
-
-* first layer: `4 * 3` weights plus `4` biases = `16`;
-* second layer: `4 * 4` weights plus `4` biases = `20`;
-* final layer: `1 * 4` weights plus `1` bias = `5`;
-* total = `41`.
-
-Hidden layers use ReLU. The final layer is linear, matching original micrograd.
-
-## A Tiny Training Loop
-
-This example trains a single linear neuron to learn `y = 2x - 1`.
-
-```elixir
-alias MicrogradEx.NN
-alias MicrogradEx.NN.Neuron
-alias MicrogradEx.Value
-
-data = [
-  {-2.0, -5.0},
-  {-1.0, -3.0},
-  {0.0, -1.0},
-  {1.0, 1.0},
-  {2.0, 3.0}
-]
-
-model =
-  Neuron.new(1,
-    weights: [0.0],
-    bias: 0.0,
-    nonlin: false
+run =
+  Trainer.train(model, dataset,
+    steps: 100,
+    alpha: 1.0e-4
   )
 
-loss = fn model ->
-  data
-  |> Enum.map(fn {x, target} ->
-    model
-    |> NN.forward([x])
-    |> Value.sub(target)
-    |> Value.pow(2)
-  end)
-  |> Value.sum()
-end
-
-trained =
-  Enum.reduce(1..80, model, fn _step, model ->
-    current_loss = loss.(model)
-    gradients = Value.backward(current_loss)
-    NN.apply_gradients(model, gradients, 0.03)
-  end)
-
-[weight, bias] = NN.parameters(trained)
-
-weight.data
-#=> approximately 2.0
-
-bias.data
-#=> approximately -1.0
+%{
+  initial_loss: initial.total_loss.data,
+  final_loss: run.final_loss,
+  final_accuracy: run.final_accuracy
+}
 ```
 
-Notice that no `zero_grad` call is needed. Each backward pass returns a fresh
-gradient table, so gradients cannot accidentally accumulate across training
-steps unless you explicitly combine them yourself.
+## Official micrograd demo parity
 
-## Project Layout
+The main Livebook mirrors the original micrograd demo workflow. It does not byte-match sklearn or Matplotlib output; it reproduces the educational workflow in pure Elixir.
+
+| Official Python micrograd | MicrogradEx |
+|---|---|
+| `sklearn.datasets.make_moons` | `MicrogradEx.Datasets.moons/2` |
+| `MLP(2, [16, 16, 1])` | `MicrogradEx.NN.MLP.new(2, [16, 16, 1])` |
+| 337 parameters | 337 parameters |
+| max-margin loss | `MicrogradEx.Losses.max_margin/4` |
+| `model.zero_grad()` | not needed |
+| `total_loss.backward()` | `Value.backward(total_loss)` |
+| mutate `p.data` | return updated model structs |
+| Matplotlib plots | Livebook + Vega-Lite plots |
+
+Expected visuals in the notebook:
+
+* a scatter plot of the two-moons dataset;
+* a loss chart showing total, data, and regularization loss;
+* an accuracy chart in percent;
+* a decision-boundary plot behind the training points.
+
+## Elixir design differences
+
+Python micrograd stores mutable state directly on each `Value`:
+
+* `value.data`;
+* `value.grad`.
+
+MicrogradEx keeps `Value` immutable. A backward pass returns a separate `Gradients` table:
+
+```elixir
+gradients = MicrogradEx.Value.backward(loss)
+dx = MicrogradEx.Value.grad(x, gradients)
+```
+
+Model updates are immutable too:
+
+```elixir
+next_model = MicrogradEx.NN.apply_gradients(model, gradients, learning_rate)
+```
+
+Because gradients are returned fresh from each backward pass, there is no `zero_grad` step.
+
+## Project layout
 
 ```text
 lib/
-  micrograd_ex.ex          # small public convenience facade
-  micrograd_ex/value.ex    # scalar graph values and arithmetic operations
-  micrograd_ex/gradients.ex # reverse-mode autodiff result and graph traversal
-  micrograd_ex/nn.ex       # Neuron, Layer, MLP, and immutable SGD updates
+  micrograd_ex/
+    value.ex          # scalar autodiff values
+    gradients.ex      # immutable gradient table
+    nn.ex             # Neuron, Layer, MLP
+    datasets.ex       # pure-Elixir toy datasets
+    losses.ex         # max-margin loss
+    trainer.ex        # immutable training loop
+    plot_data.ex      # plain rows for plotting
+    graph.ex          # graph inspection and DOT export
+
+notebooks/
+  micrograd_demo.livemd
+
+guides/
+  getting_started_with_livebook.md
+  micrograd_demo_walkthrough.md
+  elixir_design_notes.md
+  api_reference.md
+  troubleshooting.md
 
 test/
-  value_test.exs           # scalar autodiff and original reference expressions
-  nn_test.exs              # neural-network behavior and training
 ```
 
 ## Development
 
-Format code:
-
 ```bash
-mix format
-```
-
-Run tests:
-
-```bash
+mix deps.get
+mix format --check-formatted
 mix test
 ```
 
-The tests are intentionally behavioral rather than shallow smoke tests. They
-verify the numeric forward values and gradients from the original micrograd
-examples, graph edge accumulation, and a working gradient-descent training loop.
+Validate the Livebook structure:
+
+```bash
+bash scripts/validate_livebook.sh
+```
+
+Validate documentation:
+
+```bash
+bash scripts/validate_docs.sh
+```
+
+## Documentation
+
+Generate local docs with:
+
+```bash
+mix docs
+```
+
+The docs include generated API pages and the guides in `guides/`.
+
+## Guides
+
+* [Getting started with Livebook](guides/getting_started_with_livebook.md)
+* [Micrograd demo walkthrough](guides/micrograd_demo_walkthrough.md)
+* [Elixir design notes](guides/elixir_design_notes.md)
+* [API reference](guides/api_reference.md)
+* [Troubleshooting](guides/troubleshooting.md)
+
+## Troubleshooting
+
+If Livebook cannot find the local package, confirm the notebook is still at `notebooks/micrograd_demo.livemd`. Its setup cell uses `Mix.install([{:micrograd_ex, path: ".."}])`.
+
+If training or decision-boundary plotting is slow, remember that this is scalar educational autodiff. Reduce sample count, hidden width, training steps, or use a coarser boundary grid such as `h: 0.35`.
+
+If the parameter count is not `337`, confirm the architecture is exactly:
+
+```elixir
+MicrogradEx.NN.MLP.new(2, [16, 16, 1])
+```
+
+More setup notes are in [Troubleshooting](guides/troubleshooting.md).
 
 ## Attribution
 
-This project is a port of the core ideas and API shape from
-[micrograd](https://github.com/karpathy/micrograd), created by Andrej Karpathy.
-The original project is MIT licensed and is designed for educational use.
-
-MicrogradEx adapts the implementation to Elixir's functional programming model:
-immutable values, explicit gradient tables, and model updates that return new
-structs instead of mutating parameters in place.
+MicrogradEx is inspired by Andrej Karpathy's [micrograd](https://github.com/karpathy/micrograd). The Elixir implementation preserves the scalar educational spirit while adapting state flow to immutable data.
 
 ## License
 
-The original micrograd license notice is preserved in this repository's
-`LICENSE` file. This Elixir port is provided under the same MIT License terms.
+See the LICENSE file.
