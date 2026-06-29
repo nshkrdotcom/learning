@@ -5,8 +5,28 @@ This notebook goes beyond the official parity path in `micrograd_demo.livemd`. T
 ## Setup
 
 ```elixir
+micrograd_ex_path =
+  [
+    System.get_env("MICROGRAD_EX_PATH"),
+    Path.expand("..", __DIR__),
+    Path.expand(".", __DIR__),
+    File.cwd!(),
+    Path.expand("micrograd_ex", File.cwd!())
+  ]
+  |> Enum.reject(&is_nil/1)
+  |> Enum.find(fn path ->
+    File.exists?(Path.join(path, "mix.exs")) and
+      File.exists?(Path.join(path, "lib/micrograd_ex.ex"))
+  end) ||
+    raise """
+    Could not locate the MicrogradEx Mix project.
+
+    Set MICROGRAD_EX_PATH to the repository path, for example:
+    /home/home/p/g/n/learning/micrograd_ex
+    """
+
 Mix.install([
-  {:micrograd_ex, path: ".."},
+  {:micrograd_ex, path: micrograd_ex_path},
   {:kino, "~> 0.14"},
   {:kino_vega_lite, "~> 0.1"},
   {:vega_lite, "~> 0.1"}
