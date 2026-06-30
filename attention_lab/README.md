@@ -4,6 +4,22 @@ A modular GPT training harness for attention architecture experiments. The impor
 `build-nanogpt` files at the repository root are reference material; active code lives
 under `src/attention_lab`.
 
+## Local Completion Status
+
+As of 2026-06-29, this repository has three distinct states:
+
+1. Harness sanity verification: complete. Tests, ruff, CUDA verification, data
+   verification, a 20-step CUDA sanity run, checkpoint reload, generation, bounded
+   HellaSwag, run verification, and run summarization passed locally.
+2. Full 15M baseline completion: complete for
+   `configs/baseline_15m_fineweb100m.yaml`. The standard-attention baseline reached
+   step 3000 on FineWeb-Edu 100M/4M token shards, and post-run evals passed.
+3. Future architecture experiments: not implemented here. `trilinear_cp` remains an
+   experimental placeholder and is excluded from baseline QC.
+
+The full baseline run is recorded in `reports/baseline_harness_verification.md`; a
+compact comparison reference lives in `reports/baseline_15m_fineweb100m_summary.md`.
+
 ## Repository Rules
 
 - Use `uv` only for environment creation, dependency installation, and execution.
@@ -89,9 +105,12 @@ uv run scripts/verify_run.py \
 uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
 ```
 
-This is the first real 15M standard-attention baseline. It runs 3000 steps and should
-not be described as complete until the command exits successfully and the run verifier
-passes.
+This is the first real standard-attention baseline. It runs 3000 steps over the
+prepared FineWeb-Edu shards. On the local RTX 5060 Ti 16GB, the completed run used the
+config as committed, finished in about 2h08m, reached final validation loss `4.081209`,
+final perplexity `59.217031`, median throughput `107022.74` tokens/sec, and PyTorch
+peak allocated VRAM `3240.92` MB. A concurrent `nvidia-smi` sample during training
+reported about 12 GB device memory in use.
 
 Verify the completed baseline:
 
@@ -100,6 +119,45 @@ uv run scripts/verify_run.py \
   --run_dir runs/baseline_15m_fineweb100m_seed1 \
   --expect-complete-training \
   --expect-sample
+```
+
+Full post-run command sequence:
+
+```bash
+uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
+
+uv run scripts/verify_run.py \
+  --run_dir runs/baseline_15m_fineweb100m_seed1 \
+  --expect-complete-training \
+  --expect-sample
+
+uv run scripts/eval_loss.py \
+  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
+  --data_root data/fineweb_edu_100m
+
+uv run scripts/eval_generate.py \
+  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
+  --prompt "The history of mathematics"
+
+uv run scripts/eval_hellaswag.py \
+  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
+  --max_examples 100
+
+uv run scripts/summarize_run.py \
+  --run_dir runs/baseline_15m_fineweb100m_seed1
+
+uv run scripts/verify_run.py \
+  --run_dir runs/baseline_15m_fineweb100m_seed1 \
+  --expect-complete-training \
+  --expect-sample \
+  --expect-eval-loss \
+  --expect-hellaswag
+```
+
+Long-running wrapper:
+
+```bash
+./scripts/run_full_baseline.sh
 ```
 
 ## 7. Reload And Eval
@@ -212,6 +270,19 @@ model:
 Future attention modules should be added behind the registry without changing the
 trainer contract.
 
+## Definition Of Done
+
+The standard baseline is complete when:
+
+- `uv run pytest` and `uv run ruff check .` pass.
+- CUDA and FineWeb-Edu token shards verify locally.
+- `configs/baseline_15m_fineweb100m.yaml` trains to step 3000.
+- `verify_run.py` passes with complete-training, sample, eval-loss, and HellaSwag
+  expectations.
+- `eval_loss.py`, `eval_generate.py`, `eval_hellaswag.py --max_examples 100`, and
+  `summarize_run.py` run against `ckpt_last.pt`.
+- The verification report records the actual local results.
+
 ## Not Implemented In Baseline
 
 - `trilinear_cp` is not implemented. Its placeholder config lives under
@@ -223,4 +294,3 @@ trainer contract.
 - OpenAI Evals is not used for this baseline. Primary metrics are next-token
   validation loss, perplexity, throughput, peak VRAM, and checkpoint reloadability.
 - `lm-evaluation-harness` is deferred until an HF-compatible export exists.
-

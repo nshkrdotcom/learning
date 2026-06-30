@@ -2,7 +2,9 @@
 
 Date: 2026-06-29
 
-Git commit at verification start: `f71e790381aa7982db51663639d342a8b09edb65`
+Git commit at sanity verification start: `f71e790381aa7982db51663639d342a8b09edb65`
+
+Git commit at full baseline run: `0760b275d46a5c920d79761609b59600d602f6f8`
 
 ## Machine And Environment
 
@@ -59,7 +61,7 @@ data/fineweb_edu_100m/edufineweb_val_000000.npy (4000000,) uint16 0 50256
 ## Test Results
 
 ```text
-35 passed in 2.26s
+35 passed in 2.21s
 ```
 
 ## Ruff Result
@@ -67,6 +69,20 @@ data/fineweb_edu_100m/edufineweb_val_000000.npy (4000000,) uint16 0 50256
 ```text
 All checks passed!
 ```
+
+Final QC after the full baseline documentation updates:
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check .
+uv run scripts/verify_cuda.py
+uv run scripts/verify_data.py --data_root data/fineweb_edu_100m
+uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
+```
+
+All final QC commands passed.
 
 ## Sanity Run Result
 
@@ -134,17 +150,93 @@ The sample was text-like but low quality and repetitive, which is expected after
 
 ## Full Baseline Run
 
-Not run in this verification pass. At the observed sanity-run throughput, the
-3000-step 15M baseline is materially longer than a quick harness verification. Run:
+The full standard-attention baseline run completed on 2026-06-29. The config was not
+changed from `configs/baseline_15m_fineweb100m.yaml`.
 
 ```bash
 uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
 ```
 
-Then verify:
+Post-run commands:
 
 ```bash
 uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample
+uv run scripts/eval_loss.py --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt --data_root data/fineweb_edu_100m
+uv run scripts/eval_generate.py --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt --prompt "The history of mathematics"
+uv run scripts/eval_hellaswag.py --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt --max_examples 100
+uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
+uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+```
+
+Training completed:
+
+```json
+{
+  "run_dir": "runs/baseline_15m_fineweb100m_seed1",
+  "max_step": 3000,
+  "train_event_count": 301,
+  "val_event_count": 13,
+  "initial_val_loss": 10.910149574279785,
+  "final_val_loss": 4.081209182739258,
+  "best_val_loss": 4.081209182739258,
+  "initial_val_perplexity": 54729.03074804456,
+  "final_val_perplexity": 59.2170307875361,
+  "median_tokens_per_sec": 107022.7422894312,
+  "peak_vram_mb": 3240.92431640625,
+  "checkpoint_count": 3
+}
+```
+
+The first metric timestamp was `2026-06-29T21:50:10+00:00`; the final checkpoint
+event timestamp was `2026-06-29T23:58:11+00:00`, for about 2h08m wall-clock runtime.
+PyTorch peak allocated VRAM was 3240.92 MB. A concurrent `nvidia-smi` sample during
+training reported about 12 GB device memory in use.
+
+Full-run verifier result:
+
+```json
+{
+  "run_dir": "runs/baseline_15m_fineweb100m_seed1",
+  "max_step": 3000,
+  "train_event_count": 301,
+  "val_event_count": 13,
+  "checkpoint_event_count": 3,
+  "ok": true
+}
+```
+
+Full-run eval loss result:
+
+```json
+{
+  "checkpoint": "runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt",
+  "split": "val",
+  "steps": 20,
+  "loss": 4.081209182739258,
+  "perplexity": 59.2170307875361
+}
+```
+
+Full-run generation result:
+
+```text
+Prompt: The history of mathematics
+Output file: runs/baseline_15m_fineweb100m_seed1/samples/sample_step_last.txt
+```
+
+The generated samples were text-like and topical, but still low-quality as expected
+for this small baseline and token budget.
+
+Full-run bounded HellaSwag result:
+
+```json
+{
+  "checkpoint": "runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt",
+  "split": "val",
+  "num_total": 100,
+  "num_correct_norm": 34,
+  "accuracy_norm": 0.34
+}
 ```
 
 ## Known Limitations
@@ -154,4 +246,3 @@ uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --exp
 - DDP is present but not part of the tested baseline completion path.
 - OpenAI Evals is not used for this stage.
 - `lm-evaluation-harness` is deferred until HF export exists.
-
