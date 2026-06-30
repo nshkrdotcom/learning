@@ -58,10 +58,19 @@ data/fineweb_edu_100m/edufineweb_train_000001.npy (100000000,) uint16 0 50256
 data/fineweb_edu_100m/edufineweb_val_000000.npy (4000000,) uint16 0 50256
 ```
 
+Manifest written during pre-experiment hardening:
+
+```text
+data/fineweb_edu_100m/manifest.json
+manifest sha256: 3302a779a89ee9f77a0c5717a963dd2744b5ee89dfef56b8c0d098cb61718f17
+train shard sha256: 7bc89b5e75a6eba3e471c5434b03e98dd3be6aaa8ce043a9aae564bf51e25893
+val shard sha256: efb01e4b8dad9ce4aa906ca8afbb36bd0329d4135e00741556eb4a70689f784c
+```
+
 ## Test Results
 
 ```text
-35 passed in 2.21s
+50 passed in 4.97s
 ```
 
 ## Ruff Result
@@ -77,9 +86,10 @@ uv sync
 uv run pytest
 uv run ruff check .
 uv run scripts/verify_cuda.py
-uv run scripts/verify_data.py --data_root data/fineweb_edu_100m
+uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
 uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
 uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
+uv run scripts/inspect_model_config.py --config configs/baseline_30m_fineweb100m.yaml
 ```
 
 All final QC commands passed.
@@ -238,6 +248,80 @@ Full-run bounded HellaSwag result:
   "accuracy_norm": 0.34
 }
 ```
+
+## Pre-Experiment Hardening Result
+
+Completed on 2026-06-30 before starting novel attention work.
+
+Added accurate-size naming:
+
+```text
+configs/baseline_15m_fineweb100m.yaml   historical completed run name
+configs/baseline_30m_fineweb100m.yaml   accurate-size alias for new runs
+```
+
+Added standard-attention config ladder:
+
+```text
+configs/baseline_16m_fineweb100m.yaml
+configs/baseline_30m_fineweb100m.yaml
+configs/baseline_70m_fineweb300m.yaml
+configs/baseline_125m_fineweb1b.yaml
+```
+
+Inspected model sizes:
+
+```text
+16M tier: 16025856 excluding positional, 16288000 including positional
+30M tier: 29938560 excluding positional, 30331776 including positional
+70M tier: 69810688 excluding positional, 70334976 including positional
+125M tier: 123587328 excluding positional, 124373760 including positional
+```
+
+Added data-manifest workflow:
+
+```bash
+uv run scripts/write_data_manifest.py --data_root data/fineweb_edu_100m --out data/fineweb_edu_100m/manifest.json
+uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
+```
+
+Added runtime-memory fields for new training rows:
+
+```text
+peak_vram_allocated_mb
+peak_vram_reserved_mb
+current_vram_allocated_mb
+current_vram_reserved_mb
+nvidia_smi_memory_mb
+```
+
+The historical run only has `peak_vram_mb`; summarization maps that to
+`peak_vram_allocated_mb` for backward compatibility.
+
+Added resume hardening:
+
+```text
+--overwrite and --resume are mutually exclusive
+resume checks model config compatibility
+resume checks B/T/total_batch_size compatibility
+resume checks optimizer-relevant fields
+resume checks data manifests when both run and data root have one
+resume writes resume_from.txt
+resume appends a resume event to metrics
+```
+
+Added comparison and export surfaces:
+
+```text
+docs/architecture_experiment_contract.md
+docs/upstream_borrowing_audit.md
+reports/schema/run_summary.schema.json
+scripts/compare_runs.py
+scripts/export_hf.py
+```
+
+`scripts/export_hf.py` is an honest nonzero stub. `lm-evaluation-harness` remains
+deferred until HF export is implemented and verified.
 
 ## Known Limitations
 

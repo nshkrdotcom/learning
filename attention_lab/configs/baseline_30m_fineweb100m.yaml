@@ -1,9 +1,8 @@
-# Historical name. This config is the completed baseline run, but the actual model
-# size is ~30M parameters with n_layer=6, n_head=6, n_embd=384. Prefer
-# configs/baseline_30m_fineweb100m.yaml for new runs that need accurate naming.
+# Accurate-size alias for the historical configs/baseline_15m_fineweb100m.yaml.
+# Same model/data/training recipe, but new runs should prefer this name.
 run:
-  name: baseline_15m_fineweb100m_seed1
-  out_dir: runs/baseline_15m_fineweb100m_seed1
+  name: baseline_30m_fineweb100m_seed1
+  out_dir: runs/baseline_30m_fineweb100m_seed1
   seed: 1337
 
 data:

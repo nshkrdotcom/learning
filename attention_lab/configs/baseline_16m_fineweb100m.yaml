@@ -1,9 +1,8 @@
-# Historical name. This config is the completed baseline run, but the actual model
-# size is ~30M parameters with n_layer=6, n_head=6, n_embd=384. Prefer
-# configs/baseline_30m_fineweb100m.yaml for new runs that need accurate naming.
+# True smaller standard-attention tier. The exact size is reported by
+# scripts/inspect_model_config.py.
 run:
-  name: baseline_15m_fineweb100m_seed1
-  out_dir: runs/baseline_15m_fineweb100m_seed1
+  name: baseline_16m_fineweb100m_seed1
+  out_dir: runs/baseline_16m_fineweb100m_seed1
   seed: 1337
 
 data:
@@ -16,9 +15,9 @@ data:
 model:
   attention_type: standard
   block_size: 1024
-  n_layer: 6
-  n_head: 6
-  n_embd: 384
+  n_layer: 4
+  n_head: 4
+  n_embd: 256
   dropout: 0.0
   bias: false
 
@@ -27,7 +26,7 @@ train:
   dtype: bfloat16
   compile: false
   eval_at_start: true
-  B: 4
+  B: 8
   T: 1024
   total_batch_size: 262144
   max_steps: 3000

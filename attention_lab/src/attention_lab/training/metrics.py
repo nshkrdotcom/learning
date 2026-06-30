@@ -17,7 +17,13 @@ FIELDNAMES = [
     "dt_ms",
     "tokens_per_sec",
     "peak_vram_mb",
+    "peak_vram_allocated_mb",
+    "peak_vram_reserved_mb",
+    "current_vram_allocated_mb",
+    "current_vram_reserved_mb",
+    "nvidia_smi_memory_mb",
     "checkpoint",
+    "resume_from",
 ]
 
 
@@ -43,4 +49,3 @@ class MetricsLogger:
     def close(self) -> None:
         self.jsonl_file.close()
         self.csv_file.close()
-

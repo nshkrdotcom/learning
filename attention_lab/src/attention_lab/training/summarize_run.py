@@ -17,6 +17,11 @@ def _nonnull_float(value: Any) -> float | None:
     return float(value)
 
 
+def _metric_values(rows: list[dict[str, Any]], key: str) -> list[float]:
+    values = [_nonnull_float(row.get(key)) for row in rows]
+    return [value for value in values if value is not None]
+
+
 def summarize_run(run_dir: str | Path, *, write_json: bool = True) -> dict[str, Any]:
     run_dir = Path(run_dir)
     metrics_path = run_dir / "metrics.jsonl"
@@ -34,15 +39,15 @@ def summarize_run(run_dir: str | Path, *, write_json: bool = True) -> dict[str, 
     train_rows = [row for row in metrics if row.get("event") == "train"]
     val_rows = [row for row in metrics if row.get("event") == "val"]
     checkpoint_rows = [row for row in metrics if row.get("event") == "checkpoint"]
-    val_losses = [_nonnull_float(row.get("val_loss")) for row in val_rows]
-    val_losses = [value for value in val_losses if value is not None]
-    val_perplexities = [_nonnull_float(row.get("val_perplexity")) for row in val_rows]
-    val_perplexities = [value for value in val_perplexities if value is not None]
-    tokens_per_sec = [_nonnull_float(row.get("tokens_per_sec")) for row in train_rows]
-    tokens_per_sec = [value for value in tokens_per_sec if value is not None]
-    peak_vram_values = [_nonnull_float(row.get("peak_vram_mb")) for row in metrics]
-    peak_vram_values = [value for value in peak_vram_values if value is not None]
+    val_losses = _metric_values(val_rows, "val_loss")
+    val_perplexities = _metric_values(val_rows, "val_perplexity")
+    tokens_per_sec = _metric_values(train_rows, "tokens_per_sec")
+    peak_vram_allocated_values = _metric_values(metrics, "peak_vram_allocated_mb")
+    peak_vram_allocated_values.extend(_metric_values(metrics, "peak_vram_mb"))
+    peak_vram_reserved_values = _metric_values(metrics, "peak_vram_reserved_mb")
+    nvidia_smi_values = _metric_values(metrics, "nvidia_smi_memory_mb")
     steps = [int(row["step"]) for row in metrics if row.get("step") is not None]
+    peak_vram_allocated = max(peak_vram_allocated_values) if peak_vram_allocated_values else None
 
     summary = {
         "run_dir": str(run_dir),
@@ -56,7 +61,10 @@ def summarize_run(run_dir: str | Path, *, write_json: bool = True) -> dict[str, 
         "initial_val_perplexity": val_perplexities[0] if val_perplexities else None,
         "final_val_perplexity": val_perplexities[-1] if val_perplexities else None,
         "median_tokens_per_sec": statistics.median(tokens_per_sec) if tokens_per_sec else None,
-        "peak_vram_mb": max(peak_vram_values) if peak_vram_values else None,
+        "peak_vram_mb": peak_vram_allocated,
+        "peak_vram_allocated_mb": peak_vram_allocated,
+        "peak_vram_reserved_mb": max(peak_vram_reserved_values) if peak_vram_reserved_values else None,
+        "nvidia_smi_memory_mb": max(nvidia_smi_values) if nvidia_smi_values else None,
         "checkpoint_count": len(checkpoint_rows),
     }
 
@@ -78,4 +86,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -8,6 +8,7 @@ import torch
 from attention_lab.models.attention_registry import build_attention
 from attention_lab.models.attention_standard import StandardCausalSelfAttention
 from attention_lab.models.gpt import GPT, config_from_dict
+from attention_lab.training.inspect_model_config import inspect_model_config
 
 
 def tiny_gpt_config():
@@ -66,3 +67,23 @@ def test_tiny_forward_is_deterministic_in_eval_mode():
     logits2, _ = model(idx)
     assert torch.equal(logits1, logits2)
 
+
+def test_baseline_config_parameter_counts_are_inspectable(repo_root):
+    config_names = [
+        "baseline_16m_fineweb100m.yaml",
+        "baseline_30m_fineweb100m.yaml",
+        "baseline_70m_fineweb300m.yaml",
+        "baseline_125m_fineweb1b.yaml",
+    ]
+    for config_name in config_names:
+        result = inspect_model_config(repo_root / "configs" / config_name)
+        assert result["attention_type"] == "standard"
+        assert result["parameters_excluding_positional"] > 0
+        assert result["parameters_including_positional"] >= result["parameters_excluding_positional"]
+
+
+def test_historical_15m_and_30m_alias_have_same_parameter_count(repo_root):
+    historical = inspect_model_config(repo_root / "configs" / "baseline_15m_fineweb100m.yaml")
+    canonical = inspect_model_config(repo_root / "configs" / "baseline_30m_fineweb100m.yaml")
+    assert historical["parameters_excluding_positional"] == canonical["parameters_excluding_positional"]
+    assert historical["parameters_including_positional"] == canonical["parameters_including_positional"]

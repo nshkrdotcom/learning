@@ -1,53 +1,99 @@
 # Attention Lab
 
-A modular GPT training harness for attention architecture experiments. The imported
-`build-nanogpt` files at the repository root are reference material; active code lives
-under `src/attention_lab`.
+Attention Lab is a small GPT pretraining harness for local attention architecture
+experiments. It is intentionally built around a standard-attention baseline, real
+FineWeb-Edu token shards, reproducible run artifacts, and one clean attention swap
+point.
 
-## Local Completion Status
+Active code lives under `src/attention_lab`. Imported `build-nanogpt` files at the
+repository root are reference material.
 
-As of 2026-06-29, this repository has three distinct states:
+## What This Repo Is
 
-1. Harness sanity verification: complete. Tests, ruff, CUDA verification, data
-   verification, a 20-step CUDA sanity run, checkpoint reload, generation, bounded
-   HellaSwag, run verification, and run summarization passed locally.
-2. Full 15M baseline completion: complete for
-   `configs/baseline_15m_fineweb100m.yaml`. The standard-attention baseline reached
-   step 3000 on FineWeb-Edu 100M/4M token shards, and post-run evals passed.
-3. Future architecture experiments: not implemented here. `trilinear_cp` remains an
-   experimental placeholder and is excluded from baseline QC.
+- A single-GPU-friendly GPT training harness.
+- A reproducible standard-attention baseline for later architecture comparisons.
+- A compact place to add new attention modules behind the existing registry.
+- A local workflow using `uv`, YAML configs, `.npy` token shards, JSONL/CSV metrics,
+  checkpoints, run summaries, and verifier scripts.
 
-The full baseline run is recorded in `reports/baseline_harness_verification.md`; a
-compact comparison reference lives in `reports/baseline_15m_fineweb100m_summary.md`.
+## What This Repo Is Not
 
-## Repository Rules
+- It is not a replacement with LitGPT, nanochat, nanoGPT, GPT-NeoX, TorchTitan, or any
+  other upstream framework.
+- It is not currently an HF-compatible export pipeline.
+- It does not use OpenAI Evals for this stage.
+- It does not treat HellaSwag as the primary metric.
 
-- Use `uv` only for environment creation, dependency installation, and execution.
-- Do not run manual `pip install`, manual virtualenv setup, or ad hoc dependency commands.
-- Keep generated datasets, HellaSwag downloads, and run outputs out of git.
+Primary baseline metrics are next-token validation loss, perplexity, throughput,
+allocated/reserved VRAM, and checkpoint reloadability.
 
-## 1. Bootstrap
+## Current Verified Baseline
+
+The completed local run is:
+
+```text
+runs/baseline_15m_fineweb100m_seed1
+```
+
+That run name is historical. The model is actually about 30M parameters:
+
+```text
+parameters_excluding_positional: 29938560
+parameters_including_positional: 30331776
+```
+
+Use this accurate-size config for new runs:
+
+```text
+configs/baseline_30m_fineweb100m.yaml
+```
+
+The historical config remains for compatibility:
+
+```text
+configs/baseline_15m_fineweb100m.yaml
+```
+
+Completed baseline facts:
+
+```text
+final_val_loss: 4.081209182739258
+best_val_loss: 4.081209182739258
+final_val_perplexity: 59.2170307875361
+median_tokens_per_sec: 107022.7422894312
+peak_vram_allocated_mb: 3240.92431640625
+bounded_hellaswag_accuracy_norm: 0.34
+```
+
+Interpretation note:
+
+```text
+3000 * 262144 = 786432000 token positions
+```
+
+This run made multiple passes over the 100M-token training shard. It is not a unique
+786M-token corpus.
+
+## Setup
+
+Use `uv` only:
 
 ```bash
 uv sync
 ```
 
-Convenience wrapper:
-
-```bash
-./scripts/bootstrap.sh
-```
-
-## 2. Verify CUDA
+Verify CUDA before training:
 
 ```bash
 uv run scripts/verify_cuda.py
 ```
 
-If CUDA is unavailable, stop and fix the driver/PyTorch environment before training.
-The baseline configs request CUDA and bf16.
+The verified local environment used PyTorch `2.11.0+cu128`, CUDA `12.8`, RTX 5060 Ti,
+and bf16 support.
 
-## 3. Prepare FineWeb-Edu
+## Data Prep And Manifest
+
+Prepare FineWeb-Edu 100M train / 4M validation token shards:
 
 ```bash
 uv run scripts/prepare_fineweb_edu.py \
@@ -56,63 +102,67 @@ uv run scripts/prepare_fineweb_edu.py \
   --val_tokens 4000000
 ```
 
-Expected output:
+Write a manifest with shard stats and SHA256 hashes:
+
+```bash
+uv run scripts/write_data_manifest.py \
+  --data_root data/fineweb_edu_100m \
+  --out data/fineweb_edu_100m/manifest.json
+```
+
+Verify shards and hashes:
+
+```bash
+uv run scripts/verify_data.py \
+  --data_root data/fineweb_edu_100m \
+  --manifest data/fineweb_edu_100m/manifest.json \
+  --verify_hashes
+```
+
+When `manifest.json` exists under the data root, training copies it to:
 
 ```text
-data/fineweb_edu_100m/
-  edufineweb_val_000000.npy
-  edufineweb_train_000001.npy
+runs/<run_name>/data_manifest.json
+runs/<run_name>/data_manifest.sha256
 ```
 
-Verify the shards:
+## Sanity Run
 
-```bash
-uv run scripts/verify_data.py --data_root data/fineweb_edu_100m
-```
-
-## 4. Test And QC
-
-```bash
-uv run pytest
-uv run ruff check .
-```
-
-The tests use tiny synthetic `.npy` token shards for unit and integration checks. They
-are not evidence of real FineWeb-Edu model quality.
-
-## 5. Sanity Run
+The sanity run is a systems check, not architecture evidence:
 
 ```bash
 uv run scripts/train.py --config configs/baseline_15m_fineweb100m_sanity.yaml --overwrite
-```
-
-Expected initial validation loss is near `ln(50304) = 10.825`. The sanity config runs
-only 20 steps and is a systems check for CUDA training, bf16 autocast, metrics,
-checkpointing, reloadability, and generation.
-
-Verify the sanity run:
-
-```bash
 uv run scripts/verify_run.py \
   --run_dir runs/baseline_15m_fineweb100m_sanity_seed1 \
   --expect-complete-training \
   --expect-sample
 ```
 
-## 6. Full Baseline Run
+Expected initial validation loss is near `ln(50304) = 10.825`.
+
+## Full Baseline Run
+
+For new accurate-size naming:
+
+```bash
+uv run scripts/train.py --config configs/baseline_30m_fineweb100m.yaml --overwrite
+```
+
+The completed historical run used the same model/data/training recipe:
 
 ```bash
 uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
 ```
 
-This is the first real standard-attention baseline. It runs 3000 steps over the
-prepared FineWeb-Edu shards. On the local RTX 5060 Ti 16GB, the completed run used the
-config as committed, finished in about 2h08m, reached final validation loss `4.081209`,
-final perplexity `59.217031`, median throughput `107022.74` tokens/sec, and PyTorch
-peak allocated VRAM `3240.92` MB. A concurrent `nvidia-smi` sample during training
-reported about 12 GB device memory in use.
+Long-running helper for the historical completed run path:
 
-Verify the completed baseline:
+```bash
+./scripts/run_full_baseline.sh
+```
+
+## Run Verification
+
+Verify a completed run:
 
 ```bash
 uv run scripts/verify_run.py \
@@ -121,16 +171,10 @@ uv run scripts/verify_run.py \
   --expect-sample
 ```
 
-Full post-run command sequence:
+Run checkpoint reload eval, generation, bounded HellaSwag, summary, then verify all
+artifacts:
 
 ```bash
-uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
-
-uv run scripts/verify_run.py \
-  --run_dir runs/baseline_15m_fineweb100m_seed1 \
-  --expect-complete-training \
-  --expect-sample
-
 uv run scripts/eval_loss.py \
   --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
   --data_root data/fineweb_edu_100m
@@ -154,105 +198,81 @@ uv run scripts/verify_run.py \
   --expect-hellaswag
 ```
 
-Long-running wrapper:
-
-```bash
-./scripts/run_full_baseline.sh
-```
-
-## 7. Reload And Eval
-
-Validation loss from a checkpoint:
-
-```bash
-uv run scripts/eval_loss.py \
-  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
-  --data_root data/fineweb_edu_100m
-```
-
-Generation:
-
-```bash
-uv run scripts/eval_generate.py \
-  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
-  --prompt "The history of mathematics"
-```
-
-Bounded HellaSwag:
-
-```bash
-uv run scripts/eval_hellaswag.py \
-  --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt \
-  --max_examples 100
-```
-
-Verify a run after eval artifacts exist:
-
-```bash
-uv run scripts/verify_run.py \
-  --run_dir runs/baseline_15m_fineweb100m_seed1 \
-  --expect-complete-training \
-  --expect-sample \
-  --expect-eval-loss \
-  --expect-hellaswag
-```
-
-## 8. Summarize A Run
+## Run Summarization
 
 ```bash
 uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
 ```
 
-This prints:
-
-```text
-run_dir
-run_name
-max_step
-train_event_count
-val_event_count
-initial_val_loss
-final_val_loss
-best_val_loss
-initial_val_perplexity
-final_val_perplexity
-median_tokens_per_sec
-peak_vram_mb
-checkpoint_count
-```
-
-It also writes:
+This writes:
 
 ```text
 runs/<run_name>/evals/run_summary.json
 ```
 
-## Run Directory Contract
+Compare two run summaries:
 
-A completed baseline run should contain:
-
-```text
-runs/<run_name>/
-  config.yaml
-  config_source.txt
-  environment.txt
-  git_commit.txt
-  metrics.jsonl
-  metrics.csv
-  checkpoints/
-    ckpt_step_*.pt
-    ckpt_last.pt
-  samples/
-    sample_step_last.txt
-  evals/
-    val_loss.json
-    hellaswag.json
-    run_summary.json
+```bash
+uv run scripts/compare_runs.py \
+  --baseline runs/baseline_15m_fineweb100m_seed1 \
+  --candidate runs/baseline_15m_fineweb100m_seed1
 ```
 
-Use `scripts/verify_run.py` rather than checking this manually.
+The machine-readable summary schema is:
 
-## Attention Swap Point
+```text
+reports/schema/run_summary.schema.json
+```
+
+## Config Ladder
+
+Standard-attention configs:
+
+```text
+configs/baseline_16m_fineweb100m.yaml
+configs/baseline_30m_fineweb100m.yaml
+configs/baseline_70m_fineweb300m.yaml
+configs/baseline_125m_fineweb1b.yaml
+```
+
+Historical compatibility configs:
+
+```text
+configs/baseline_15m_fineweb100m.yaml
+configs/baseline_124m_fineweb1b.yaml
+```
+
+Inspect exact model sizes:
+
+```bash
+uv run scripts/inspect_model_config.py --config configs/baseline_30m_fineweb100m.yaml
+```
+
+Current inspected sizes:
+
+```text
+16M tier: 16025856 excluding positional, 16288000 including positional
+30M tier: 29938560 excluding positional, 30331776 including positional
+70M tier: 69810688 excluding positional, 70334976 including positional
+125M tier: 123587328 excluding positional, 124373760 including positional
+```
+
+## Architecture Experiment Contract
+
+Read before adding new attention modules:
+
+```text
+docs/architecture_experiment_contract.md
+```
+
+Architecture variants must hold fixed the data manifest, tokenizer, shards, batch
+construction, token budget, optimizer, LR schedule, seed policy, eval cadence,
+checkpoint/eval scripts, and run verifier. Every variant must report parameter count,
+parameter delta, final/best validation loss, perplexity, tokens/sec, allocated/reserved
+VRAM, wall-clock runtime, checkpoint reload eval loss, and bounded HellaSwag when
+requested.
+
+## Adding A New Attention Module
 
 The GPT block builds attention through:
 
@@ -260,37 +280,34 @@ The GPT block builds attention through:
 self.attn = build_attention(config)
 ```
 
-The implemented baseline attention type is:
+Implemented baseline:
 
 ```yaml
 model:
   attention_type: standard
 ```
 
-Future attention modules should be added behind the registry without changing the
-trainer contract.
+Add future attention modules behind `attention_lab.models.attention_registry` without
+changing trainer behavior. The `trilinear_cp` placeholder remains intentionally
+unimplemented.
 
-## Definition Of Done
+## HF Export And lm-eval
 
-The standard baseline is complete when:
+`scripts/export_hf.py` is an honest stub:
 
-- `uv run pytest` and `uv run ruff check .` pass.
-- CUDA and FineWeb-Edu token shards verify locally.
-- `configs/baseline_15m_fineweb100m.yaml` trains to step 3000.
-- `verify_run.py` passes with complete-training, sample, eval-loss, and HellaSwag
-  expectations.
-- `eval_loss.py`, `eval_generate.py`, `eval_hellaswag.py --max_examples 100`, and
-  `summarize_run.py` run against `ckpt_last.pt`.
-- The verification report records the actual local results.
+```bash
+uv run scripts/export_hf.py --checkpoint path/to/ckpt_last.pt --out_dir exported_hf_model
+```
 
-## Not Implemented In Baseline
+It exits nonzero until HF export is implemented and verified. `lm-evaluation-harness`
+integration is deferred until exported checkpoints load through HF APIs and logits are
+verified against the internal model.
 
-- `trilinear_cp` is not implemented. Its placeholder config lives under
-  `configs/experimental/` with `status: experimental_unimplemented`, and the baseline
-  config loader rejects it by default.
-- `torch.compile` is intentionally unsupported for baseline QC. Config validation
-  fails when `train.compile: true`.
-- DDP code exists, but single-GPU non-DDP behavior is the tested baseline path.
-- OpenAI Evals is not used for this baseline. Primary metrics are next-token
-  validation loss, perplexity, throughput, peak VRAM, and checkpoint reloadability.
-- `lm-evaluation-harness` is deferred until an HF-compatible export exists.
+## Known Limitations
+
+- `trilinear_cp` is not implemented.
+- `torch.compile` is intentionally unsupported for baseline QC.
+- DDP code exists, but single-GPU non-DDP behavior is the tested path.
+- OpenAI Evals is not used for this training baseline.
+- HellaSwag is optional bounded smoke/eval support, not the primary metric.
+- `lm-evaluation-harness` is deferred until HF export exists.

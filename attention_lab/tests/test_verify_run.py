@@ -7,7 +7,7 @@ import pytest
 
 from attention_lab.training.config import save_config
 from attention_lab.training.train import train
-from attention_lab.training.verify_run import RunVerificationError, verify_run
+from attention_lab.training.verify_run import RunVerificationError, verify_metrics, verify_run
 
 
 def make_tiny_run(tmp_path, write_tiny_shards, tiny_config):
@@ -65,3 +65,19 @@ def test_verify_run_checks_positive_tokens_per_sec(tmp_path, write_tiny_shards, 
     with pytest.raises(RunVerificationError, match="tokens_per_sec"):
         verify_run(run_dir)
 
+
+def test_verify_metrics_accepts_new_memory_fields():
+    summary = verify_metrics(
+        [
+            {
+                "event": "train",
+                "step": 1,
+                "tokens_per_sec": 1.0,
+                "peak_vram_allocated_mb": 2.0,
+                "peak_vram_reserved_mb": 3.0,
+            },
+            {"event": "val", "step": 1, "val_loss": 1.0, "val_perplexity": math.e},
+            {"event": "checkpoint", "step": 1, "checkpoint": "ckpt"},
+        ]
+    )
+    assert summary["max_step"] == 1

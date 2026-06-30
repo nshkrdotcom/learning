@@ -15,5 +15,8 @@ reports/*
 !reports/.gitkeep
 !reports/baseline_harness_verification.md
 !reports/baseline_15m_fineweb100m_summary.md
+!reports/baseline_30m_fineweb100m_summary.md
+!reports/schema/
+!reports/schema/run_summary.schema.json
 
 wandb/

@@ -13,6 +13,27 @@ def test_valid_baseline_sanity_config_loads(repo_root):
     assert config["model"]["attention_type"] == "standard"
 
 
+def test_baseline_config_ladder_loads(repo_root):
+    config_names = [
+        "baseline_15m_fineweb100m.yaml",
+        "baseline_16m_fineweb100m.yaml",
+        "baseline_30m_fineweb100m.yaml",
+        "baseline_70m_fineweb300m.yaml",
+        "baseline_125m_fineweb1b.yaml",
+    ]
+    for config_name in config_names:
+        config = load_config(repo_root / "configs" / config_name)
+        assert config["model"]["attention_type"] == "standard"
+        assert config["train"]["total_batch_size"] % (config["train"]["B"] * config["train"]["T"]) == 0
+
+
+def test_historical_15m_and_30m_alias_have_same_model_shape(repo_root):
+    historical = load_config(repo_root / "configs" / "baseline_15m_fineweb100m.yaml")
+    canonical = load_config(repo_root / "configs" / "baseline_30m_fineweb100m.yaml")
+    assert historical["model"] == canonical["model"]
+    assert historical["data"]["vocab_size"] == canonical["data"]["vocab_size"]
+
+
 def test_missing_required_section_fails(tiny_config, tmp_path):
     config = tiny_config(tmp_path, tmp_path / "data")
     del config["data"]

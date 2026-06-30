@@ -15,10 +15,17 @@ from attention_lab.evals.generation_eval import generate_text
 from attention_lab.models.gpt import GPT, config_from_dict
 from attention_lab.training.checkpointing import load_checkpoint, restore_rng_state, save_checkpoint
 from attention_lab.training.config import load_config, save_config
+from attention_lab.training.data_manifest import copy_manifest_to_run
 from attention_lab.training.data_loader import TokenShardLoader
 from attention_lab.training.environment import environment_text, git_commit_text
+from attention_lab.training.gpu_metrics import collect_gpu_metrics
 from attention_lab.training.metrics import MetricsLogger
 from attention_lab.training.optim import build_optimizer
+from attention_lab.training.resume import (
+    assert_model_state_compatible,
+    validate_resume_compatibility,
+    validate_resume_data_manifest,
+)
 from attention_lab.training.runtime import autocast_context, device_type_from_device, dtype_from_name
 
 
@@ -103,6 +110,10 @@ def prepare_run_dir(out_dir: Path, config: dict[str, Any], config_path: Path, ov
     (out_dir / "config_source.txt").write_text(str(config_path) + "\n", encoding="utf-8")
     (out_dir / "environment.txt").write_text(environment_text(), encoding="utf-8")
     (out_dir / "git_commit.txt").write_text(git_commit_text(Path.cwd()), encoding="utf-8")
+    manifest_hash = copy_manifest_to_run(config["data"]["data_root"], out_dir)
+    if manifest_hash is not None:
+        with (out_dir / "environment.txt").open("a", encoding="utf-8") as f:
+            f.write(f"\ndata_manifest_sha256: {manifest_hash}\n")
 
 
 def write_samples(
@@ -137,6 +148,8 @@ def write_samples(
 
 
 def train(config_path: str | Path, overwrite: bool = False, resume_path: str | None = None) -> None:
+    if overwrite and resume_path is not None:
+        raise ValueError("--overwrite and --resume cannot be used together")
     config_path = Path(config_path)
     config = load_config(config_path)
     train_config = config["train"]
@@ -147,6 +160,15 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
     ddp, rank, _, world_size, device, master_process = setup_distributed(train_config.get("device", "auto"))
     device_type = device_type_from_device(device)
     dtype = dtype_from_name(train_config.get("dtype", "bfloat16"))
+    resume_checkpoint = None
+    if resume_path is not None:
+        resume_checkpoint = load_checkpoint(resume_path, device=device)
+        validate_resume_compatibility(
+            config,
+            resume_checkpoint["config"],
+            checkpoint_step=int(resume_checkpoint["step"]),
+        )
+        validate_resume_data_manifest(out_dir, data_config["data_root"])
 
     if master_process:
         prepare_run_dir(out_dir, config, config_path, overwrite=overwrite, resume=resume_path is not None)
@@ -197,7 +219,9 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
     start_step = 0
     last_train_loss = None
     if resume_path:
-        checkpoint = load_checkpoint(resume_path, device=device)
+        checkpoint = resume_checkpoint
+        assert checkpoint is not None
+        assert_model_state_compatible(raw_model, checkpoint["model"])
         raw_model.load_state_dict(checkpoint["model"])
         optimizer.load_state_dict(checkpoint["optimizer"])
         if checkpoint.get("train_loader_state") is not None:
@@ -211,6 +235,17 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
             print(f"resumed from {resume_path} at step {start_step}")
 
     logger = MetricsLogger(out_dir, append=resume_path is not None) if master_process else None
+    if master_process and resume_path is not None:
+        resume_text = str(Path(resume_path)) + "\n"
+        (out_dir / "resume_from.txt").write_text(resume_text, encoding="utf-8")
+        logger.log(
+            {
+                "event": "resume",
+                "step": start_step,
+                "checkpoint": str(Path(resume_path)),
+                "resume_from": str(Path(resume_path)),
+            }
+        )
     max_steps = int(train_config["max_steps"])
     val_every = int(train_config["val_every"])
     val_steps = int(train_config["val_steps"])
@@ -228,7 +263,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                         "step": 0,
                         "val_loss": val_loss,
                         "val_perplexity": math.exp(val_loss),
-                        "peak_vram_mb": torch.cuda.max_memory_allocated() / 1024**2 if torch.cuda.is_available() else None,
+                        **collect_gpu_metrics(device_type),
                     }
                 )
                 print(f"step     0 | val loss: {val_loss:.4f} | val ppl: {math.exp(val_loss):.2f}")
@@ -264,7 +299,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
             tokens_processed = B * T * grad_accum_steps * world_size
             tokens_per_sec = tokens_processed / dt
             last_train_loss = float(loss_accum.item())
-            peak_vram_mb = torch.cuda.max_memory_allocated() / 1024**2 if torch.cuda.is_available() else None
+            memory_metrics = collect_gpu_metrics(device_type)
 
             if master_process and (step % log_every == 0 or step == 1):
                 logger.log(
@@ -276,7 +311,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                         "grad_norm": float(grad_norm),
                         "dt_ms": dt * 1000,
                         "tokens_per_sec": tokens_per_sec,
-                        "peak_vram_mb": peak_vram_mb,
+                        **memory_metrics,
                     }
                 )
                 print(
@@ -295,7 +330,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                             "step": step,
                             "val_loss": val_loss,
                             "val_perplexity": math.exp(val_loss),
-                            "peak_vram_mb": peak_vram_mb,
+                            **memory_metrics,
                         }
                     )
                     print(f"step {step:5d} | val loss: {val_loss:.4f} | val ppl: {math.exp(val_loss):.2f}")
