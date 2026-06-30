@@ -12,6 +12,36 @@ IMPLEMENTED_ATTENTION_TYPES = {"standard"}
 KNOWN_ATTENTION_TYPES = {"standard", "trilinear_cp"}
 DTYPES = {"bfloat16", "float16", "float32"}
 EXPERIMENTAL_UNIMPLEMENTED_STATUS = "experimental_unimplemented"
+RUN_KEYS = {"name", "out_dir", "seed"}
+DATA_KEYS = {"data_root", "tokenizer", "vocab_size", "train_tokens", "val_tokens", "dataset", "dataset_config"}
+TRAIN_KEYS = {
+    "device",
+    "dtype",
+    "compile",
+    "eval_at_start",
+    "B",
+    "T",
+    "total_batch_size",
+    "max_steps",
+    "grad_clip",
+    "weight_decay",
+    "learning_rate",
+    "min_lr",
+    "warmup_steps",
+    "val_every",
+    "val_steps",
+    "save_every",
+    "log_every",
+}
+SAMPLE_KEYS = {
+    "sample_every",
+    "prompt",
+    "num_samples",
+    "max_new_tokens",
+    "top_k",
+    "temperature",
+    "seed",
+}
 
 
 def _require_mapping(config: dict[str, Any], section: str) -> dict[str, Any]:
@@ -33,6 +63,12 @@ def _require_positive_int(section: dict[str, Any], key: str, dotted_key: str) ->
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise ValueError(f"{dotted_key} must be a positive integer")
     return value
+
+
+def _reject_unknown_keys(section: dict[str, Any], allowed_keys: set[str], section_name: str) -> None:
+    unknown = sorted(set(section) - allowed_keys)
+    if unknown:
+        raise ValueError(f"Unknown {section_name} config keys: {unknown}")
 
 
 def validate_config(
@@ -64,6 +100,14 @@ def validate_config(
     data = _require_mapping(config, "data")
     model = _require_mapping(config, "model")
     train = _require_mapping(config, "train")
+    sample = config.get("sample", {})
+    if not isinstance(sample, dict):
+        raise ValueError("sample must be a mapping")
+
+    _reject_unknown_keys(run, RUN_KEYS, "run")
+    _reject_unknown_keys(data, DATA_KEYS, "data")
+    _reject_unknown_keys(train, TRAIN_KEYS, "train")
+    _reject_unknown_keys(sample, SAMPLE_KEYS, "sample")
 
     _require_nonempty_string(run, "name", "run.name")
     _require_nonempty_string(run, "out_dir", "run.out_dir")

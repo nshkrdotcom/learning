@@ -78,7 +78,10 @@ def render_example(example: dict):
 
 def iterate_examples(split: str):
     data_path = download(split)
+    yield from iterate_examples_from_path(data_path)
+
+
+def iterate_examples_from_path(data_path: Path):
     with data_path.open("r", encoding="utf-8") as f:
         for line in f:
             yield json.loads(line)
-

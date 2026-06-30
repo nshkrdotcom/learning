@@ -4,6 +4,8 @@ from typing import Any
 
 import torch
 
+from attention_lab.training.data_manifest import read_run_manifest
+
 
 def save_checkpoint(
     out_dir: str | Path,
@@ -18,6 +20,9 @@ def save_checkpoint(
 ) -> Path:
     checkpoint_dir = Path(out_dir) / "checkpoints"
     checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    manifest_metadata = read_run_manifest(out_dir)
+    data_manifest = manifest_metadata[0] if manifest_metadata is not None else None
+    data_manifest_sha256 = manifest_metadata[1] if manifest_metadata is not None else None
     checkpoint = {
         "model": model.state_dict(),
         "optimizer": optimizer.state_dict(),
@@ -29,6 +34,8 @@ def save_checkpoint(
         "val_loader_state": val_loader_state,
         "rng_state": torch.get_rng_state(),
         "cuda_rng_state_all": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+        "data_manifest": data_manifest,
+        "data_manifest_sha256": data_manifest_sha256,
     }
     step_path = checkpoint_dir / f"ckpt_step_{step:06d}.pt"
     last_path = checkpoint_dir / "ckpt_last.pt"

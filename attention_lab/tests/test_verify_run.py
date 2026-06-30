@@ -6,6 +6,7 @@ import math
 import pytest
 
 from attention_lab.training.config import save_config
+from attention_lab.training.data_manifest import write_data_manifest
 from attention_lab.training.train import train
 from attention_lab.training.verify_run import RunVerificationError, verify_metrics, verify_run
 
@@ -64,6 +65,36 @@ def test_verify_run_checks_positive_tokens_per_sec(tmp_path, write_tiny_shards, 
     (run_dir / "metrics.jsonl").write_text("\n".join(json.dumps(row) for row in rows) + "\n", encoding="utf-8")
     with pytest.raises(RunVerificationError, match="tokens_per_sec"):
         verify_run(run_dir)
+
+
+def test_verify_run_can_require_data_manifest(tmp_path, write_tiny_shards, tiny_config):
+    data_root = tmp_path / "data"
+    write_tiny_shards(data_root)
+    write_data_manifest(data_root, data_root / "manifest.json")
+    config = tiny_config(tmp_path, data_root)
+    config_path = tmp_path / "tiny.yaml"
+    save_config(config, config_path)
+    train(config_path, overwrite=True)
+
+    run_dir = tmp_path / "runs" / "tiny_test_run"
+    result = verify_run(run_dir, expect_data_manifest=True)
+    assert result["ok"] is True
+    assert result["data_manifest"] is True
+
+
+def test_verify_run_fails_when_data_manifest_sha_mismatches(tmp_path, write_tiny_shards, tiny_config):
+    data_root = tmp_path / "data"
+    write_tiny_shards(data_root)
+    write_data_manifest(data_root, data_root / "manifest.json")
+    config = tiny_config(tmp_path, data_root)
+    config_path = tmp_path / "tiny.yaml"
+    save_config(config, config_path)
+    train(config_path, overwrite=True)
+
+    run_dir = tmp_path / "runs" / "tiny_test_run"
+    (run_dir / "data_manifest.sha256").write_text("bad\n", encoding="utf-8")
+    with pytest.raises(RunVerificationError, match="data_manifest.sha256"):
+        verify_run(run_dir, expect_data_manifest=True)
 
 
 def test_verify_metrics_accepts_new_memory_fields():

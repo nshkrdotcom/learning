@@ -1,3 +1,5 @@
+# Canonical 125M-ish standard-attention config. Prepare data/fineweb_edu_1b and
+# write its manifest before running.
 run:
   name: baseline_125m_fineweb1b_seed1
   out_dir: runs/baseline_125m_fineweb1b_seed1

@@ -1,3 +1,5 @@
+# Template for a larger local standard-attention baseline. Prepare
+# data/fineweb_edu_300m and write its manifest before running.
 run:
   name: baseline_70m_fineweb300m_seed1
   out_dir: runs/baseline_70m_fineweb300m_seed1

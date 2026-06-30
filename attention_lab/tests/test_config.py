@@ -48,6 +48,27 @@ def test_unknown_model_key_fails(tiny_config, tmp_path):
         validate_config(config)
 
 
+def test_unknown_train_key_fails(tiny_config, tmp_path):
+    config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
+    config["train"]["learningrate"] = 0.0006
+    with pytest.raises(ValueError, match="Unknown train config keys"):
+        validate_config(config)
+
+
+def test_unknown_data_key_fails(tiny_config, tmp_path):
+    config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
+    config["data"]["toknizer"] = "gpt2"
+    with pytest.raises(ValueError, match="Unknown data config keys"):
+        validate_config(config)
+
+
+def test_unknown_sample_key_fails(tiny_config, tmp_path):
+    config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
+    config["sample"]["sample_evey"] = 1
+    with pytest.raises(ValueError, match="Unknown sample config keys"):
+        validate_config(config)
+
+
 def test_invalid_dtype_fails(tiny_config, tmp_path):
     config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
     config["train"]["dtype"] = "fp8"

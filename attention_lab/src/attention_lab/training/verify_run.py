@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from attention_lab.training.checkpointing import load_checkpoint
+from attention_lab.training.data_manifest import DataManifestError, sha256_file, verify_data_manifest
 
 
 class RunVerificationError(ValueError):
@@ -91,6 +92,7 @@ def verify_run(
     expect_sample: bool = False,
     expect_eval_loss: bool = False,
     expect_hellaswag: bool = False,
+    expect_data_manifest: bool = False,
 ) -> dict[str, Any]:
     run_dir = Path(run_dir)
     if not run_dir.is_dir():
@@ -118,6 +120,26 @@ def verify_run(
     metrics = load_jsonl_metrics(run_dir / "metrics.jsonl")
     load_csv_metrics(run_dir / "metrics.csv")
     summary = verify_metrics(metrics)
+    data_manifest_ok = False
+
+    if expect_data_manifest:
+        manifest_path = run_dir / "data_manifest.json"
+        sha_path = run_dir / "data_manifest.sha256"
+        _require_file(manifest_path)
+        _require_file(sha_path)
+        expected_sha = sha_path.read_text(encoding="utf-8").strip()
+        actual_sha = sha256_file(manifest_path)
+        if expected_sha != actual_sha:
+            raise RunVerificationError(
+                f"data_manifest.sha256 mismatch: expected {expected_sha}, got {actual_sha}"
+            )
+        data_root = Path(config["data"]["data_root"])
+        if data_root.is_dir():
+            try:
+                verify_data_manifest(data_root, manifest_path, verify_hashes=True)
+            except DataManifestError as exc:
+                raise RunVerificationError(str(exc)) from exc
+        data_manifest_ok = True
 
     if expect_complete_training:
         max_steps = int(config["train"]["max_steps"])
@@ -140,6 +162,7 @@ def verify_run(
     return {
         "run_dir": str(run_dir),
         **summary,
+        "data_manifest": data_manifest_ok,
         "ok": True,
     }
 
@@ -151,6 +174,7 @@ def main() -> None:
     parser.add_argument("--expect-sample", action="store_true")
     parser.add_argument("--expect-eval-loss", action="store_true")
     parser.add_argument("--expect-hellaswag", action="store_true")
+    parser.add_argument("--expect-data-manifest", action="store_true")
     args = parser.parse_args()
     result = verify_run(
         args.run_dir,
@@ -158,10 +182,10 @@ def main() -> None:
         expect_sample=args.expect_sample,
         expect_eval_loss=args.expect_eval_loss,
         expect_hellaswag=args.expect_hellaswag,
+        expect_data_manifest=args.expect_data_manifest,
     )
     print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
     main()
-

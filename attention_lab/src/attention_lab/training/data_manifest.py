@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import hashlib
 import argparse
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +17,10 @@ DEFAULT_TOKENIZER = "gpt2"
 
 class DataManifestError(ValueError):
     pass
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def sha256_file(path: str | Path, chunk_size: int = 1024 * 1024) -> str:
@@ -116,6 +120,46 @@ def load_data_manifest(path: str | Path) -> dict[str, Any]:
     return manifest
 
 
+def manifest_comparison_payload(manifest: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "tokenizer": manifest.get("tokenizer"),
+        "dataset": manifest.get("dataset"),
+        "dataset_config": manifest.get("dataset_config"),
+        "split": manifest.get("split"),
+        "shards": manifest.get("shards"),
+        "total_train_tokens": manifest.get("total_train_tokens"),
+        "total_val_tokens": manifest.get("total_val_tokens"),
+    }
+
+
+def manifest_payloads_match(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    return manifest_comparison_payload(left) == manifest_comparison_payload(right)
+
+
+def manifest_mismatch_message(left_label: str, left: dict[str, Any], right_label: str, right: dict[str, Any]) -> str:
+    return (
+        "data manifest mismatch:\n"
+        f"{left_label}={json.dumps(manifest_comparison_payload(left), sort_keys=True)}\n"
+        f"{right_label}={json.dumps(manifest_comparison_payload(right), sort_keys=True)}"
+    )
+
+
+def read_run_manifest(run_dir: str | Path) -> tuple[dict[str, Any], str] | None:
+    manifest_path = Path(run_dir) / "data_manifest.json"
+    if not manifest_path.is_file():
+        return None
+    text = manifest_path.read_text(encoding="utf-8")
+    return load_data_manifest(manifest_path), sha256_text(text)
+
+
+def read_data_root_manifest(data_root: str | Path) -> tuple[dict[str, Any], str] | None:
+    manifest_path = Path(data_root) / "manifest.json"
+    if not manifest_path.is_file():
+        return None
+    text = manifest_path.read_text(encoding="utf-8")
+    return load_data_manifest(manifest_path), sha256_text(text)
+
+
 def verify_data_manifest(
     data_root: str | Path,
     manifest_path: str | Path,
@@ -168,7 +212,7 @@ def copy_manifest_to_run(data_root: str | Path, run_dir: str | Path) -> str | No
     run_manifest_path = run_dir / "data_manifest.json"
     manifest_text = manifest_path.read_text(encoding="utf-8")
     run_manifest_path.write_text(manifest_text, encoding="utf-8")
-    digest = hashlib.sha256(manifest_text.encode("utf-8")).hexdigest()
+    digest = sha256_text(manifest_text)
     (run_dir / "data_manifest.sha256").write_text(digest + "\n", encoding="utf-8")
     return digest
 

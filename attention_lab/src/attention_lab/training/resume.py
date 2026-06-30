@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
 import torch
 
-from attention_lab.training.data_manifest import load_data_manifest
+from attention_lab.training.data_manifest import (
+    load_data_manifest,
+    manifest_mismatch_message,
+    manifest_payloads_match,
+    read_data_root_manifest,
+)
 
 
 class ResumeCompatibilityError(ValueError):
@@ -60,27 +64,29 @@ def assert_model_state_compatible(model: torch.nn.Module, checkpoint_state: dict
         raise ResumeCompatibilityError(f"Checkpoint model shape mismatch: {details}")
 
 
-def _manifest_comparison_payload(manifest: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "tokenizer": manifest.get("tokenizer"),
-        "dataset": manifest.get("dataset"),
-        "dataset_config": manifest.get("dataset_config"),
-        "shards": manifest.get("shards"),
-        "total_train_tokens": manifest.get("total_train_tokens"),
-        "total_val_tokens": manifest.get("total_val_tokens"),
-    }
-
-
-def validate_resume_data_manifest(run_dir: str | Path, data_root: str | Path) -> None:
-    run_manifest_path = Path(run_dir) / "data_manifest.json"
-    current_manifest_path = Path(data_root) / "manifest.json"
-    if not run_manifest_path.is_file() or not current_manifest_path.is_file():
+def validate_resume_data_manifest(
+    run_dir: str | Path,
+    data_root: str | Path,
+    checkpoint: dict[str, Any] | None = None,
+) -> None:
+    current_manifest_metadata = read_data_root_manifest(data_root)
+    if current_manifest_metadata is None:
         return
-    run_payload = _manifest_comparison_payload(load_data_manifest(run_manifest_path))
-    current_payload = _manifest_comparison_payload(load_data_manifest(current_manifest_path))
-    if run_payload != current_payload:
+    current_manifest = current_manifest_metadata[0]
+
+    checkpoint_manifest = checkpoint.get("data_manifest") if checkpoint is not None else None
+    if checkpoint_manifest is not None:
+        if not manifest_payloads_match(checkpoint_manifest, current_manifest):
+            raise ResumeCompatibilityError(
+                manifest_mismatch_message("checkpoint", checkpoint_manifest, "current", current_manifest)
+            )
+        return
+
+    run_manifest_path = Path(run_dir) / "data_manifest.json"
+    if not run_manifest_path.is_file():
+        return
+    run_manifest = load_data_manifest(run_manifest_path)
+    if not manifest_payloads_match(run_manifest, current_manifest):
         raise ResumeCompatibilityError(
-            "Resume data manifest mismatch:\n"
-            f"run={json.dumps(run_payload, sort_keys=True)}\n"
-            f"current={json.dumps(current_payload, sort_keys=True)}"
+            manifest_mismatch_message("run", run_manifest, "current", current_manifest)
         )

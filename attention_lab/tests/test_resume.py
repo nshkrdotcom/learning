@@ -117,3 +117,27 @@ def test_resume_refuses_data_manifest_change(tmp_path, write_tiny_shards, tiny_c
     save_config(resumed_config, config_path)
     with pytest.raises(ValueError, match="data manifest mismatch"):
         train(config_path, resume_path=str(checkpoint_path))
+
+
+def test_resume_uses_checkpoint_manifest_when_run_manifest_missing(tmp_path, write_tiny_shards, tiny_config):
+    data_root = tmp_path / "data"
+    write_tiny_shards(data_root, train_tokens=512, val_tokens=128)
+    write_data_manifest(data_root, data_root / "manifest.json")
+    config = tiny_config(tmp_path, data_root, max_steps=1)
+    config["train"]["save_every"] = 1
+    config["sample"]["sample_every"] = 1
+    config_path = tmp_path / "tiny.yaml"
+    save_config(config, config_path)
+    train(config_path, overwrite=True)
+
+    run_dir = tmp_path / "runs" / "tiny_test_run"
+    checkpoint_path = run_dir / "checkpoints" / "ckpt_last.pt"
+    (run_dir / "data_manifest.json").unlink()
+    (run_dir / "data_manifest.sha256").unlink()
+    np.save(data_root / "edufineweb_train_000001.npy", np.arange(512, dtype=np.uint16) + 1)
+    write_data_manifest(data_root, data_root / "manifest.json")
+    resumed_config = tiny_config(tmp_path, data_root, max_steps=2)
+    resumed_config["train"]["save_every"] = 1
+    save_config(resumed_config, config_path)
+    with pytest.raises(ValueError, match="data manifest mismatch"):
+        train(config_path, resume_path=str(checkpoint_path))

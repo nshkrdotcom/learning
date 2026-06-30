@@ -145,20 +145,17 @@ Expected initial validation loss is near `ln(50304) = 10.825`.
 For new accurate-size naming:
 
 ```bash
-uv run scripts/train.py --config configs/baseline_30m_fineweb100m.yaml --overwrite
+./scripts/run_full_30m_baseline.sh
 ```
 
 The completed historical run used the same model/data/training recipe:
 
 ```bash
-uv run scripts/train.py --config configs/baseline_15m_fineweb100m.yaml --overwrite
-```
-
-Long-running helper for the historical completed run path:
-
-```bash
 ./scripts/run_full_baseline.sh
 ```
+
+`scripts/run_full_baseline.sh` is a historical completed-run reproducer. New runs
+should use `scripts/run_full_30m_baseline.sh`.
 
 ## Run Verification
 
@@ -168,7 +165,8 @@ Verify a completed run:
 uv run scripts/verify_run.py \
   --run_dir runs/baseline_15m_fineweb100m_seed1 \
   --expect-complete-training \
-  --expect-sample
+  --expect-sample \
+  --expect-data-manifest
 ```
 
 Run checkpoint reload eval, generation, bounded HellaSwag, summary, then verify all
@@ -195,7 +193,15 @@ uv run scripts/verify_run.py \
   --expect-complete-training \
   --expect-sample \
   --expect-eval-loss \
-  --expect-hellaswag
+  --expect-hellaswag \
+  --expect-data-manifest
+```
+
+`eval_loss.py` verifies data-manifest compatibility when the checkpoint or run
+directory has manifest provenance. Intentional cross-data evals must pass:
+
+```bash
+--allow-data-manifest-mismatch
 ```
 
 ## Run Summarization
@@ -235,12 +241,23 @@ configs/baseline_70m_fineweb300m.yaml
 configs/baseline_125m_fineweb1b.yaml
 ```
 
+The 70M and 125M configs are templates until their data roots are prepared and
+manifested:
+
+```text
+data/fineweb_edu_300m/manifest.json
+data/fineweb_edu_1b/manifest.json
+```
+
 Historical compatibility configs:
 
 ```text
 configs/baseline_15m_fineweb100m.yaml
 configs/baseline_124m_fineweb1b.yaml
 ```
+
+`baseline_124m_fineweb1b.yaml` is a historical alias. Prefer the canonical
+`baseline_125m_fineweb1b.yaml` name for new reports and runs.
 
 Inspect exact model sizes:
 
@@ -271,6 +288,12 @@ checkpoint/eval scripts, and run verifier. Every variant must report parameter c
 parameter delta, final/best validation loss, perplexity, tokens/sec, allocated/reserved
 VRAM, wall-clock runtime, checkpoint reload eval loss, and bounded HellaSwag when
 requested.
+
+The resolved pre-experiment cleanup checklist is:
+
+```text
+docs/pre_experiment_cleanup_checklist.md
+```
 
 ## Adding A New Attention Module
 
@@ -310,4 +333,5 @@ verified against the internal model.
 - DDP code exists, but single-GPU non-DDP behavior is the tested path.
 - OpenAI Evals is not used for this training baseline.
 - HellaSwag is optional bounded smoke/eval support, not the primary metric.
+- HellaSwag eval JSON records the cached file path, source URL, and SHA256.
 - `lm-evaluation-harness` is deferred until HF export exists.

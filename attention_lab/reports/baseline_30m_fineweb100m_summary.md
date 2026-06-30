@@ -65,6 +65,8 @@ Git commit at historical run time: `0760b275d46a5c920d79761609b59600d602f6f8`
 - Examples: `100`
 - Normalized correct: `34`
 - Normalized accuracy: `0.34`
+- Data URL: `https://raw.githubusercontent.com/rowanz/hellaswag/master/data/hellaswag_val.jsonl`
+- Data SHA256: `0aa3b88843990f3f10a97b9575c94d7b71fb2205240ba04ae4884d9e9c992588`
 
 ## Verification
 
@@ -72,4 +74,10 @@ Git commit at historical run time: `0760b275d46a5c920d79761609b59600d602f6f8`
 
 ```text
 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+```
+
+After the pre-experiment cleanup pass, new 30M runs should verify with:
+
+```text
+--expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
 ```

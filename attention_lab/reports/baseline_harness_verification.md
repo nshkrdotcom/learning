@@ -70,7 +70,7 @@ val shard sha256: efb01e4b8dad9ce4aa906ca8afbb36bd0329d4135e00741556eb4a70689f78
 ## Test Results
 
 ```text
-50 passed in 4.97s
+60 passed in 5.49s
 ```
 
 ## Ruff Result
@@ -87,7 +87,7 @@ uv run pytest
 uv run ruff check .
 uv run scripts/verify_cuda.py
 uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
-uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
 uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
 uv run scripts/inspect_model_config.py --config configs/baseline_30m_fineweb100m.yaml
 ```
@@ -175,7 +175,7 @@ uv run scripts/eval_loss.py --checkpoint runs/baseline_15m_fineweb100m_seed1/che
 uv run scripts/eval_generate.py --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt --prompt "The history of mathematics"
 uv run scripts/eval_hellaswag.py --checkpoint runs/baseline_15m_fineweb100m_seed1/checkpoints/ckpt_last.pt --max_examples 100
 uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
-uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
 ```
 
 Training completed:
@@ -211,6 +211,7 @@ Full-run verifier result:
   "train_event_count": 301,
   "val_event_count": 13,
   "checkpoint_event_count": 3,
+  "data_manifest": true,
   "ok": true
 }
 ```
@@ -223,7 +224,11 @@ Full-run eval loss result:
   "split": "val",
   "steps": 20,
   "loss": 4.081209182739258,
-  "perplexity": 59.2170307875361
+  "perplexity": 59.2170307875361,
+  "manifest_check": {
+    "status": "matched",
+    "data_manifest_sha256": "3302a779a89ee9f77a0c5717a963dd2744b5ee89dfef56b8c0d098cb61718f17"
+  }
 }
 ```
 
@@ -245,7 +250,10 @@ Full-run bounded HellaSwag result:
   "split": "val",
   "num_total": 100,
   "num_correct_norm": 34,
-  "accuracy_norm": 0.34
+  "accuracy_norm": 0.34,
+  "data_path": "hellaswag/hellaswag_val.jsonl",
+  "data_url": "https://raw.githubusercontent.com/rowanz/hellaswag/master/data/hellaswag_val.jsonl",
+  "data_sha256": "0aa3b88843990f3f10a97b9575c94d7b71fb2205240ba04ae4884d9e9c992588"
 }
 ```
 
@@ -322,6 +330,27 @@ scripts/export_hf.py
 
 `scripts/export_hf.py` is an honest nonzero stub. `lm-evaluation-harness` remains
 deferred until HF export is implemented and verified.
+
+## Pre-Experiment Cleanup Fix Pass
+
+Completed before starting novel attention work:
+
+```text
+docs/pre_experiment_cleanup_checklist.md
+```
+
+Resolved comparison-safety gaps:
+
+```text
+verify_run.py supports --expect-data-manifest
+checkpoints store data_manifest and data_manifest_sha256
+eval_loss.py rejects manifest mismatches unless explicitly overridden
+resume validates checkpoint-embedded manifest provenance
+config validation rejects unknown run/data/train/sample keys
+baseline_125m_fineweb1b.yaml is canonical; baseline_124m is a historical alias
+scripts/run_full_30m_baseline.sh uses accurate-size naming
+HellaSwag eval JSON records data_path, data_url, and data_sha256
+```
 
 ## Known Limitations
 

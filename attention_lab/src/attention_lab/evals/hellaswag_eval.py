@@ -7,6 +7,7 @@ from torch.nn import functional as F
 
 from attention_lab.models.gpt import GPT, config_from_dict
 from attention_lab.training.checkpointing import load_checkpoint
+from attention_lab.training.data_manifest import sha256_file
 from attention_lab.training.runtime import autocast_context, device_type_from_device, dtype_from_name
 
 
@@ -31,7 +32,7 @@ def default_output(checkpoint_path: Path) -> Path:
 
 @torch.no_grad()
 def run_hellaswag(args: argparse.Namespace) -> dict:
-    from attention_lab.evals.hellaswag_data import iterate_examples, render_example
+    from attention_lab.evals.hellaswag_data import HELLASWAG_URLS, download, iterate_examples_from_path, render_example
 
     device = args.device
     if device == "auto":
@@ -49,10 +50,11 @@ def run_hellaswag(args: argparse.Namespace) -> dict:
     model.to(device)
     model.eval()
     dtype = dtype_from_name(args.dtype or config["train"].get("dtype", "bfloat16"))
+    data_path = download(args.split)
 
     num_correct_norm = 0
     num_total = 0
-    for example in iterate_examples(args.split):
+    for example in iterate_examples_from_path(data_path):
         _, tokens, mask, label = render_example(example)
         tokens = tokens.to(device)
         mask = mask.to(device)
@@ -70,6 +72,9 @@ def run_hellaswag(args: argparse.Namespace) -> dict:
         "num_total": num_total,
         "num_correct_norm": num_correct_norm,
         "accuracy_norm": num_correct_norm / num_total if num_total else 0.0,
+        "data_path": str(data_path),
+        "data_url": HELLASWAG_URLS[args.split],
+        "data_sha256": sha256_file(data_path),
     }
     out_path = Path(args.out) if args.out else default_output(checkpoint_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)

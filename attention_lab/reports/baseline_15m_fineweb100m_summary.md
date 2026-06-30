@@ -81,6 +81,8 @@ the parameter counts above.
 - Examples: `100`
 - Normalized correct: `34`
 - Normalized accuracy: `0.34`
+- Data URL: `https://raw.githubusercontent.com/rowanz/hellaswag/master/data/hellaswag_val.jsonl`
+- Data SHA256: `0aa3b88843990f3f10a97b9575c94d7b71fb2205240ba04ae4884d9e9c992588`
 
 ## Verification
 
@@ -88,4 +90,11 @@ the parameter counts above.
 
 ```text
 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag
+```
+
+After the pre-experiment cleanup pass, the local historical run directory was
+augmented with `data_manifest.json` and `data_manifest.sha256`, and verifies with:
+
+```text
+--expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
 ```

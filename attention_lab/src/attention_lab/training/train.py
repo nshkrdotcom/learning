@@ -168,7 +168,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
             resume_checkpoint["config"],
             checkpoint_step=int(resume_checkpoint["step"]),
         )
-        validate_resume_data_manifest(out_dir, data_config["data_root"])
+        validate_resume_data_manifest(out_dir, data_config["data_root"], checkpoint=resume_checkpoint)
 
     if master_process:
         prepare_run_dir(out_dir, config, config_path, overwrite=overwrite, resume=resume_path is not None)
