@@ -57,6 +57,8 @@ class Watchdog:
         for row in self.ledger.get_pending_full_runs():
             ready, note = self._full_run_ready(row)
             if ready:
+                if note:
+                    self.ledger.update_notes(row["id"], note)
                 return {"action": "full", "scan": scan_result, "result": self.full_runner(row, self.ledger)}
             if note:
                 self.ledger.update_notes(row["id"], note)
@@ -79,21 +81,33 @@ class Watchdog:
     def _full_run_ready(self, row: dict) -> tuple[bool, str | None]:
         config = load_config(row["config_path"])
         queue_config = config.get("queue", {})
+        notes = []
+
+        if not bool(row.get("full_run_approved")):
+            return False, "waiting for queue.full_run_approved: true"
 
         requires_run = queue_config.get("requires_run")
+        attention_type = config["model"].get("attention_type", "standard")
+        skip_control_check = queue_config.get("skip_control_check", False)
+        if attention_type != "standard" and not requires_run and not skip_control_check:
+            return False, "waiting for queue.requires_run or explicit queue.skip_control_check"
+        if attention_type != "standard" and skip_control_check:
+            notes.append("WARNING: control dependency explicitly skipped")
+
         if requires_run:
             required = self.ledger.get_run(requires_run)
             if required is None or required.get("status") != "PASSED":
                 return False, f"waiting for required run to pass: {requires_run}"
 
         if queue_config.get("skip_hypothesis_check", False):
-            return True, "WARNING: hypothesis check explicitly skipped"
+            notes.append("WARNING: hypothesis check explicitly skipped")
+            return True, "\n".join(notes)
 
         hypothesis_path = default_hypothesis_path(row["config_path"], config)
         hypothesis = validate_hypothesis_doc(hypothesis_path)
         if not hypothesis.ok:
             return False, f"missing or incomplete hypothesis doc: {hypothesis.path}"
-        return True, None
+        return True, "\n".join(notes) if notes else None
 
 
 def main() -> None:

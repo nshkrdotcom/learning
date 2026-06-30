@@ -176,3 +176,27 @@ def test_e001_configs_have_distinct_experiment_run_dirs(repo_root):
         for section, keys in fixed_fields.items():
             for key in keys:
                 assert config[section][key] == reference[section][key], f"{section}.{key}"
+
+
+def test_e002_skeleton_config_contract(repo_root):
+    import yaml
+
+    config_dir = repo_root / "configs" / "experiments" / "E002_multitrack_qkv_shift_register"
+    standard = load_config(config_dir / "standard_30m_seed1.yaml")
+    assert standard["model"]["attention_type"] == "standard"
+    assert standard["queue"]["family"] == "multitrack_qkv_shift_register"
+
+    configs = []
+    for config_path in sorted(config_dir.glob("*.yaml")):
+        with config_path.open("r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        configs.append(config)
+        if config_path.name != "standard_30m_seed1.yaml":
+            with pytest.raises(ValueError, match="experimental"):
+                load_config(config_path)
+            assert config["status"] == "experimental_unimplemented"
+            assert config["queue"]["mechanism_check"] == "qkv_track_activity"
+
+    out_dirs = [Path(config["run"]["out_dir"]) for config in configs]
+    assert len(out_dirs) == len(set(out_dirs))
+    assert all(str(path).startswith("runs/experiments/E002_multitrack_qkv_shift_register") for path in out_dirs)

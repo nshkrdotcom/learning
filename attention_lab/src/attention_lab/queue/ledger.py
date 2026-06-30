@@ -10,7 +10,17 @@ from attention_lab.training.config import load_config
 
 STAGES = {"SCREEN", "FULL"}
 STATUSES = {"PENDING", "RUNNING", "PASSED", "FAILED", "KILLED"}
-FAILURE_CLASSES = {"NAN", "FLAT_LOSS", "DEAD_GRAD", "COMPILE_ERROR", "OOM", "SLOW", "VERIFY_FAIL", "UNKNOWN"}
+FAILURE_CLASSES = {
+    "NAN",
+    "FLAT_LOSS",
+    "DEAD_GRAD",
+    "COMPILE_ERROR",
+    "OOM",
+    "SLOW",
+    "VERIFY_FAIL",
+    "RUN_DIR_EXISTS",
+    "UNKNOWN",
+}
 BASELINE_ROW_ID = "__baseline__"
 
 
@@ -57,23 +67,43 @@ class QueueLedger:
                 hellaswag_acc REAL,
                 ablation_logit_delta REAL,
                 mechanism_active INTEGER,
+                full_run_approved INTEGER NOT NULL DEFAULT 0,
+                allow_overwrite_existing_run_dir INTEGER NOT NULL DEFAULT 0,
                 notes TEXT
             )
             """
         )
+        self._migrate_schema()
         self.conn.commit()
+
+    def _migrate_schema(self) -> None:
+        columns = {row["name"] for row in self.conn.execute("PRAGMA table_info(runs)").fetchall()}
+        migrations = {
+            "full_run_approved": "ALTER TABLE runs ADD COLUMN full_run_approved INTEGER NOT NULL DEFAULT 0",
+            "allow_overwrite_existing_run_dir": (
+                "ALTER TABLE runs ADD COLUMN allow_overwrite_existing_run_dir INTEGER NOT NULL DEFAULT 0"
+            ),
+        }
+        for column, statement in migrations.items():
+            if column not in columns:
+                self.conn.execute(statement)
 
     def enqueue_config(self, config_path: str | Path, config: dict[str, Any], content: bytes) -> str:
         run_id = hash_config_bytes(content)
         existing = self.get_run(run_id)
         if existing is not None:
             return run_id
+        queue_config = config.get("queue", {})
+        self._raise_on_run_dir_collision(
+            str(config["run"]["out_dir"]),
+            allow_terminal_reuse=bool(queue_config.get("allow_overwrite_existing_run_dir", False)),
+        )
         self.conn.execute(
             """
             INSERT INTO runs (
                 id, config_path, config_name, run_dir, attention_type, stage, status,
-                enqueued_at, notes
-            ) VALUES (?, ?, ?, ?, ?, 'SCREEN', 'PENDING', ?, '')
+                enqueued_at, full_run_approved, allow_overwrite_existing_run_dir, notes
+            ) VALUES (?, ?, ?, ?, ?, 'SCREEN', 'PENDING', ?, ?, ?, '')
             """,
             (
                 run_id,
@@ -82,10 +112,23 @@ class QueueLedger:
                 str(config["run"]["out_dir"]),
                 config["model"].get("attention_type", "standard"),
                 utc_now(),
+                int(queue_config.get("full_run_approved", False)),
+                int(queue_config.get("allow_overwrite_existing_run_dir", False)),
             ),
         )
         self.conn.commit()
         return run_id
+
+    def _raise_on_run_dir_collision(self, run_dir: str, *, allow_terminal_reuse: bool = False) -> None:
+        rows = self.conn.execute(
+            "SELECT id, config_name, status FROM runs WHERE run_dir = ? AND id != ?",
+            (run_dir, BASELINE_ROW_ID),
+        ).fetchall()
+        for row in rows:
+            if row["status"] in {"PENDING", "RUNNING", "PASSED"} or not allow_terminal_reuse:
+                raise ValueError(
+                    f"run.out_dir collision with {row['config_name']} ({row['status']}): {run_dir}"
+                )
 
     def scan_inbox(self, inbox_dir: str | Path) -> dict[str, Any]:
         inbox_dir = Path(inbox_dir)
@@ -238,6 +281,20 @@ class QueueLedger:
         if row is None:
             raise KeyError(f"Unknown queue run: {run_id_or_name}")
         self.conn.execute("UPDATE runs SET notes = ? WHERE id = ?", (notes, row["id"]))
+        self.conn.commit()
+
+    def update_config_path(self, run_id_or_name: str, config_path: str | Path) -> None:
+        row = self.get_run(run_id_or_name)
+        if row is None:
+            raise KeyError(f"Unknown queue run: {run_id_or_name}")
+        self.conn.execute("UPDATE runs SET config_path = ? WHERE id = ?", (str(config_path), row["id"]))
+        self.conn.commit()
+
+    def set_full_run_approved(self, run_id_or_name: str, approved: bool) -> None:
+        row = self.get_run(run_id_or_name)
+        if row is None:
+            raise KeyError(f"Unknown queue run: {run_id_or_name}")
+        self.conn.execute("UPDATE runs SET full_run_approved = ? WHERE id = ?", (int(approved), row["id"]))
         self.conn.commit()
 
     def append_notes(self, run_id_or_name: str, notes: str) -> None:

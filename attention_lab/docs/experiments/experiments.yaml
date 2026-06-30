@@ -9,3 +9,13 @@ experiments:
     baseline_reference_run: runs/baseline_15m_fineweb100m_seed1
     accurate_baseline_alias: configs/baseline_30m_fineweb100m.yaml
     dataset_manifest: data/fineweb_edu_100m/manifest.json
+  - id: E002_multitrack_qkv_shift_register
+    status: planned
+    plan: docs/experiments/E002_multitrack_qkv_shift_register_plan.md
+    config_dir: configs/experiments/E002_multitrack_qkv_shift_register
+    run_dir: runs/experiments/E002_multitrack_qkv_shift_register
+    report_dir: reports/experiments/E002_multitrack_qkv_shift_register
+    baseline_config: configs/experiments/E002_multitrack_qkv_shift_register/standard_30m_seed1.yaml
+    baseline_reference_run: runs/baseline_15m_fineweb100m_seed1
+    accurate_baseline_alias: configs/baseline_30m_fineweb100m.yaml
+    dataset_manifest: data/fineweb_edu_100m/manifest.json

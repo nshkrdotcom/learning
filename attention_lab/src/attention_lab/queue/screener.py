@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from attention_lab.queue.ledger import QueueLedger
+from attention_lab.queue.mechanism_checks import evaluate_mechanism_activity
 from attention_lab.queue.runner import CommandRunner, CommandResult, default_command_runner
-from attention_lab.queue.state_files import clear_active, copy_to_active, finalize_config
+from attention_lab.queue.state_files import copy_to_active, finalize_config, move_to_full_pending
 from attention_lab.training.config import load_config, save_config
 
 
@@ -19,6 +20,7 @@ class ScreenVerdict:
     failure_class: str | None
     mechanism_active: bool | None
     step_reached: int | None
+    notes: str | None = None
 
 
 def screen_config_with_overrides(config: dict, screen_run_dir: str | Path) -> dict:
@@ -48,24 +50,16 @@ def step_reached(metrics: list[dict]) -> int | None:
     return max(steps) if steps else None
 
 
-def mechanism_active_from_diagnostics(attention_type: str, diagnostics_path: str | Path) -> bool | None:
-    if attention_type == "standard":
-        return None
-    diagnostics_path = Path(diagnostics_path)
-    if not diagnostics_path.exists():
-        return None
-    saw_row = False
-    with diagnostics_path.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            saw_row = True
-            row = json.loads(line)
-            grad_norm = row.get("cp_gradient_norm")
-            if grad_norm is not None and float(grad_norm) > 1e-6:
-                return True
-    return False if saw_row else None
+def mechanism_active_from_diagnostics(
+    attention_type: str,
+    diagnostics_path: str | Path,
+    queue_config: dict | None = None,
+) -> bool | None:
+    return evaluate_mechanism_activity(
+        attention_type=attention_type,
+        diagnostics_path=diagnostics_path,
+        queue_config=queue_config,
+    ).active
 
 
 def _val_losses(metrics: list[dict]) -> list[tuple[int, float]]:
@@ -74,6 +68,15 @@ def _val_losses(metrics: list[dict]) -> list[tuple[int, float]]:
         if row.get("event") != "val" or row.get("val_loss") is None:
             continue
         losses.append((int(row.get("step", 0)), float(row["val_loss"])))
+    return losses
+
+
+def _train_losses(metrics: list[dict]) -> list[tuple[int, float]]:
+    losses = []
+    for row in metrics:
+        if row.get("event") != "train" or row.get("train_loss") is None:
+            continue
+        losses.append((int(row.get("step", 0)), float(row["train_loss"])))
     return losses
 
 
@@ -95,17 +98,31 @@ def classify_screen_result(
     attention_type: str,
     diagnostics_path: str | Path | None = None,
     baseline_tokens_per_sec: float | None = None,
+    queue_config: dict | None = None,
+    expected_steps: int = 150,
 ) -> ScreenVerdict:
     reached = step_reached(metrics)
     stderr_lower = stderr.lower()
     if "out of memory" in stderr_lower or "cuda oom" in stderr_lower:
         return ScreenVerdict(False, "OOM", None, reached)
+    losses = _val_losses(metrics)
+    train_losses = _train_losses(metrics)
+    if (
+        "nan" in stderr_lower
+        or " inf" in stderr_lower
+        or "infinite" in stderr_lower
+        or any(not math.isfinite(loss) for _, loss in losses)
+        or any(not math.isfinite(loss) for _, loss in train_losses)
+    ):
+        return ScreenVerdict(False, "NAN", None, reached)
     if returncode != 0 and (reached is None or reached < 10):
         return ScreenVerdict(False, "COMPILE_ERROR", None, reached)
-
-    losses = _val_losses(metrics)
-    if any(not math.isfinite(loss) for _, loss in losses):
-        return ScreenVerdict(False, "NAN", None, reached)
+    if returncode != 0:
+        return ScreenVerdict(False, "UNKNOWN", None, reached)
+    if not metrics:
+        return ScreenVerdict(False, "VERIFY_FAIL", None, reached, "metrics.jsonl missing or empty")
+    if reached is None or reached < expected_steps:
+        return ScreenVerdict(False, "UNKNOWN", None, reached, f"screen ended before step {expected_steps}")
 
     if len(losses) >= 2:
         early_loss = next((loss for step, loss in losses if step >= 10), losses[0][1])
@@ -113,11 +130,24 @@ def classify_screen_result(
         if final_loss > early_loss * 0.97:
             return ScreenVerdict(False, "FLAT_LOSS", None, reached)
 
-    mechanism_active = (
-        mechanism_active_from_diagnostics(attention_type, diagnostics_path) if diagnostics_path is not None else None
+    mechanism_result = (
+        evaluate_mechanism_activity(
+            attention_type=attention_type,
+            diagnostics_path=diagnostics_path,
+            queue_config=queue_config,
+        )
+        if diagnostics_path is not None
+        else None
     )
+    mechanism_active = mechanism_result.active if mechanism_result is not None else None
+    if attention_type != "standard" and mechanism_active is None and not (queue_config or {}).get(
+        "allow_missing_diagnostics", False
+    ):
+        note = mechanism_result.note if mechanism_result is not None else "missing diagnostics"
+        return ScreenVerdict(False, "VERIFY_FAIL", mechanism_active, reached, note)
     if mechanism_active is False:
-        return ScreenVerdict(False, "DEAD_GRAD", mechanism_active, reached)
+        note = mechanism_result.note if mechanism_result is not None else None
+        return ScreenVerdict(False, "DEAD_GRAD", mechanism_active, reached, note)
 
     tokens_per_sec = [
         float(row["tokens_per_sec"])
@@ -132,7 +162,7 @@ def classify_screen_result(
     ):
         return ScreenVerdict(False, "SLOW", mechanism_active, reached)
 
-    return ScreenVerdict(True, None, mechanism_active, reached)
+    return ScreenVerdict(True, None, mechanism_active, reached, mechanism_result.note if mechanism_result else None)
 
 
 def run_screen(
@@ -164,6 +194,7 @@ def run_screen(
         attention_type=config["model"].get("attention_type", "standard"),
         diagnostics_path=screen_run_dir / "evals" / "attention_diagnostics.jsonl",
         baseline_tokens_per_sec=ledger.get_baseline_screen_tokens_per_sec(),
+        queue_config=config.get("queue", {}),
     )
 
     if verdict.passed:
@@ -176,8 +207,10 @@ def run_screen(
             median_speed = _median(train_speeds)
             if median_speed is not None:
                 ledger.update_baseline_screen_tokens_per_sec(median_speed)
-        ledger.promote_to_full(run_id)
-        clear_active(config_path)
+        pending_path = move_to_full_pending(config_path)
+        if pending_path is not None:
+            ledger.update_config_path(run_id, pending_path)
+        ledger.promote_to_full(run_id, notes=verdict.notes)
     else:
         ledger.mark_failed(
             run_id,
@@ -185,8 +218,9 @@ def run_screen(
             killed=True,
             step_reached=verdict.step_reached,
             mechanism_active=verdict.mechanism_active,
+            notes=verdict.notes,
         )
-        finalize_config(config_path, "done" if verdict.failure_class != "COMPILE_ERROR" else "failed")
+        finalize_config(config_path, "failed")
 
     if not keep_screens:
         shutil.rmtree(screen_run_dir, ignore_errors=True)

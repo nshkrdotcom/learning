@@ -272,6 +272,17 @@ uv run attn-queue show standard_30m_seed1
 uv run attn-queue note standard_30m_seed1 "SHOWS: pending screen"
 ```
 
+Full runs require explicit approval after screening:
+
+```bash
+uv run attn-queue approve standard_30m_seed1
+uv run attn-queue unapprove standard_30m_seed1
+```
+
+The approval state is stored in the SQLite ledger. Configs may set
+`queue.full_run_approved: false` or `true` as their initial enqueue state, but the
+operator CLI is the normal way to approve or unapprove a queued row.
+
 Launch or stop the daemon:
 
 ```bash
@@ -283,15 +294,60 @@ The daemon is single-GPU and serial. It scans `queue/inbox/`, screens configs, t
 eligible full configs through the same manifest-checked train/eval/verify pipeline used
 by the manual full-run scripts.
 
+Queue safety rules:
+
+- FULL rows do not execute until `queue.full_run_approved` is true in the ledger.
+- Existing run artifacts are not overwritten unless
+  `queue.allow_overwrite_existing_run_dir: true` is explicit.
+- Non-standard FULL rows need `queue.requires_run` pointing at a passed control, unless
+  `queue.skip_control_check: true` is explicitly set and recorded as a warning.
+- Non-standard screen promotion requires mechanism diagnostics unless
+  `queue.allow_missing_diagnostics: true` is explicit.
+- `queue.mechanism_check` currently supports `cp_gradient_norm` and
+  `qkv_track_activity`.
+
+Operator review commands:
+
+```bash
+uv run attn-queue leaderboard --min-stage FULL --sort loss
+uv run attn-queue leaderboard --sort speed
+uv run attn-queue export-report --experiment E001_cp_trilinear_attention
+uv run attn-queue morning-note --experiment E001_cp_trilinear_attention \
+  --shows "..." \
+  --not-shows "..." \
+  --next "..."
+```
+
+`export-report` writes `run_index.json` and `run_index.md` under the experiment report
+directory. `morning-note` appends to `decision_log.md`.
+
+## 10. Planned E002 Skeleton
+
+The next planned experiment skeleton is registered but not implemented:
+
+```text
+E002_multitrack_qkv_shift_register
+```
+
+Validate it with:
+
+```bash
+uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register
+```
+
+Only its `standard_30m_seed1.yaml` config is runnable. The multitrack QKV configs are
+marked `status: experimental_unimplemented` and must not be treated as evidence.
+
 Before queueing long runs, follow:
 
 ```text
 docs/guides/experiment_queue_discipline_checklist.md
 ```
 
-## 10. Known Limitations
+## 11. Known Limitations
 
 - Full 3000-step E001 runs are prepared but not executed in the implementation pass.
+- E002 is a planned skeleton only; no multitrack QKV architecture code exists yet.
 - The historical `trilinear_cp` attention type remains unimplemented; use canonical
   `cp_trilinear`.
 - `torch.compile` is intentionally unsupported for baseline QC.

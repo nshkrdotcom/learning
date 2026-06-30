@@ -41,6 +41,22 @@ Completed in this implementation pass:
 - [x] Queue daemon script added at `scripts/queue_daemon.sh`.
 - [x] Unit tests added for ledger, ingestion, screener, runner, watchdog, CLI, and
   leaderboard.
+- [x] FULL-run approval gate implemented through `queue.full_run_approved` and
+  `attn-queue approve` / `attn-queue unapprove`.
+- [x] Run-directory clobber protection implemented through
+  `queue.allow_overwrite_existing_run_dir`.
+- [x] Screener nonzero-exit and missing-metrics semantics hardened.
+- [x] Mechanism checks moved into `src/attention_lab/queue/mechanism_checks.py` with
+  CP and future QKV-track check families.
+- [x] Non-standard FULL runs require `queue.requires_run` or explicit
+  `queue.skip_control_check`.
+- [x] `leaderboard --min-stage` and `leaderboard --sort` implemented.
+- [x] Processed queue configs move out of `queue/inbox/`.
+- [x] Full-run PASSED state requires summary, eval-loss, HellaSwag, checkpoint, and
+  final verifier artifacts.
+- [x] Queue run-index export added via `attn-queue export-report`.
+- [x] Decision-log support added via `attn-queue morning-note`.
+- [x] E002 multitrack QKV shift-register skeleton added without architecture code.
 - [x] No full training runs executed by this implementation pass.
 
 Still operator/manual by design:
@@ -175,6 +191,7 @@ Runtime directories:
 ```text
 queue/inbox/
 queue/active/
+queue/full_pending/
 queue/done/
 queue/failed/
 data/queue.db
@@ -184,7 +201,8 @@ data/queue.pid
 Checklist:
 
 - [ ] Add `queue/inbox/.gitkeep`.
-- [ ] Add `queue/active/`, `queue/done/`, and `queue/failed/` to `.gitignore`.
+- [ ] Add `queue/active/`, `queue/full_pending/`, `queue/done/`, and
+  `queue/failed/` to `.gitignore`.
 - [ ] Add `data/queue.db` to `.gitignore`.
 - [ ] Add `data/queue.pid` to `.gitignore`.
 - [ ] Add queue package under the existing source package namespace.
@@ -229,6 +247,8 @@ peak_vram_allocated_mb
 hellaswag_acc
 ablation_logit_delta
 mechanism_active
+full_run_approved
+allow_overwrite_existing_run_dir
 notes
 ```
 
@@ -259,6 +279,7 @@ COMPILE_ERROR
 OOM
 SLOW
 VERIFY_FAIL
+RUN_DIR_EXISTS
 UNKNOWN
 ```
 
@@ -273,6 +294,7 @@ Checklist:
 - [ ] Store resolved `run.out_dir`.
 - [ ] Store `model.attention_type`.
 - [ ] Store screen and full-run metrics after summaries exist.
+- [ ] Store full-run approval and run-dir overwrite policy.
 - [ ] Store human-editable `notes`.
 - [ ] Support special baseline calibration row `id='__baseline__'`.
 - [ ] Provide CRUD helpers for enqueue, start, pass, fail, kill, requeue, note, list.
@@ -333,23 +355,30 @@ Screen behavior:
 
 Kill criteria in order:
 
-- [ ] `COMPILE_ERROR`: train exits nonzero before step 10.
-- [ ] `NAN`: any NaN or Inf in validation loss within 150 steps.
+- [ ] `OOM`: CUDA OOM appears in stderr.
+- [ ] `NAN`: any NaN or Inf in train loss, validation loss, or stderr within 150
+  steps.
+- [ ] `COMPILE_ERROR`: train exits nonzero before step 10 or before metrics exist.
+- [ ] `UNKNOWN`: train exits nonzero after step 10.
+- [ ] `VERIFY_FAIL`: metrics are missing after an otherwise successful subprocess.
+- [ ] `UNKNOWN`: final expected screen step is not reached.
 - [ ] `FLAT_LOSS`: step-150 val loss is greater than step-10 val loss times `0.97`.
 - [ ] `DEAD_GRAD`: mechanism-active check fails.
 - [ ] `SLOW`: median tokens/sec below `baseline_tokens_per_sec * 0.30`.
-- [ ] `OOM`: CUDA OOM appears in stderr.
 - [ ] Otherwise mark `PASSED` and promote to `FULL`.
 
 Mechanism-active check:
 
 - [ ] For `standard`, mechanism-active is not required.
 - [ ] For non-standard attention, read `evals/attention_diagnostics.jsonl` when present.
-- [ ] Mark `mechanism_active=1` if any row has `cp_gradient_norm > 1e-6`.
-- [ ] Mark `mechanism_active=0` and `DEAD_GRAD` when diagnostics prove dead gradients.
-- [ ] Mark `mechanism_active=null` when diagnostics are missing; flag but do not kill
-  unless the architecture family requires diagnostics.
-- [ ] Leave room for future family-specific checks, such as ablation logit deltas.
+- [ ] For CP variants, mark `mechanism_active=1` if any row has
+  `cp_gradient_norm > 1e-6`.
+- [ ] For future QKV-track variants, use `track_gradient_norm`,
+  `per_track_gradient_norm`, `branch_off_logit_delta`, or `track_output_delta`.
+- [ ] Mark `mechanism_active=0` and `DEAD_GRAD` when diagnostics prove dead activity.
+- [ ] Mark `mechanism_active=null` when diagnostics are missing.
+- [ ] Block non-standard FULL promotion on missing diagnostics unless
+  `queue.allow_missing_diagnostics: true` is explicit.
 
 Baseline calibration:
 
@@ -367,6 +396,8 @@ TDD checks:
 - [ ] Missing baseline skips `SLOW`.
 - [ ] CP diagnostics with positive gradient mark mechanism active.
 - [ ] CP diagnostics with zero gradients mark dead grad.
+- [ ] QKV-track diagnostics with positive track activity mark mechanism active.
+- [ ] Missing diagnostics blocks non-standard FULL promotion by default.
 - [ ] `--keep-screens` preserves screen run dir.
 
 ## Phase 05 - Full Run Executor
@@ -390,11 +421,17 @@ Checklist:
 
 - [ ] Resolve `data_root` and manifest from config/data manifest convention.
 - [ ] Build `ckpt_last.pt` path from run directory.
+- [ ] Refuse existing run artifacts unless
+  `queue.allow_overwrite_existing_run_dir: true` is explicit.
 - [ ] Stream stdout/stderr to `<run_dir>/queue_runner.log`.
 - [ ] Tee runner logs to watchdog stdout.
 - [ ] Stop on first nonzero exit.
 - [ ] Classify failures from exit code/stderr.
 - [ ] On success, read `evals/run_summary.json`.
+- [ ] Require `evals/val_loss.json`, `evals/hellaswag.json`, `checkpoints/ckpt_last.pt`,
+  and final `verify_run.py` success before marking PASSED.
+- [ ] Require summary fields: `max_step`, `final_val_loss`, `best_val_loss`,
+  `final_val_perplexity`, and `median_tokens_per_sec`.
 - [ ] Write final numeric fields to ledger.
 - [ ] Write HellaSwag accuracy when available.
 - [ ] Record `VERIFY_FAIL` for failed final verification.
@@ -409,6 +446,8 @@ TDD checks:
 - [ ] Runner classifies OOM from stderr.
 - [ ] Runner classifies unknown nonzero failure as `UNKNOWN`.
 - [ ] Runner classifies failed final verifier as `VERIFY_FAIL`.
+- [ ] Runner classifies existing artifacts as `RUN_DIR_EXISTS`.
+- [ ] Runner refuses success if required artifacts or summary fields are missing.
 
 ## Phase 06 - Watchdog Daemon
 
@@ -436,6 +475,9 @@ Checklist:
 
 - [ ] Do not run two experiments concurrently.
 - [ ] Do not skip screening for inbox configs.
+- [ ] Do not execute FULL rows until `full_run_approved=1`.
+- [ ] Do not execute non-standard FULL rows without a passed `queue.requires_run`
+  control unless `queue.skip_control_check: true` is explicit and warned.
 - [ ] Do not promote missing-hypothesis full runs unless explicitly overridden.
 - [ ] Print enough status for overnight logs.
 - [ ] Keep loop interval configurable; default 60 seconds.
@@ -443,6 +485,8 @@ Checklist:
 TDD checks:
 
 - [ ] Watchdog calls screeners before full runner.
+- [ ] Watchdog blocks unapproved FULL rows.
+- [ ] Watchdog blocks non-standard FULL rows missing controls.
 - [ ] Watchdog picks oldest pending full row.
 - [ ] Watchdog sleeps when no work exists.
 - [ ] SIGTERM flag stops loop after current step.
@@ -486,6 +530,14 @@ Command checklist:
   - [ ] Sends SIGTERM to PID in `data/queue.pid`.
 - [ ] `attn-queue leaderboard [--min-stage SCREEN|FULL] [--sort loss|ppl|speed]`
   - [ ] Prints filtered/sorted leaderboard.
+- [ ] `attn-queue approve <run_id_or_name>`
+  - [ ] Allows an otherwise ready FULL run to execute.
+- [ ] `attn-queue unapprove <run_id_or_name>`
+  - [ ] Blocks a FULL run from executing.
+- [ ] `attn-queue export-report --experiment <EXPERIMENT_ID>`
+  - [ ] Writes queue `run_index.json` and `run_index.md`.
+- [ ] `attn-queue morning-note --experiment <EXPERIMENT_ID> --shows ... --not-shows ... --next ...`
+  - [ ] Appends to `decision_log.md`.
 
 TDD checks:
 
@@ -495,6 +547,9 @@ TDD checks:
 - [ ] `show` handles missing log gracefully.
 - [ ] `kill` rejects unknown rows.
 - [ ] `requeue` rejects passed rows.
+- [ ] `approve` and `unapprove` update the ledger approval flag.
+- [ ] `export-report` filters rows by experiment.
+- [ ] `morning-note` rejects empty fields.
 
 ## Phase 08 - Leaderboard
 
@@ -716,6 +771,7 @@ Morning checklist:
 - [ ] Run `attn-queue show <interesting_run>`.
 - [ ] Read last 20 lines of `queue_runner.log`.
 - [ ] Write a morning note before adding new configs.
+- [ ] Export the run index for the experiment.
 
 Morning note template:
 
@@ -735,6 +791,8 @@ Promotion checklist:
 TDD checks:
 
 - [ ] `attn-queue note` stores notes exactly.
+- [ ] `attn-queue morning-note` appends decision log entries.
+- [ ] `attn-queue export-report` writes JSON and Markdown run indexes.
 - [ ] Leaderboard displays note excerpt.
 - [ ] Promotion helper refuses missing mechanism/control evidence.
 
@@ -747,11 +805,12 @@ For E002 and onward:
 ```text
 configs/experiments/E002_multitrack_qkv_shift_register/
   standard_30m_seed1.yaml
-  static_cycle_3track_30m_seed1.yaml
-  coprime_qkv_3track_30m_seed1.yaml
-  q_only_rotate_30m_seed1.yaml
-  k_only_rotate_30m_seed1.yaml
-  v_only_rotate_30m_seed1.yaml
+  multi_qkv_static_3track_30m_seed1.yaml
+  multi_qkv_train_and_layer_shift_3track_30m_seed1.yaml
+  multi_qkv_train_shift_3track_30m_seed1.yaml
+  multi_qkv_layer_shift_3track_30m_seed1.yaml
+  multi_qkv_softmix_3track_30m_seed1.yaml
+  multi_qkv_train_shift_warmup_3track_30m_seed1.yaml
 ```
 
 Checklist:
@@ -772,7 +831,10 @@ Potential queue config extension:
 ```yaml
 queue:
   requires_run: standard_30m_seed1
-  hypothesis_doc: docs/experiments/E002/hypothesis_coprime_qkv_3track_30m.md
+  hypothesis_doc: docs/experiments/E002_multitrack_qkv_shift_register/hypothesis_<run_name>.md
+  mechanism_check: qkv_track_activity
+  full_run_approved: false
+  allow_overwrite_existing_run_dir: false
 ```
 
 Before adding this field:
@@ -818,6 +880,7 @@ uv sync
 uv run pytest
 uv run ruff check .
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
+uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register
 uv run scripts/verify_data.py \
   --data_root data/fineweb_edu_100m \
   --manifest data/fineweb_edu_100m/manifest.json \
@@ -829,6 +892,7 @@ When queue code exists, add:
 ```bash
 uv run attention-lab-queue status
 uv run attention-lab-queue ls
+uv run attention-lab-queue export-report --experiment E001_cp_trilinear_attention
 ```
 
 When full-run artifacts exist, add:

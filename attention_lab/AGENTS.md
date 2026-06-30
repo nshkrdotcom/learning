@@ -39,6 +39,15 @@ attention experiments.
   experiment run; they are not expected to all be globally checked forever.
 - Long full runs should be launched from a frozen source state/worktree. The user may
   handle freeze/run execution outside this working copy.
+- FULL queue rows require explicit ledger approval via `attn-queue approve`.
+- Non-standard FULL rows require a passed `queue.requires_run` control unless
+  `queue.skip_control_check: true` is explicitly documented.
+- Existing run directories are protected by default; do not set
+  `queue.allow_overwrite_existing_run_dir: true` casually.
+- Queue morning review is `attn-queue status`, `attn-queue leaderboard`,
+  `attn-queue export-report`, and `attn-queue morning-note`.
+- `E002_multitrack_qkv_shift_register` is a planned skeleton only. Do not implement
+  QKV multitrack architecture code unless the user explicitly requests that pass.
 
 ## Required QC
 
@@ -49,5 +58,6 @@ uv sync
 uv run pytest
 uv run ruff check .
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
+uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register
 uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
 ```

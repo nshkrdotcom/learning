@@ -43,7 +43,18 @@ SAMPLE_KEYS = {
     "seed",
 }
 DIAGNOSTICS_KEYS = {"attention_diagnostics_every"}
-QUEUE_KEYS = {"requires_run", "hypothesis_doc", "skip_hypothesis_check", "family"}
+MECHANISM_CHECKS = {"cp_gradient_norm", "qkv_track_activity"}
+QUEUE_KEYS = {
+    "requires_run",
+    "hypothesis_doc",
+    "skip_hypothesis_check",
+    "family",
+    "full_run_approved",
+    "allow_overwrite_existing_run_dir",
+    "mechanism_check",
+    "allow_missing_diagnostics",
+    "skip_control_check",
+}
 
 
 def _require_mapping(config: dict[str, Any], section: str) -> dict[str, Any]:
@@ -168,8 +179,18 @@ def validate_config(
     for key in ("requires_run", "hypothesis_doc", "family"):
         if key in queue and (not isinstance(queue[key], str) or not queue[key].strip()):
             raise ValueError(f"queue.{key} must be a nonempty string")
-    if "skip_hypothesis_check" in queue and not isinstance(queue["skip_hypothesis_check"], bool):
-        raise ValueError("queue.skip_hypothesis_check must be a boolean")
+    for key in (
+        "skip_hypothesis_check",
+        "full_run_approved",
+        "allow_overwrite_existing_run_dir",
+        "allow_missing_diagnostics",
+        "skip_control_check",
+    ):
+        if key in queue and not isinstance(queue[key], bool):
+            raise ValueError(f"queue.{key} must be a boolean")
+    if "mechanism_check" in queue:
+        if queue["mechanism_check"] not in MECHANISM_CHECKS:
+            raise ValueError(f"queue.mechanism_check must be one of {sorted(MECHANISM_CHECKS)}")
 
     dtype = train.get("dtype")
     if dtype not in DTYPES:

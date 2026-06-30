@@ -46,3 +46,7 @@ sample:
   top_k: 50
   temperature: 1.0
   seed: 42
+
+queue:
+  full_run_approved: false
+  allow_overwrite_existing_run_dir: false

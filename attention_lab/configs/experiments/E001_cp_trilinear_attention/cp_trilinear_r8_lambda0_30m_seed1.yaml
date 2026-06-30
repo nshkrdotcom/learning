@@ -53,3 +53,10 @@ sample:
 
 diagnostics:
   attention_diagnostics_every: 250
+
+queue:
+  full_run_approved: false
+  allow_overwrite_existing_run_dir: false
+  requires_run: standard_30m_seed1
+  mechanism_check: cp_gradient_norm
+  allow_missing_diagnostics: false

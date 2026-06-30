@@ -496,3 +496,27 @@ script syntax checks: passed
 - DDP is present but not part of the tested baseline completion path.
 - OpenAI Evals is not used for this stage.
 - `lm-evaluation-harness` is deferred until HF export exists.
+
+## Queue Hardening Completion Pass
+
+This pass hardens the experiment queue for unattended overnight use. It does not add
+new attention architectures and does not launch any full 3000-step experiment runs.
+
+Implemented queue safety changes:
+
+```text
+full-run approval gate: queue.full_run_approved plus attn-queue approve/unapprove
+run-dir clobber protection: queue.allow_overwrite_existing_run_dir defaults false
+screener nonzero-exit semantics: all nonzero exits fail, even after partial progress
+mechanism-check registry: cp_gradient_norm and qkv_track_activity
+control dependency: non-standard FULL rows require queue.requires_run or explicit skip
+leaderboard filtering/sorting: --min-stage and --sort
+state transitions: processed configs leave queue/inbox
+full-run artifact validation: summary/eval/checkpoint/HellaSwag required before PASSED
+run-index export: attn-queue export-report
+decision log: attn-queue morning-note
+E002 skeleton: E002_multitrack_qkv_shift_register
+```
+
+No scientific claims are added by this queue pass. E001 and E002 full-run evidence must
+come from actual train/eval/summarize/verify artifacts.

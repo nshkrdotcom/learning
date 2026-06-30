@@ -1,6 +1,6 @@
 run:
-  name: cp_trilinear_r8_30m_seed1
-  out_dir: runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1
+  name: standard_30m_seed1
+  out_dir: runs/experiments/E002_multitrack_qkv_shift_register/standard_30m_seed1
   seed: 1337
 
 data:
@@ -11,11 +11,7 @@ data:
   val_tokens: 4000000
 
 model:
-  attention_type: cp_trilinear
-  cp_rank: 8
-  cp_lambda_init: 0.0
-  cp_lambda_trainable: true
-  cp_lambda_fixed: false
+  attention_type: standard
   block_size: 1024
   n_layer: 6
   n_head: 6
@@ -51,12 +47,7 @@ sample:
   temperature: 1.0
   seed: 42
 
-diagnostics:
-  attention_diagnostics_every: 250
-
 queue:
+  family: multitrack_qkv_shift_register
   full_run_approved: false
   allow_overwrite_existing_run_dir: false
-  requires_run: standard_30m_seed1
-  mechanism_check: cp_gradient_norm
-  allow_missing_diagnostics: false

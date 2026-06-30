@@ -4,7 +4,14 @@ import json
 from pathlib import Path
 
 from attention_lab.queue.ledger import QueueLedger
-from attention_lab.queue.runner import CommandResult, build_full_pipeline, capture_git_state, classify_failure, run_full
+from attention_lab.queue.runner import (
+    CommandResult,
+    build_full_pipeline,
+    capture_git_state,
+    classify_failure,
+    existing_run_artifacts,
+    run_full,
+)
 
 
 def test_full_pipeline_command_contract():
@@ -79,6 +86,7 @@ def test_run_full_ingests_summary_and_hellaswag_on_success(tmp_path, tiny_config
     ledger = QueueLedger(tmp_path / "queue.db")
     ledger.initialize()
     config = tiny_config(tmp_path, tmp_path / "data")
+    config["queue"] = {"allow_overwrite_existing_run_dir": True}
     config_path = tmp_path / "candidate.yaml"
     import yaml
 
@@ -88,6 +96,9 @@ def test_run_full_ingests_summary_and_hellaswag_on_success(tmp_path, tiny_config
     ledger.promote_to_full(run_id)
     run_dir = Path(config["run"]["out_dir"])
     (run_dir / "evals").mkdir(parents=True)
+    (run_dir / "checkpoints").mkdir(parents=True)
+    (run_dir / "checkpoints" / "ckpt_last.pt").write_bytes(b"tiny")
+    (run_dir / "evals" / "val_loss.json").write_text(json.dumps({"val_loss": 4.0}), encoding="utf-8")
     (run_dir / "evals" / "run_summary.json").write_text(
         json.dumps(
             {
@@ -112,3 +123,83 @@ def test_run_full_ingests_summary_and_hellaswag_on_success(tmp_path, tiny_config
     assert row["status"] == "PASSED"
     assert row["final_val_loss"] == 4.0
     assert row["hellaswag_acc"] == 0.25
+
+
+def test_run_full_refuses_existing_artifacts_without_allow(tmp_path, tiny_config):
+    ledger = QueueLedger(tmp_path / "queue.db")
+    ledger.initialize()
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config_path = tmp_path / "candidate.yaml"
+    import yaml
+
+    content = yaml.safe_dump(config).encode()
+    config_path.write_bytes(content)
+    run_id = ledger.enqueue_config(config_path, config, content)
+    ledger.promote_to_full(run_id)
+    run_dir = Path(config["run"]["out_dir"])
+    (run_dir / "checkpoints").mkdir(parents=True)
+    assert existing_run_artifacts(run_dir)
+
+    calls = []
+
+    def fake_runner(cmd, log_path):
+        calls.append(cmd)
+        return CommandResult(returncode=0, stdout="ok", stderr="")
+
+    result = run_full(ledger.get_run(run_id), ledger, command_runner=fake_runner, repo_root=Path.cwd())
+    row = ledger.get_run(run_id)
+    assert result["ok"] is False
+    assert row["failure_class"] == "RUN_DIR_EXISTS"
+    assert calls == []
+
+
+def test_run_full_requires_summary_eval_and_checkpoint_artifacts(tmp_path, tiny_config):
+    ledger = QueueLedger(tmp_path / "queue.db")
+    ledger.initialize()
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config_path = tmp_path / "candidate.yaml"
+    import yaml
+
+    content = yaml.safe_dump(config).encode()
+    config_path.write_bytes(content)
+    run_id = ledger.enqueue_config(config_path, config, content)
+    ledger.promote_to_full(run_id)
+
+    def fake_runner(cmd, log_path):
+        return CommandResult(returncode=0, stdout="ok", stderr="")
+
+    result = run_full(ledger.get_run(run_id), ledger, command_runner=fake_runner, repo_root=Path.cwd())
+    row = ledger.get_run(run_id)
+    assert result["ok"] is False
+    assert row["failure_class"] == "VERIFY_FAIL"
+    assert "missing required full-run artifacts" in row["notes"]
+
+
+def test_run_full_rejects_missing_required_summary_field(tmp_path, tiny_config):
+    ledger = QueueLedger(tmp_path / "queue.db")
+    ledger.initialize()
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config["queue"] = {"allow_overwrite_existing_run_dir": True}
+    config_path = tmp_path / "candidate.yaml"
+    import yaml
+
+    content = yaml.safe_dump(config).encode()
+    config_path.write_bytes(content)
+    run_id = ledger.enqueue_config(config_path, config, content)
+    ledger.promote_to_full(run_id)
+    run_dir = Path(config["run"]["out_dir"])
+    (run_dir / "evals").mkdir(parents=True)
+    (run_dir / "checkpoints").mkdir(parents=True)
+    (run_dir / "checkpoints" / "ckpt_last.pt").write_bytes(b"tiny")
+    (run_dir / "evals" / "val_loss.json").write_text(json.dumps({"val_loss": 4.0}), encoding="utf-8")
+    (run_dir / "evals" / "hellaswag.json").write_text(json.dumps({"accuracy_norm": 0.25}), encoding="utf-8")
+    (run_dir / "evals" / "run_summary.json").write_text(json.dumps({"max_step": 2}), encoding="utf-8")
+
+    def fake_runner(cmd, log_path):
+        return CommandResult(returncode=0, stdout="ok", stderr="")
+
+    result = run_full(ledger.get_run(run_id), ledger, command_runner=fake_runner, repo_root=Path.cwd())
+    row = ledger.get_run(run_id)
+    assert result["ok"] is False
+    assert row["failure_class"] == "VERIFY_FAIL"
+    assert "run_summary.json missing required fields" in row["notes"]

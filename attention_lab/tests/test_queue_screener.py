@@ -43,6 +43,42 @@ def test_screen_classifier_kill_criteria():
     assert slow.failure_class == "SLOW"
 
 
+def test_screen_classifier_nonzero_and_incomplete_runs_do_not_pass():
+    metrics = [
+        {"event": "train", "step": 100, "tokens_per_sec": 100.0, "train_loss": 5.0},
+        {"event": "val", "step": 100, "val_loss": 5.0},
+    ]
+    nonzero = classify_screen_result(returncode=1, stderr="late crash", metrics=metrics, attention_type="standard")
+    assert nonzero.passed is False
+    assert nonzero.failure_class == "UNKNOWN"
+
+    missing_metrics = classify_screen_result(returncode=0, stderr="", metrics=[], attention_type="standard")
+    assert missing_metrics.passed is False
+    assert missing_metrics.failure_class == "VERIFY_FAIL"
+
+    partial = classify_screen_result(returncode=0, stderr="", metrics=metrics, attention_type="standard")
+    assert partial.passed is False
+    assert partial.failure_class == "UNKNOWN"
+
+
+def test_screen_classifier_detects_train_and_val_nan():
+    train_nan = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=[{"event": "train", "step": 150, "train_loss": float("nan")}],
+        attention_type="standard",
+    )
+    assert train_nan.failure_class == "NAN"
+
+    val_nan = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=[{"event": "val", "step": 150, "val_loss": float("nan")}],
+        attention_type="standard",
+    )
+    assert val_nan.failure_class == "NAN"
+
+
 def test_screen_classifier_passes_nonflat_standard_run():
     verdict = classify_screen_result(
         returncode=0,
@@ -69,3 +105,68 @@ def test_mechanism_active_from_diagnostics(tmp_path):
     path.write_text(json.dumps({"cp_gradient_norm": 1e-3}) + "\n", encoding="utf-8")
     assert mechanism_active_from_diagnostics("cp_trilinear", path) is True
     assert mechanism_active_from_diagnostics("standard", path) is None
+
+
+def test_cp_mechanism_missing_or_inactive_blocks_full_promotion(tmp_path):
+    metrics = [
+        {"event": "train", "step": 150, "tokens_per_sec": 100.0, "train_loss": 5.0},
+        {"event": "val", "step": 50, "val_loss": 6.0},
+        {"event": "val", "step": 150, "val_loss": 5.0},
+    ]
+    missing = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=metrics,
+        attention_type="cp_trilinear",
+        diagnostics_path=tmp_path / "missing.jsonl",
+        queue_config={},
+    )
+    assert missing.passed is False
+    assert missing.failure_class == "VERIFY_FAIL"
+    assert missing.mechanism_active is None
+
+    diagnostics = tmp_path / "attention_diagnostics.jsonl"
+    diagnostics.write_text(json.dumps({"cp_gradient_norm": 0.0}) + "\n", encoding="utf-8")
+    inactive = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=metrics,
+        attention_type="cp_bilinear",
+        diagnostics_path=diagnostics,
+        queue_config={},
+    )
+    assert inactive.passed is False
+    assert inactive.failure_class == "DEAD_GRAD"
+    assert inactive.mechanism_active is False
+
+
+def test_qkv_mechanism_check_uses_future_diagnostic_fields(tmp_path):
+    metrics = [
+        {"event": "train", "step": 150, "tokens_per_sec": 100.0, "train_loss": 5.0},
+        {"event": "val", "step": 50, "val_loss": 6.0},
+        {"event": "val", "step": 150, "val_loss": 5.0},
+    ]
+    diagnostics = tmp_path / "attention_diagnostics.jsonl"
+    diagnostics.write_text(json.dumps({"per_track_gradient_norm": [0.0, 2e-3]}) + "\n", encoding="utf-8")
+    verdict = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=metrics,
+        attention_type="multi_qkv_static",
+        diagnostics_path=diagnostics,
+        queue_config={"mechanism_check": "qkv_track_activity"},
+    )
+    assert verdict.passed is True
+    assert verdict.mechanism_active is True
+
+    diagnostics.write_text(json.dumps({"track_gradient_norm": 0.0, "track_output_delta": 0.0}) + "\n", encoding="utf-8")
+    inactive = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=metrics,
+        attention_type="multi_qkv_static",
+        diagnostics_path=diagnostics,
+        queue_config={"mechanism_check": "qkv_track_activity"},
+    )
+    assert inactive.passed is False
+    assert inactive.failure_class == "DEAD_GRAD"

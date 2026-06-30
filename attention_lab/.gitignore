@@ -13,6 +13,7 @@ data/queue.pid
 hellaswag/
 
 queue/active/
+queue/full_pending/
 queue/done/
 queue/failed/
 

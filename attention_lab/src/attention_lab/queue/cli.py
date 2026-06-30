@@ -10,6 +10,7 @@ from pathlib import Path
 from attention_lab.queue.leaderboard import render_leaderboard
 from attention_lab.queue.ledger import QueueLedger
 from attention_lab.queue.paths import default_db_path, default_pid_path, ensure_queue_dirs
+from attention_lab.queue.reporting import append_decision_log, export_queue_report
 from attention_lab.training.config import load_config
 
 
@@ -34,6 +35,14 @@ def cmd_status(args: argparse.Namespace) -> None:
     ledger = _open_ledger(args)
     try:
         print(render_leaderboard(ledger.list_runs()), end="")
+    finally:
+        ledger.close()
+
+
+def cmd_leaderboard(args: argparse.Namespace) -> None:
+    ledger = _open_ledger(args)
+    try:
+        print(render_leaderboard(ledger.list_runs(), min_stage=args.min_stage, sort=args.sort), end="")
     finally:
         ledger.close()
 
@@ -113,6 +122,46 @@ def cmd_requeue(args: argparse.Namespace) -> None:
         ledger.close()
 
 
+def cmd_approve(args: argparse.Namespace) -> None:
+    ledger = _open_ledger(args)
+    try:
+        ledger.set_full_run_approved(args.run_id_or_name, True)
+        print(f"approved: {args.run_id_or_name}")
+    finally:
+        ledger.close()
+
+
+def cmd_unapprove(args: argparse.Namespace) -> None:
+    ledger = _open_ledger(args)
+    try:
+        ledger.set_full_run_approved(args.run_id_or_name, False)
+        print(f"unapproved: {args.run_id_or_name}")
+    finally:
+        ledger.close()
+
+
+def cmd_export_report(args: argparse.Namespace) -> None:
+    ledger = _open_ledger(args)
+    try:
+        result = export_queue_report(experiment_id=args.experiment, ledger=ledger, repo_root=args.root)
+        print(f"wrote: {result['json_path']}")
+        print(f"wrote: {result['markdown_path']}")
+        print(f"rows: {result['row_count']}")
+    finally:
+        ledger.close()
+
+
+def cmd_morning_note(args: argparse.Namespace) -> None:
+    path = append_decision_log(
+        experiment_id=args.experiment,
+        shows=args.shows,
+        not_shows=args.not_shows,
+        next_step=args.next,
+        repo_root=args.root,
+    )
+    print(f"appended: {path}")
+
+
 def cmd_start(args: argparse.Namespace) -> None:
     subprocess.Popen(["bash", "scripts/queue_daemon.sh"], cwd=args.root)
     print("queue daemon start requested")
@@ -163,6 +212,14 @@ def build_parser() -> argparse.ArgumentParser:
     requeue.add_argument("run_id_or_name")
     requeue.set_defaults(func=cmd_requeue)
 
+    approve = subparsers.add_parser("approve")
+    approve.add_argument("run_id_or_name")
+    approve.set_defaults(func=cmd_approve)
+
+    unapprove = subparsers.add_parser("unapprove")
+    unapprove.add_argument("run_id_or_name")
+    unapprove.set_defaults(func=cmd_unapprove)
+
     start = subparsers.add_parser("start")
     start.set_defaults(func=cmd_start)
 
@@ -172,7 +229,18 @@ def build_parser() -> argparse.ArgumentParser:
     leaderboard = subparsers.add_parser("leaderboard")
     leaderboard.add_argument("--min-stage", choices=["SCREEN", "FULL"], default=None)
     leaderboard.add_argument("--sort", choices=["loss", "ppl", "speed"], default=None)
-    leaderboard.set_defaults(func=cmd_status)
+    leaderboard.set_defaults(func=cmd_leaderboard)
+
+    export_report = subparsers.add_parser("export-report")
+    export_report.add_argument("--experiment", required=True)
+    export_report.set_defaults(func=cmd_export_report)
+
+    morning_note = subparsers.add_parser("morning-note")
+    morning_note.add_argument("--experiment", required=True)
+    morning_note.add_argument("--shows", required=True)
+    morning_note.add_argument("--not-shows", required=True)
+    morning_note.add_argument("--next", required=True)
+    morning_note.set_defaults(func=cmd_morning_note)
     return parser
 
 

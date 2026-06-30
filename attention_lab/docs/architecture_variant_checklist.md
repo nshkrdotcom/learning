@@ -30,5 +30,13 @@ docs/guides/experiment_queue_discipline_checklist.md
 18. Confirm mechanism diagnostics prove the non-standard path is active before
     interpreting loss.
 19. Confirm the nearest boring explanation has a queued or completed control.
+20. Set `queue.requires_run` for non-standard FULL candidates, or explicitly document
+    `queue.skip_control_check: true`.
+21. Leave `queue.full_run_approved: false` until the operator intentionally approves
+    the FULL run with `attn-queue approve`.
+22. Keep `queue.allow_overwrite_existing_run_dir: false` unless overwriting a known
+    disposable diagnostic run.
+23. Export the queue report with `attn-queue export-report --experiment <ID>`.
+24. Add a decision note with `attn-queue morning-note` after overnight review.
 
 The standard-attention baseline path must remain intact throughout the experiment.

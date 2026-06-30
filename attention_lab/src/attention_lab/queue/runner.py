@@ -166,6 +166,49 @@ def _is_verify_step(cmd: Sequence[str]) -> bool:
     return "scripts/verify_run.py" in cmd
 
 
+def existing_run_artifacts(run_dir: str | Path) -> list[str]:
+    run_dir = Path(run_dir)
+    artifacts = [
+        run_dir / "checkpoints",
+        run_dir / "metrics.jsonl",
+        run_dir / "evals" / "run_summary.json",
+        run_dir / "data_manifest.json",
+    ]
+    return [str(path) for path in artifacts if path.exists()]
+
+
+REQUIRED_SUMMARY_FIELDS = {
+    "max_step",
+    "final_val_loss",
+    "best_val_loss",
+    "final_val_perplexity",
+    "median_tokens_per_sec",
+}
+
+
+def validate_full_run_artifacts(run_dir: str | Path) -> tuple[dict, dict, str | None]:
+    run_dir = Path(run_dir)
+    required_files = [
+        run_dir / "evals" / "run_summary.json",
+        run_dir / "evals" / "val_loss.json",
+        run_dir / "evals" / "hellaswag.json",
+        run_dir / "checkpoints" / "ckpt_last.pt",
+    ]
+    missing = [str(path) for path in required_files if not path.exists()]
+    if missing:
+        return {}, {}, f"missing required full-run artifacts: {', '.join(missing)}"
+
+    summary = _read_json(run_dir / "evals" / "run_summary.json")
+    missing_summary = sorted(field for field in REQUIRED_SUMMARY_FIELDS if summary.get(field) is None)
+    if missing_summary:
+        return summary, {}, f"run_summary.json missing required fields: {missing_summary}"
+
+    hellaswag = _read_json(run_dir / "evals" / "hellaswag.json")
+    if hellaswag.get("accuracy_norm") is None and hellaswag.get("accuracy") is None:
+        return summary, hellaswag, "hellaswag.json missing accuracy_norm/accuracy"
+    return summary, hellaswag, None
+
+
 def run_full(
     row: dict,
     ledger: QueueLedger,
@@ -180,6 +223,17 @@ def run_full(
     data_root = Path(config["data"]["data_root"])
     manifest_path = _manifest_path_for_data_root(data_root)
     log_path = run_dir / "queue_runner.log"
+    queue_config = config.get("queue", {})
+
+    if not bool(row.get("allow_overwrite_existing_run_dir")) and not queue_config.get(
+        "allow_overwrite_existing_run_dir", False
+    ):
+        artifacts = existing_run_artifacts(run_dir)
+        if artifacts:
+            notes = f"existing run_dir artifacts; refusing overwrite: {', '.join(artifacts)}"
+            ledger.mark_failed(run_id, failure_class="RUN_DIR_EXISTS", notes=notes)
+            finalize_config(config_path, "failed")
+            return {"ok": False, "failure_class": "RUN_DIR_EXISTS", "notes": notes}
 
     ledger.mark_started(run_id)
     copy_to_active(config_path)
@@ -202,8 +256,12 @@ def run_full(
             finalize_config(config_path, "failed")
             return {"ok": False, "failure_class": failure_class, "command": cmd}
 
-    summary = _read_json(run_dir / "evals" / "run_summary.json")
-    hellaswag = _read_json(run_dir / "evals" / "hellaswag.json")
+    summary, hellaswag, artifact_error = validate_full_run_artifacts(run_dir)
+    if artifact_error is not None:
+        ledger.mark_failed(run_id, failure_class="VERIFY_FAIL", notes=artifact_error)
+        finalize_config(config_path, "failed")
+        return {"ok": False, "failure_class": "VERIFY_FAIL", "notes": artifact_error}
+
     ledger.mark_passed(
         run_id,
         step_reached=summary.get("max_step"),
@@ -212,7 +270,7 @@ def run_full(
         final_ppl=summary.get("final_val_perplexity"),
         median_tokens_per_sec=summary.get("median_tokens_per_sec"),
         peak_vram_allocated_mb=summary.get("peak_vram_allocated_mb") or summary.get("peak_vram_mb"),
-        hellaswag_acc=hellaswag.get("accuracy_norm"),
+        hellaswag_acc=hellaswag.get("accuracy_norm") if hellaswag.get("accuracy_norm") is not None else hellaswag.get("accuracy"),
     )
     finalize_config(config_path, "done")
     return {"ok": True, "run_id": run_id}
