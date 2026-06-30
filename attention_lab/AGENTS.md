@@ -48,8 +48,11 @@ attention experiments.
   `attn-queue doctor`, `attn-queue export-report`, and `attn-queue morning-note`.
 - Non-standard 150-step screens inject diagnostics cadence 50; do not remove this
   unless the screen budget changes.
-- `E002_multitrack_qkv_shift_register` is a planned skeleton only. Do not implement
-  QKV multitrack architecture code unless the user explicitly requests that pass.
+- `E002_multitrack_qkv_shift_register` has first-build global Multi-QKV A/B/C code
+  prepared, but no full 3000-step evidence unless manual scripts have been run and
+  verified. Do not add second-round QKV variants unless explicitly requested.
+- The E002 implementation contract lives under
+  `docs/implementation/0901_multiqkv_shift_register/`.
 
 ## Required QC
 

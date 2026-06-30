@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+from attention_lab.models.attention.multi_qkv_common import MultiQKVSharedBank, is_multi_qkv_attention
 from attention_lab.models.attention.registry import build_attention
 
 
@@ -22,6 +23,8 @@ class GPTConfig:
     cp_lambda_init: float = 0.0
     cp_lambda_trainable: bool = True
     cp_lambda_fixed: bool = False
+    multi_qkv_track_count: int = 3
+    multi_qkv_global: bool = True
 
 
 def config_from_dict(model_config: dict[str, Any], data_config: dict[str, Any] | None = None) -> GPTConfig:
@@ -62,15 +65,22 @@ class MLP(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, config: GPTConfig):
+    def __init__(self, config: GPTConfig, *, layer_idx: int, shared_qkv_bank: MultiQKVSharedBank | None = None):
         super().__init__()
+        self.layer_idx = layer_idx
         self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
-        self.attn = build_attention(config)
+        self.attn = build_attention(config, layer_idx=layer_idx, shared_qkv_bank=shared_qkv_bank)
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = x + self.attn(self.ln_1(x))
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        step: int | None = None,
+        positions: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        x = x + self.attn(self.ln_1(x), step=step, positions=positions, layer_idx=self.layer_idx)
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -79,12 +89,15 @@ class GPT(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
         self.config = config
+        self.multi_qkv_bank = MultiQKVSharedBank(config) if is_multi_qkv_attention(config.attention_type) else None
 
         self.transformer = nn.ModuleDict(
             dict(
                 wte=nn.Embedding(config.vocab_size, config.n_embd),
                 wpe=nn.Embedding(config.block_size, config.n_embd),
-                h=nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+                h=nn.ModuleList(
+                    [Block(config, layer_idx=layer_idx, shared_qkv_bank=self.multi_qkv_bank) for layer_idx in range(config.n_layer)]
+                ),
                 ln_f=LayerNorm(config.n_embd, bias=config.bias),
             )
         )
@@ -108,6 +121,9 @@ class GPT(nn.Module):
         self,
         idx: torch.Tensor,
         targets: torch.Tensor | None = None,
+        *,
+        step: int | None = None,
+        positions: torch.Tensor | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         _, seq_len = idx.size()
         if seq_len > self.config.block_size:
@@ -116,13 +132,16 @@ class GPT(nn.Module):
                 f"block_size is {self.config.block_size}"
             )
 
-        pos = torch.arange(0, seq_len, dtype=torch.long, device=idx.device)
+        if positions is None:
+            pos = torch.arange(0, seq_len, dtype=torch.long, device=idx.device)
+        else:
+            pos = positions.to(device=idx.device, dtype=torch.long)
         pos_emb = self.transformer.wpe(pos)
         tok_emb = self.transformer.wte(idx)
         x = tok_emb + pos_emb
 
         for block in self.transformer.h:
-            x = block(x)
+            x = block(x, step=step, positions=pos)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
 

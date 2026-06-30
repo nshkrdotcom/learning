@@ -133,7 +133,15 @@ class CPScoreAugmentedCausalSelfAttention(nn.Module):
             "cp_gradient_norm": self.cp_gradient_norm(),
         }
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        step: int | None = None,
+        positions: torch.Tensor | None = None,
+        layer_idx: int | None = None,
+    ) -> torch.Tensor:
+        del step, positions, layer_idx
         batch_size, seq_len, channels = x.size()
         head_size = channels // self.n_head
         q, k, v = self._split_qkv(x)

@@ -9,6 +9,12 @@ For queued or overnight runs, also follow:
 docs/guides/experiment_queue_discipline_checklist.md
 ```
 
+For E002 Multi-QKV Shift Register work, also follow the stricter implementation docset:
+
+```text
+docs/implementation/0901_multiqkv_shift_register/
+```
+
 1. Add the architecture module under `src/attention_lab/models/attention/`.
 2. Add a registry entry in `src/attention_lab/models/attention/registry.py`.
 3. Add config validation support for the new `attention_type`.

@@ -19,7 +19,15 @@ class StandardCausalSelfAttention(nn.Module):
         self.n_head = config.n_head
         self.n_embd = config.n_embd
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        step: int | None = None,
+        positions: torch.Tensor | None = None,
+        layer_idx: int | None = None,
+    ) -> torch.Tensor:
+        del step, positions, layer_idx
         batch_size, seq_len, channels = x.size()
         head_size = channels // self.n_head
 

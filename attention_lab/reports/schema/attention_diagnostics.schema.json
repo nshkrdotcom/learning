@@ -20,7 +20,31 @@
     "attention_entropy_mean": { "type": ["number", "null"] },
     "attention_entropy_std": { "type": ["number", "null"] },
     "cp_parameter_norm": { "type": ["number", "null"] },
-    "cp_gradient_norm": { "type": ["number", "null"] }
+    "cp_gradient_norm": { "type": ["number", "null"] },
+    "active_track_index": { "type": ["integer", "null"], "minimum": 0 },
+    "active_track_counts": {
+      "type": ["array", "null"],
+      "items": { "type": "integer", "minimum": 0 }
+    },
+    "per_track_gradient_norm": {
+      "type": ["array", "null"],
+      "items": { "type": ["number", "null"] }
+    },
+    "per_track_qkv_weight_norm": {
+      "type": ["array", "null"],
+      "items": { "type": ["number", "null"] }
+    },
+    "per_track_output_norm": {
+      "type": ["array", "null"],
+      "items": { "type": ["number", "null"] }
+    },
+    "track_entropy": { "type": ["number", "null"] },
+    "route_formula": { "type": ["string", "null"] },
+    "uses_global_bank": { "type": ["boolean", "null"] },
+    "layer_idx": { "type": ["integer", "null"], "minimum": 0 },
+    "position_routing_enabled": { "type": ["boolean", "null"] },
+    "eval_freeze_mode": { "type": ["boolean", "null"] },
+    "track_output_delta": { "type": ["number", "null"] }
   },
   "additionalProperties": true
 }

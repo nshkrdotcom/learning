@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+from attention_lab.training.config import load_config
 from attention_lab.training.data_manifest import DataManifestError, verify_data_manifest
 
 
@@ -35,10 +36,19 @@ def verify_data_root(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_root", required=True)
+    parser.add_argument("--data_root", default=None)
+    parser.add_argument("--config", default=None, help="Optional config path to derive data_root and manifest.")
     parser.add_argument("--manifest", default=None)
     parser.add_argument("--verify_hashes", action="store_true")
     args = parser.parse_args()
+    if args.config:
+        config = load_config(args.config)
+        args.data_root = args.data_root or config["data"]["data_root"]
+        default_manifest = Path(args.data_root) / "manifest.json"
+        if args.manifest is None and default_manifest.exists():
+            args.manifest = str(default_manifest)
+    if args.data_root is None:
+        raise SystemExit("--data_root is required unless --config is provided")
     verify_data_root(args)
 
 

@@ -525,3 +525,64 @@ queue dry-run test: tests/test_queue_end_to_end.py
 
 No scientific claims are added by this queue pass. E001 and E002 full-run evidence must
 come from actual train/eval/summarize/verify artifacts.
+
+## E002 Initial Global Multi-QKV Implementation Preparation
+
+This pass implements the first-build E002 architecture family without launching full
+3000-step experiments.
+
+Implemented attention types:
+
+```text
+multi_qkv_static_3track_global
+multi_qkv_train_rotation_3track_global
+multi_qkv_position_rotation_3track_global
+```
+
+Prepared canonical E002 configs:
+
+```text
+standard_refactor_control_30m_seed1
+multi_qkv_static_3track_global_30m_seed1
+multi_qkv_train_rotation_3track_global_30m_seed1
+multi_qkv_position_rotation_3track_global_30m_seed1
+```
+
+Parameter counts from `inspect_model_config.py`:
+
+```text
+standard_refactor_control_30m_seed1:              29938560 excluding positional, 30331776 including positional
+multi_qkv_static_3track_global_30m_seed1:         28611456 excluding positional, delta -1327104 (-4.4328%)
+multi_qkv_train_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%)
+multi_qkv_position_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%)
+```
+
+The negative parameter delta is expected because Q/K/V banks are globally shared
+across layers. B/C comparisons should primarily use the static global-bank variant as
+the nearest boring-explanation control.
+
+Prepared docs and scripts:
+
+```text
+docs/implementation/0901_multiqkv_shift_register/
+docs/experiments/E002_multitrack_qkv_shift_register/
+scripts/experiments/E002_multitrack_qkv_shift_register/
+scripts/qkv_track_destructive_test.py
+reports/experiments/E002_multitrack_qkv_shift_register/
+```
+
+No E002 full-run result, eval result, HellaSwag result, or comparison JSON is claimed
+until the manual scripts are run and verified.
+
+E002 implementation QC:
+
+```text
+uv sync: passed
+uv run ruff check .: All checks passed!
+uv run pytest: 162 passed, 1 skipped
+uv run pytest --run-integration: 163 passed
+uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register: ok=True, config_count=11, runnable_config_count=5, unimplemented_config_count=6
+uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes: manifest verified
+uv run scripts/verify_data.py --config configs/experiments/E002_multitrack_qkv_shift_register/standard_refactor_control_30m_seed1.yaml --verify_hashes: manifest verified
+uv run attn-queue doctor --experiment E002_multitrack_qkv_shift_register: passed
+```

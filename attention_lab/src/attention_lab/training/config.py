@@ -8,8 +8,13 @@ from attention_lab.models.gpt import GPTConfig
 
 REQUIRED_SECTIONS = ("run", "data", "model", "train")
 OPTIONAL_SECTIONS = ("sample", "status", "diagnostics", "queue")
-IMPLEMENTED_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear"}
-KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear", "trilinear_cp"}
+MULTI_QKV_ATTENTION_TYPES = {
+    "multi_qkv_static_3track_global",
+    "multi_qkv_train_rotation_3track_global",
+    "multi_qkv_position_rotation_3track_global",
+}
+IMPLEMENTED_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear"} | MULTI_QKV_ATTENTION_TYPES
+KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear", "trilinear_cp"} | MULTI_QKV_ATTENTION_TYPES
 DTYPES = {"bfloat16", "float16", "float32"}
 EXPERIMENTAL_UNIMPLEMENTED_STATUS = "experimental_unimplemented"
 RUN_KEYS = {"name", "out_dir", "seed"}
@@ -156,6 +161,14 @@ def validate_config(
                 raise ValueError(f"model.{key} must be a boolean")
         if bool(model.get("cp_lambda_trainable", True)) and bool(model.get("cp_lambda_fixed", False)):
             raise ValueError("model.cp_lambda_trainable and model.cp_lambda_fixed cannot both be true")
+    if attention_type in MULTI_QKV_ATTENTION_TYPES:
+        track_count = _require_positive_int(model, "multi_qkv_track_count", "model.multi_qkv_track_count")
+        if track_count != 3:
+            raise ValueError("canonical multi_qkv_*_3track_global configs require model.multi_qkv_track_count: 3")
+        if not isinstance(model.get("multi_qkv_global", True), bool):
+            raise ValueError("model.multi_qkv_global must be a boolean")
+        if not bool(model.get("multi_qkv_global", True)):
+            raise ValueError("canonical multi_qkv_*_3track_global configs require model.multi_qkv_global: true")
 
     block_size = _require_positive_int(model, "block_size", "model.block_size")
     n_layer = _require_positive_int(model, "n_layer", "model.n_layer")

@@ -14,6 +14,6 @@ def test_validate_e001_experiment():
 def test_validate_e002_experiment_skeleton():
     result = validate_experiment("E002_multitrack_qkv_shift_register")
     assert result["ok"] is True
-    assert result["config_count"] == 7
-    assert result["runnable_config_count"] == 1
+    assert result["config_count"] == 11
+    assert result["runnable_config_count"] == 5
     assert result["unimplemented_config_count"] == 6

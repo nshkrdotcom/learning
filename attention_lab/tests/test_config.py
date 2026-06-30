@@ -185,13 +185,22 @@ def test_e002_skeleton_config_contract(repo_root):
     standard = load_config(config_dir / "standard_30m_seed1.yaml")
     assert standard["model"]["attention_type"] == "standard"
     assert standard["queue"]["family"] == "multitrack_qkv_shift_register"
+    runnable_names = {
+        "standard_30m_seed1.yaml",
+        "standard_refactor_control_30m_seed1.yaml",
+        "multi_qkv_static_3track_global_30m_seed1.yaml",
+        "multi_qkv_train_rotation_3track_global_30m_seed1.yaml",
+        "multi_qkv_position_rotation_3track_global_30m_seed1.yaml",
+    }
 
     configs = []
     for config_path in sorted(config_dir.glob("*.yaml")):
         with config_path.open("r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
         configs.append(config)
-        if config_path.name != "standard_30m_seed1.yaml":
+        if config_path.name in runnable_names:
+            assert load_config(config_path)
+        else:
             with pytest.raises(ValueError, match="experimental"):
                 load_config(config_path)
             assert config["status"] == "experimental_unimplemented"
@@ -200,3 +209,21 @@ def test_e002_skeleton_config_contract(repo_root):
     out_dirs = [Path(config["run"]["out_dir"]) for config in configs]
     assert len(out_dirs) == len(set(out_dirs))
     assert all(str(path).startswith("runs/experiments/E002_multitrack_qkv_shift_register") for path in out_dirs)
+
+
+def test_multi_qkv_config_validation_requires_global_three_track(tiny_config, tmp_path):
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config["model"].update(
+        {
+            "attention_type": "multi_qkv_static_3track_global",
+            "multi_qkv_track_count": 2,
+            "multi_qkv_global": True,
+        }
+    )
+    with pytest.raises(ValueError, match="3track_global"):
+        validate_config(config)
+
+    config["model"]["multi_qkv_track_count"] = 3
+    config["model"]["multi_qkv_global"] = False
+    with pytest.raises(ValueError, match="multi_qkv_global"):
+        validate_config(config)

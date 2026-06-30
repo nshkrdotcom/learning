@@ -1,0 +1,38 @@
+{
+  "experiment_id": "E002_multitrack_qkv_shift_register",
+  "full_runs_executed": false,
+  "runs": [
+    {
+      "run_id": "standard_refactor_control_30m_seed1",
+      "config_path": "configs/experiments/E002_multitrack_qkv_shift_register/standard_refactor_control_30m_seed1.yaml",
+      "run_directory": "runs/experiments/E002_multitrack_qkv_shift_register/standard_refactor_control_30m_seed1",
+      "attention_type": "standard",
+      "status": "not_run",
+      "verify_run_status": null
+    },
+    {
+      "run_id": "multi_qkv_static_3track_global_30m_seed1",
+      "config_path": "configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_static_3track_global_30m_seed1.yaml",
+      "run_directory": "runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_static_3track_global_30m_seed1",
+      "attention_type": "multi_qkv_static_3track_global",
+      "status": "not_run",
+      "verify_run_status": null
+    },
+    {
+      "run_id": "multi_qkv_train_rotation_3track_global_30m_seed1",
+      "config_path": "configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_train_rotation_3track_global_30m_seed1.yaml",
+      "run_directory": "runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_train_rotation_3track_global_30m_seed1",
+      "attention_type": "multi_qkv_train_rotation_3track_global",
+      "status": "not_run",
+      "verify_run_status": null
+    },
+    {
+      "run_id": "multi_qkv_position_rotation_3track_global_30m_seed1",
+      "config_path": "configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotation_3track_global_30m_seed1.yaml",
+      "run_directory": "runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotation_3track_global_30m_seed1",
+      "attention_type": "multi_qkv_position_rotation_3track_global",
+      "status": "not_run",
+      "verify_run_status": null
+    }
+  ]
+}

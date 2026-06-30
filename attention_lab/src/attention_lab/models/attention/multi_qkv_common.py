@@ -1,0 +1,255 @@
+from __future__ import annotations
+
+import math
+from typing import Any
+
+import torch
+import torch.nn as nn
+from torch.nn import functional as F
+
+
+MULTI_QKV_ATTENTION_TYPES = {
+    "multi_qkv_static_3track_global",
+    "multi_qkv_train_rotation_3track_global",
+    "multi_qkv_position_rotation_3track_global",
+}
+
+
+def is_multi_qkv_attention(attention_type: str) -> bool:
+    return attention_type in MULTI_QKV_ATTENTION_TYPES
+
+
+class MultiQKVSharedBank(nn.Module):
+    """Globally shared pool of bundled Q/K/V projection tracks."""
+
+    def __init__(self, config: Any):
+        super().__init__()
+        track_count = int(getattr(config, "multi_qkv_track_count", 3))
+        if track_count <= 0:
+            raise ValueError("multi_qkv_track_count must be positive")
+        self.track_count = track_count
+        self.n_embd = int(config.n_embd)
+        self.q_proj = nn.ModuleList(
+            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
+        )
+        self.k_proj = nn.ModuleList(
+            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
+        )
+        self.v_proj = nn.ModuleList(
+            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
+        )
+        self.forced_track: int | None = None
+        self.swap_tracks: tuple[int, int] | None = None
+
+    def resolve_track(self, track: int) -> int:
+        if self.forced_track is not None:
+            return int(self.forced_track) % self.track_count
+        if self.swap_tracks is not None:
+            a, b = self.swap_tracks
+            if track == a:
+                return b
+            if track == b:
+                return a
+        return int(track) % self.track_count
+
+    def project_track(self, x: torch.Tensor, track: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        resolved = self.resolve_track(track)
+        return self.q_proj[resolved](x), self.k_proj[resolved](x), self.v_proj[resolved](x)
+
+    def qkv_weight_norms(self) -> list[float]:
+        values = []
+        for track in range(self.track_count):
+            total = torch.zeros((), device=self.q_proj[track].weight.device)
+            for module in (self.q_proj[track], self.k_proj[track], self.v_proj[track]):
+                for parameter in module.parameters():
+                    total = total + parameter.detach().float().pow(2).sum()
+            values.append(float(total.sqrt().item()))
+        return values
+
+    def qkv_gradient_norms(self) -> list[float | None]:
+        values = []
+        for track in range(self.track_count):
+            total = None
+            for module in (self.q_proj[track], self.k_proj[track], self.v_proj[track]):
+                for parameter in module.parameters():
+                    if parameter.grad is None:
+                        continue
+                    grad_total = parameter.grad.detach().float().pow(2).sum()
+                    total = grad_total if total is None else total + grad_total
+            values.append(None if total is None else float(total.sqrt().item()))
+        return values
+
+
+class MultiQKVBaseCausalSelfAttention(nn.Module):
+    """Causal self-attention using a globally shared hard-switched Q/K/V bank."""
+
+    attention_type = "multi_qkv_base"
+    route_formula = "undefined"
+    position_routing_enabled = False
+    eval_freeze_mode = False
+
+    def __init__(self, config: Any, *, layer_idx: int, shared_qkv_bank: MultiQKVSharedBank):
+        super().__init__()
+        if config.n_embd % config.n_head != 0:
+            raise ValueError("n_embd must be divisible by n_head")
+        if shared_qkv_bank is None:
+            raise ValueError("Multi-QKV attention requires a shared_qkv_bank")
+        self.layer_idx = int(layer_idx)
+        self.__dict__["qkv_bank"] = shared_qkv_bank
+        self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
+        self.c_proj.NANOGPT_SCALE_INIT = 1
+        self.attn_dropout = nn.Dropout(config.dropout)
+        self.resid_dropout = nn.Dropout(config.dropout)
+        self.n_head = config.n_head
+        self.n_embd = config.n_embd
+        self.last_diagnostics: dict[str, Any] | None = None
+
+    @property
+    def track_count(self) -> int:
+        return self.qkv_bank.track_count
+
+    def active_track_indices(
+        self,
+        *,
+        step: int | None,
+        positions: torch.Tensor,
+    ) -> torch.Tensor:
+        raise NotImplementedError
+
+    def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
+        batch_size, seq_len, channels = x.size()
+        head_size = channels // self.n_head
+        return x.view(batch_size, seq_len, self.n_head, head_size).transpose(1, 2)
+
+    def _select_per_position(self, projections: list[torch.Tensor], active_tracks: torch.Tensor) -> torch.Tensor:
+        stacked = torch.stack(projections, dim=2)
+        batch_size, seq_len, _, channels = stacked.shape
+        if active_tracks.dim() == 1:
+            index = active_tracks.view(1, seq_len, 1, 1).expand(batch_size, seq_len, 1, channels)
+        elif active_tracks.dim() == 2:
+            index = active_tracks.view(batch_size, seq_len, 1, 1).expand(batch_size, seq_len, 1, channels)
+        else:
+            raise ValueError("active track tensor must be scalar, [T], or [B, T]")
+        return stacked.gather(dim=2, index=index).squeeze(2)
+
+    def _project(self, x: torch.Tensor, active_tracks: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if active_tracks.dim() == 0:
+            return self.qkv_bank.project_track(x, int(active_tracks.item()))
+
+        q_values = []
+        k_values = []
+        v_values = []
+        for track in range(self.track_count):
+            q, k, v = self.qkv_bank.project_track(x, track)
+            q_values.append(q)
+            k_values.append(k)
+            v_values.append(v)
+        return (
+            self._select_per_position(q_values, active_tracks),
+            self._select_per_position(k_values, active_tracks),
+            self._select_per_position(v_values, active_tracks),
+        )
+
+    def _track_counts(self, active_tracks: torch.Tensor, seq_len: int) -> list[int]:
+        if active_tracks.dim() == 0:
+            values = [0 for _ in range(self.track_count)]
+            values[int(active_tracks.item())] = seq_len
+            return values
+        counts = torch.bincount(active_tracks.reshape(-1).cpu(), minlength=self.track_count)
+        return [int(counts[i].item()) for i in range(self.track_count)]
+
+    def _record_diagnostics(
+        self,
+        *,
+        step: int | None,
+        active_tracks: torch.Tensor,
+        seq_len: int,
+        selected_q: torch.Tensor,
+        attention: torch.Tensor,
+    ) -> None:
+        with torch.no_grad():
+            counts = self._track_counts(active_tracks.detach(), seq_len)
+            count_tensor = torch.tensor(counts, dtype=torch.float32)
+            probs = count_tensor / count_tensor.sum().clamp_min(1.0)
+            entropy = -(probs * probs.clamp_min(1e-12).log()).sum()
+            per_track_output_norm = [0.0 for _ in range(self.track_count)]
+            for track, count in enumerate(counts):
+                if count == 0:
+                    continue
+                if active_tracks.dim() == 0:
+                    per_track_output_norm[track] = float(selected_q.detach().float().norm().item())
+                else:
+                    mask = active_tracks == track
+                    if mask.dim() == 1:
+                        values = selected_q[:, mask]
+                    else:
+                        values = selected_q[mask]
+                    per_track_output_norm[track] = float(values.detach().float().norm().item()) if values.numel() else 0.0
+            attention_entropy = -(
+                attention.detach().float() * attention.detach().float().clamp_min(1e-12).log()
+            ).sum(dim=-1)
+            self.last_diagnostics = {
+                "attention_type": self.attention_type,
+                "active_track_index": int(active_tracks.item()) if active_tracks.dim() == 0 else None,
+                "active_track_counts": counts,
+                "per_track_output_norm": per_track_output_norm,
+                "track_output_delta": max(per_track_output_norm) if per_track_output_norm else 0.0,
+                "track_entropy": float(entropy.item()),
+                "route_formula": self.route_formula,
+                "uses_global_bank": True,
+                "layer_idx": self.layer_idx,
+                "step": step,
+                "position_routing_enabled": self.position_routing_enabled,
+                "eval_freeze_mode": self.eval_freeze_mode and not self.training,
+                "attention_entropy_mean": float(attention_entropy.mean().item()),
+                "attention_entropy_std": float(attention_entropy.std(unbiased=False).item()),
+            }
+
+    def attention_diagnostics(self, step: int, layer: int) -> dict[str, Any] | None:
+        if self.last_diagnostics is None:
+            return None
+        return {
+            **self.last_diagnostics,
+            "step": self.last_diagnostics.get("step", step),
+            "layer": layer,
+            "per_track_gradient_norm": self.qkv_bank.qkv_gradient_norms(),
+            "per_track_qkv_weight_norm": self.qkv_bank.qkv_weight_norms(),
+        }
+
+    def forward(
+        self,
+        x: torch.Tensor,
+        *,
+        step: int | None = None,
+        positions: torch.Tensor | None = None,
+        layer_idx: int | None = None,
+    ) -> torch.Tensor:
+        del layer_idx
+        batch_size, seq_len, channels = x.size()
+        if positions is None:
+            positions = torch.arange(seq_len, dtype=torch.long, device=x.device)
+        else:
+            positions = positions.to(device=x.device, dtype=torch.long)
+
+        active_tracks = self.active_track_indices(step=step, positions=positions).to(device=x.device, dtype=torch.long)
+        q_raw, k_raw, v_raw = self._project(x, active_tracks)
+        q = self._split_heads(q_raw)
+        k = self._split_heads(k_raw)
+        v = self._split_heads(v_raw)
+
+        head_size = channels // self.n_head
+        scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(head_size))
+        causal_mask = torch.ones(seq_len, seq_len, dtype=torch.bool, device=x.device).tril()
+        scores = scores.masked_fill(~causal_mask, float("-inf"))
+        attention = F.softmax(scores, dim=-1)
+        self._record_diagnostics(
+            step=step,
+            active_tracks=active_tracks,
+            seq_len=seq_len,
+            selected_q=q_raw,
+            attention=attention,
+        )
+        attention = self.attn_dropout(attention)
+        y = attention @ v
+        y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, channels)
+        return self.resid_dropout(self.c_proj(y))

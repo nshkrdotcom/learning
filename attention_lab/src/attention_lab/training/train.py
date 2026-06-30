@@ -285,7 +285,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                 if ddp:
                     model.require_backward_grad_sync = micro_step == grad_accum_steps - 1
                 with autocast_context(device_type, dtype):
-                    _, loss = model(x, y)
+                    _, loss = model(x, y, step=step)
                 loss = loss / grad_accum_steps
                 loss_accum += loss.detach()
                 loss.backward()

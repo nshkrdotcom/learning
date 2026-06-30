@@ -30,6 +30,8 @@ def inspect_model_config(config_path: str | Path, baseline_config_path: str | Pa
         "cp_lambda_init": model_config.cp_lambda_init,
         "cp_lambda_trainable": model_config.cp_lambda_trainable,
         "cp_lambda_fixed": model_config.cp_lambda_fixed,
+        "multi_qkv_track_count": model_config.multi_qkv_track_count,
+        "multi_qkv_global": model_config.multi_qkv_global,
         "n_layer": model_config.n_layer,
         "n_head": model_config.n_head,
         "n_embd": model_config.n_embd,

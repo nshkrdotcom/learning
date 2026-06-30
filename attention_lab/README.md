@@ -107,6 +107,10 @@ src/attention_lab/models/attention/
   standard.py
   cp_bilinear.py
   cp_trilinear.py
+  multi_qkv_common.py
+  multi_qkv_static.py
+  multi_qkv_train_rotation.py
+  multi_qkv_position_rotation.py
   trilinear_cp.py
   registry.py
 ```
@@ -146,6 +150,36 @@ model:
 
 The historical `trilinear_cp` placeholder remains intentionally unimplemented. Use
 `cp_trilinear` for E001.
+
+E002 first-build Multi-QKV attention types are implemented as globally shared,
+hard-switched bundled Q/K/V banks:
+
+```yaml
+model:
+  attention_type: multi_qkv_static_3track_global
+  multi_qkv_track_count: 3
+  multi_qkv_global: true
+```
+
+```yaml
+model:
+  attention_type: multi_qkv_train_rotation_3track_global
+  multi_qkv_track_count: 3
+  multi_qkv_global: true
+```
+
+```yaml
+model:
+  attention_type: multi_qkv_position_rotation_3track_global
+  multi_qkv_track_count: 3
+  multi_qkv_global: true
+```
+
+The 0901 implementation contract is documented in:
+
+```text
+docs/implementation/0901_multiqkv_shift_register/
+```
 
 ## 5. Add A New Attention Variant
 
@@ -334,9 +368,10 @@ docs/experiments/E001_cp_trilinear_attention/hypothesis_<run_name>.md
 
 They are gates for later approval, not evidence that full runs completed.
 
-## 10. Planned E002 Skeleton
+## 10. E002 Multi-QKV First Build
 
-The next planned experiment skeleton is registered but not implemented:
+The E002 first-build architecture code and canonical configs are implemented, but no
+full 3000-step E002 result has been run or claimed in this implementation pass:
 
 ```text
 E002_multitrack_qkv_shift_register
@@ -348,8 +383,26 @@ Validate it with:
 uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register
 ```
 
-Only its `standard_30m_seed1.yaml` config is runnable. The multitrack QKV configs are
-marked `status: experimental_unimplemented` and must not be treated as evidence.
+Canonical runnable first-build configs:
+
+```text
+configs/experiments/E002_multitrack_qkv_shift_register/standard_refactor_control_30m_seed1.yaml
+configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_static_3track_global_30m_seed1.yaml
+configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_train_rotation_3track_global_30m_seed1.yaml
+configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotation_3track_global_30m_seed1.yaml
+```
+
+Manual full-run scripts:
+
+```bash
+scripts/experiments/E002_multitrack_qkv_shift_register/run_full_standard_refactor_control.sh
+scripts/experiments/E002_multitrack_qkv_shift_register/run_full_static_global.sh
+scripts/experiments/E002_multitrack_qkv_shift_register/run_full_train_rotation_global.sh
+scripts/experiments/E002_multitrack_qkv_shift_register/run_full_position_rotation_global.sh
+scripts/experiments/E002_multitrack_qkv_shift_register/compare_initial_full_runs.sh
+```
+
+Old E002 skeleton configs remain `status: experimental_unimplemented` and are not first-build evidence.
 
 Before queueing long runs, follow:
 
@@ -360,7 +413,10 @@ docs/guides/experiment_queue_discipline_checklist.md
 ## 11. Known Limitations
 
 - Full 3000-step E001 runs are prepared but not executed in the implementation pass.
-- E002 is a planned skeleton only; no multitrack QKV architecture code exists yet.
+- Full 3000-step E002 runs are prepared but not executed in the implementation pass.
+- E002 first-build A/B/C code exists, but no verified E002 full-run result exists yet.
+- E002 softmix, warmup routing, LoRA deltas, learned routing, stochastic routing,
+  coprime clocks, and typed streams remain unimplemented future work.
 - Queue `doctor` is a readiness check only; it does not launch training.
 - The historical `trilinear_cp` attention type remains unimplemented; use canonical
   `cp_trilinear`.

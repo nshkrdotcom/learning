@@ -1,50 +1,111 @@
-# E002 Multitrack QKV Shift Register Plan
+# E002 Multi-QKV Shift Register Plan
 
 ## Hypothesis
 
-Multiple learned Q/K/V tracks are cycled, shifted, or cross-wired across layers and/or training steps to test whether scheduled QKV track interoperation changes learning behavior beyond static multi-track capacity.
+Deterministic hard-switched routing over a globally shared three-track bundled Q/K/V bank may change local small-GPT learning behavior beyond standard attention and beyond static global-bank capacity alone.
 
-## Non-Claim Boundaries
+This experiment does not claim broad transformer superiority, reasoning improvement, or scaling behavior.
 
-This experiment may only support a local finding under Attention Lab's small-GPT FineWeb-Edu setup. It must not claim broad transformer superiority, reasoning improvement, or scaling behavior.
+## First-Build Scope
 
-## Planned Variants
+Implemented canonical variants:
 
-- `standard_30m_seed1`: runnable standard-attention control.
-- `multi_qkv_static_3track_30m_seed1`: planned static multi-track capacity control.
-- `multi_qkv_train_and_layer_shift_3track_30m_seed1`: planned train-step and layer shift schedule.
-- `multi_qkv_train_shift_3track_30m_seed1`: planned train-step shift ablation.
-- `multi_qkv_layer_shift_3track_30m_seed1`: planned layer shift ablation.
-- `multi_qkv_softmix_3track_30m_seed1`: planned soft mixing control.
-- `multi_qkv_train_shift_warmup_3track_30m_seed1`: planned warmup schedule ablation.
+```text
+standard_refactor_control_30m_seed1
+multi_qkv_static_3track_global_30m_seed1
+multi_qkv_train_rotation_3track_global_30m_seed1
+multi_qkv_position_rotation_3track_global_30m_seed1
+```
+
+Old skeleton variants remain `status: experimental_unimplemented` and are not first-build evidence.
+
+## Architecture Contract
+
+All Multi-QKV first-build variants use one globally shared bank:
+
+```text
+Q_bank[0..2], K_bank[0..2], V_bank[0..2]
+```
+
+Q/K/V are bundled:
+
+```text
+Q = Q_bank[active_track]
+K = K_bank[active_track]
+V = V_bank[active_track]
+```
+
+The active track is deterministic, hard-switched, not learned, and not content-dependent.
+
+## A/B/C Formulas
+
+```text
+track_count = 3
+```
+
+A, static global:
+
+```text
+active_track(layer_idx, step, pos) = layer_idx mod 3
+```
+
+B, train rotation:
+
+```text
+training: active_track(layer_idx, step, pos) = (layer_idx + step) mod 3
+eval:     active_track(layer_idx, step, pos) = layer_idx mod 3
+```
+
+C, position rotation:
+
+```text
+active_track(layer_idx, step, pos) = (layer_idx + pos) mod 3
+```
 
 ## Fixed Contract
 
-All direct comparisons must use the same FineWeb-Edu 100M manifest, GPT-2 tokenizer, train/val shards, model size, optimizer, LR schedule, seed, batch construction, eval cadence, checkpoint cadence, and verification commands unless a config is explicitly labeled diagnostic.
+Direct comparisons use the same FineWeb-Edu 100M manifest, GPT-2 tokenizer, train/val shards, optimizer, LR schedule, seed, batch construction, eval cadence, checkpoint cadence, and verifier/eval/summarize commands.
 
-## Mechanism Diagnostics
+Because the Q/K/V bank is global rather than per-layer, Multi-QKV variants have fewer parameters than standard attention. This is reported explicitly. The primary controls for B and C are A/static-global plus the standard refactor control.
 
-Future QKV variants must emit diagnostics that can be evaluated by `queue.mechanism_check: qkv_track_activity`, including at least one of:
+## Diagnostics
 
-- `track_gradient_norm`
-- `per_track_gradient_norm`
-- `branch_off_logit_delta`
-- `track_output_delta`
+Multi-QKV variants emit diagnostics to:
 
-## Run Matrix
+```text
+runs/experiments/E002_multitrack_qkv_shift_register/<run_name>/evals/attention_diagnostics.jsonl
+```
 
-The first implementation pass should run unit and tiny integration tests only. Full 3000-step runs must be launched manually from approved queue entries or scripts after configs, diagnostics, and control dependencies validate.
+Required fields include active track index/counts, per-track gradient/weight/output norms, track entropy, route formula, global-bank flag, layer index, step, position-routing flag, and eval-freeze flag.
+
+The queue mechanism check is:
+
+```yaml
+queue:
+  mechanism_check: qkv_track_activity
+```
+
+## Manual Full-Run Boundary
+
+Implementation QC does not include full 3000-step E002 runs. Full runs are manual/operator work from a frozen source state using:
+
+```text
+scripts/experiments/E002_multitrack_qkv_shift_register/
+```
+
+No result report may claim completion until train/eval/generation/HellaSwag/summarize/final verify commands actually pass.
 
 ## Success Criteria
 
-- Candidate configs instantiate only after architecture code exists.
+- Candidate configs instantiate and validate.
 - Standard control remains unchanged.
-- Mechanism diagnostics show nonzero track activity.
+- Mechanism diagnostics show nonzero selected-track activity.
 - Full-run comparisons pass manifest-aware verify/eval/summarize checks.
+- B/C are interpreted primarily relative to A/static-global.
 
 ## Kill Criteria
 
-- Track diagnostics remain zero or missing.
-- Shifted variants are slower and no better than static multi-track control.
-- Lambda/wiring controls diverge when they should be equivalent.
+- Track diagnostics are zero, missing, or degenerate.
+- B or C is slower and no better than A/static-global.
+- Eval/generation for B uses training-step rotation.
 - Any full run fails manifest, checkpoint, or verifier checks.
