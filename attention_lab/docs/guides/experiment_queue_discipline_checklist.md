@@ -7,6 +7,37 @@ useful only if it preserves experiment meaning, provenance, and comparison disci
 This document is not evidence that any queued run completed. It is the work plan and
 acceptance checklist for implementing and operating the queue layer.
 
+## Implementation Status
+
+Completed in this implementation pass:
+
+- [x] Queue package added under `src/attention_lab/queue/`.
+- [x] Runtime queue directories defined and `queue/inbox/.gitkeep` tracked.
+- [x] Queue runtime artifacts ignored in `.gitignore`.
+- [x] SQLite ledger implemented with direct `sqlite3`.
+- [x] Inbox scanning and config deduplication implemented.
+- [x] Strict optional `queue:` config metadata validation added.
+- [x] Stage-1 screener command/config override and verdict logic implemented.
+- [x] Mechanism-active check from `attention_diagnostics.jsonl` implemented.
+- [x] Full-run pipeline executor implemented around existing scripts.
+- [x] Full-run source-state capture writes `git_state.txt`.
+- [x] Watchdog daemon loop implemented for serial screen/full execution.
+- [x] CLI implemented with `attn-queue` and `attention-lab-queue` entrypoints.
+- [x] ASCII leaderboard implemented.
+- [x] Queue daemon script added at `scripts/queue_daemon.sh`.
+- [x] Unit tests added for ledger, ingestion, screener, runner, watchdog, CLI, and
+  leaderboard.
+- [x] No full training runs executed by this implementation pass.
+
+Still operator/manual by design:
+
+- [ ] Running long full experiments from a frozen external working copy.
+- [ ] Writing run-specific hypothesis documents before queueing FULL runs.
+- [ ] Performing one-batch overfit and destructive mechanism-active tests when they
+  are not represented as automated configs.
+- [ ] Reading the leaderboard every morning and writing interpretation notes.
+- [ ] Updating experiment reports with actual full-run results after verified runs.
+
 ## Source Documents Covered
 
 External source docs read on 2026-06-29/2026-06-30:

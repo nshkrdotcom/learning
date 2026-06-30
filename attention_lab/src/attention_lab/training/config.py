@@ -7,7 +7,7 @@ from attention_lab.models.gpt import GPTConfig
 
 
 REQUIRED_SECTIONS = ("run", "data", "model", "train")
-OPTIONAL_SECTIONS = ("sample", "status", "diagnostics")
+OPTIONAL_SECTIONS = ("sample", "status", "diagnostics", "queue")
 IMPLEMENTED_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear"}
 KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear", "trilinear_cp"}
 DTYPES = {"bfloat16", "float16", "float32"}
@@ -43,6 +43,7 @@ SAMPLE_KEYS = {
     "seed",
 }
 DIAGNOSTICS_KEYS = {"attention_diagnostics_every"}
+QUEUE_KEYS = {"requires_run", "hypothesis_doc", "skip_hypothesis_check", "family"}
 
 
 def _require_mapping(config: dict[str, Any], section: str) -> dict[str, Any]:
@@ -107,12 +108,16 @@ def validate_config(
     diagnostics = config.get("diagnostics", {})
     if not isinstance(diagnostics, dict):
         raise ValueError("diagnostics must be a mapping")
+    queue = config.get("queue", {})
+    if not isinstance(queue, dict):
+        raise ValueError("queue must be a mapping")
 
     _reject_unknown_keys(run, RUN_KEYS, "run")
     _reject_unknown_keys(data, DATA_KEYS, "data")
     _reject_unknown_keys(train, TRAIN_KEYS, "train")
     _reject_unknown_keys(sample, SAMPLE_KEYS, "sample")
     _reject_unknown_keys(diagnostics, DIAGNOSTICS_KEYS, "diagnostics")
+    _reject_unknown_keys(queue, QUEUE_KEYS, "queue")
 
     _require_nonempty_string(run, "name", "run.name")
     _require_nonempty_string(run, "out_dir", "run.out_dir")
@@ -160,6 +165,11 @@ def validate_config(
         _require_positive_int(train, key, f"train.{key}")
     if "attention_diagnostics_every" in diagnostics:
         _require_positive_int(diagnostics, "attention_diagnostics_every", "diagnostics.attention_diagnostics_every")
+    for key in ("requires_run", "hypothesis_doc", "family"):
+        if key in queue and (not isinstance(queue[key], str) or not queue[key].strip()):
+            raise ValueError(f"queue.{key} must be a nonempty string")
+    if "skip_hypothesis_check" in queue and not isinstance(queue["skip_hypothesis_check"], bool):
+        raise ValueError("queue.skip_hypothesis_check must be a boolean")
 
     dtype = train.get("dtype")
     if dtype not in DTYPES:

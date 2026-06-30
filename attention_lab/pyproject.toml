@@ -30,6 +30,8 @@ attention-lab-eval-generate = "attention_lab.evals.generation_eval:main"
 attention-lab-eval-hellaswag = "attention_lab.evals.hellaswag_eval:main"
 attention-lab-verify-run = "attention_lab.training.verify_run:main"
 attention-lab-summarize-run = "attention_lab.training.summarize_run:main"
+attention-lab-queue = "attention_lab.queue.cli:main"
+attn-queue = "attention_lab.queue.cli:main"
 
 [build-system]
 requires = ["hatchling"]

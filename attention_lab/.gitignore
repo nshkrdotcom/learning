@@ -7,7 +7,14 @@ __pycache__/
 data/**/*.npy
 data/**/*.npz
 data/**/cache/
+data/queue.db
+data/queue.db-*
+data/queue.pid
 hellaswag/
+
+queue/active/
+queue/done/
+queue/failed/
 
 runs/*
 !runs/.gitkeep

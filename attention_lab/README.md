@@ -256,7 +256,40 @@ Schema:
 reports/schema/attention_diagnostics.schema.json
 ```
 
-## 9. Known Limitations
+## 9. Experiment Queue
+
+The queue layer is a thin serial orchestration layer over the existing harness. It does
+not decide what to run; it screens, runs, verifies, logs, and records the configs you
+add.
+
+Initialize by adding configs:
+
+```bash
+uv run attn-queue add configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml
+uv run attn-queue status
+uv run attn-queue ls
+uv run attn-queue show standard_30m_seed1
+uv run attn-queue note standard_30m_seed1 "SHOWS: pending screen"
+```
+
+Launch or stop the daemon:
+
+```bash
+uv run attn-queue start
+uv run attn-queue stop
+```
+
+The daemon is single-GPU and serial. It scans `queue/inbox/`, screens configs, then runs
+eligible full configs through the same manifest-checked train/eval/verify pipeline used
+by the manual full-run scripts.
+
+Before queueing long runs, follow:
+
+```text
+docs/guides/experiment_queue_discipline_checklist.md
+```
+
+## 10. Known Limitations
 
 - Full 3000-step E001 runs are prepared but not executed in the implementation pass.
 - The historical `trilinear_cp` attention type remains unimplemented; use canonical
