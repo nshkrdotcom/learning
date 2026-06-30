@@ -9,7 +9,7 @@ from attention_lab.models.gpt import GPTConfig
 REQUIRED_SECTIONS = ("run", "data", "model", "train")
 OPTIONAL_SECTIONS = ("sample", "status")
 IMPLEMENTED_ATTENTION_TYPES = {"standard"}
-KNOWN_ATTENTION_TYPES = {"standard", "trilinear_cp"}
+KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "trilinear_cp"}
 DTYPES = {"bfloat16", "float16", "float32"}
 EXPERIMENTAL_UNIMPLEMENTED_STATUS = "experimental_unimplemented"
 RUN_KEYS = {"name", "out_dir", "seed"}

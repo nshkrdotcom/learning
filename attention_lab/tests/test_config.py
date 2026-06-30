@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 
+from attention_lab.models.gpt import GPT, config_from_dict
 from attention_lab.training.config import load_config, validate_config
 
 
@@ -101,3 +103,64 @@ def test_compile_requires_explicit_experimental_flag(tiny_config, tmp_path):
     config["train"]["compile"] = True
     with pytest.raises(ValueError, match="compile"):
         validate_config(config)
+
+
+def test_e001_runnable_standard_configs_load_and_instantiate(repo_root):
+    config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
+    for config_name in ("standard_30m_seed1.yaml", "standard_refactor_control_30m_seed1.yaml"):
+        config = load_config(config_dir / config_name)
+        model = GPT(config_from_dict(config["model"], config["data"]))
+        assert model.num_parameters() == 29_938_560
+
+
+def test_e001_cp_skeleton_configs_are_unimplemented(repo_root):
+    config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
+    config_names = [
+        "cp_bilinear_r8_30m_seed1.yaml",
+        "cp_trilinear_r8_30m_seed1.yaml",
+        "cp_trilinear_r8_lambda0_30m_seed1.yaml",
+    ]
+    for config_name in config_names:
+        with pytest.raises(ValueError, match="experimental"):
+            load_config(config_dir / config_name)
+
+
+def test_e001_configs_have_distinct_experiment_run_dirs(repo_root):
+    import yaml
+
+    config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
+    experiment_run_dir = Path("runs/experiments/E001_cp_trilinear_attention")
+    configs = []
+    for config_path in sorted(config_dir.glob("*.yaml")):
+        with config_path.open("r", encoding="utf-8") as f:
+            configs.append(yaml.safe_load(f))
+
+    out_dirs = [Path(config["run"]["out_dir"]) for config in configs]
+    assert len(out_dirs) == len(set(out_dirs))
+    assert all(str(out_dir).startswith(str(experiment_run_dir)) for out_dir in out_dirs)
+
+    fixed_fields = {
+        "data": ("data_root", "tokenizer", "vocab_size", "train_tokens", "val_tokens"),
+        "model": ("block_size", "n_layer", "n_head", "n_embd", "dropout", "bias"),
+        "train": (
+            "B",
+            "T",
+            "total_batch_size",
+            "max_steps",
+            "grad_clip",
+            "weight_decay",
+            "learning_rate",
+            "min_lr",
+            "warmup_steps",
+            "val_every",
+            "val_steps",
+            "save_every",
+            "log_every",
+        ),
+        "sample": ("sample_every", "prompt", "num_samples", "max_new_tokens", "top_k", "temperature", "seed"),
+    }
+    reference = configs[0]
+    for config in configs[1:]:
+        for section, keys in fixed_fields.items():
+            for key in keys:
+                assert config[section][key] == reference[section][key], f"{section}.{key}"

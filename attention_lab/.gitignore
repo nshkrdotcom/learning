@@ -18,5 +18,8 @@ reports/*
 !reports/baseline_30m_fineweb100m_summary.md
 !reports/schema/
 !reports/schema/run_summary.schema.json
+!reports/schema/attention_diagnostics.schema.json
+!reports/experiments/
+!reports/experiments/**
 
 wandb/

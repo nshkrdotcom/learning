@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Attention Lab Attention Diagnostics Row",
+  "type": "object",
+  "required": [
+    "attention_type",
+    "step",
+    "layer"
+  ],
+  "properties": {
+    "attention_type": { "type": "string" },
+    "step": { "type": "integer", "minimum": 0 },
+    "layer": { "type": "integer", "minimum": 0 },
+    "lambda_value": { "type": ["number", "null"] },
+    "cp_score_mean": { "type": ["number", "null"] },
+    "cp_score_std": { "type": ["number", "null"] },
+    "standard_score_mean": { "type": ["number", "null"] },
+    "standard_score_std": { "type": ["number", "null"] },
+    "cp_to_standard_score_std_ratio": { "type": ["number", "null"] },
+    "attention_entropy_mean": { "type": ["number", "null"] },
+    "attention_entropy_std": { "type": ["number", "null"] },
+    "cp_parameter_norm": { "type": ["number", "null"] },
+    "cp_gradient_norm": { "type": ["number", "null"] }
+  },
+  "additionalProperties": true
+}

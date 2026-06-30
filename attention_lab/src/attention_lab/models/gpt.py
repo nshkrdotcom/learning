@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from attention_lab.models.attention_registry import build_attention
+from attention_lab.models.attention.registry import build_attention
 
 
 @dataclass
@@ -134,4 +134,3 @@ class GPT(nn.Module):
         if non_embedding:
             n_params -= self.transformer.wpe.weight.numel()
         return n_params
-

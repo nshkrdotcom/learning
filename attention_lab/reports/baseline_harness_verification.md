@@ -70,7 +70,7 @@ val shard sha256: efb01e4b8dad9ce4aa906ca8afbb36bd0329d4135e00741556eb4a70689f78
 ## Test Results
 
 ```text
-60 passed in 5.49s
+70 passed in 6.07s
 ```
 
 ## Ruff Result
@@ -351,6 +351,83 @@ baseline_125m_fineweb1b.yaml is canonical; baseline_124m is a historical alias
 scripts/run_full_30m_baseline.sh uses accurate-size naming
 HellaSwag eval JSON records data_path, data_url, and data_sha256
 ```
+
+## Final Architecture-Experiment Preparation
+
+Completed before implementing CP-bilinear or CP-trilinear attention.
+
+Attention module package organization:
+
+```text
+src/attention_lab/models/attention/
+  __init__.py
+  standard.py
+  trilinear_cp.py
+  registry.py
+```
+
+Compatibility shims remain at the previous import paths:
+
+```text
+src/attention_lab/models/attention_standard.py
+src/attention_lab/models/attention_trilinear_cp.py
+src/attention_lab/models/attention_registry.py
+```
+
+Experiment convention and E001 paths:
+
+```text
+experiment manifest: docs/experiments/experiments.yaml
+E001 plan: docs/experiments/E001_cp_trilinear_attention_plan.md
+E001 config dir: configs/experiments/E001_cp_trilinear_attention
+E001 report dir: reports/experiments/E001_cp_trilinear_attention
+E001 run dir: runs/experiments/E001_cp_trilinear_attention
+```
+
+Validation and comparison tooling:
+
+```text
+scripts/list_experiments.py
+scripts/validate_experiment.py
+scripts/compare_runs.py --experiment E001_cp_trilinear_attention
+```
+
+Future diagnostic and implementation guidance:
+
+```text
+reports/schema/attention_diagnostics.schema.json
+docs/architecture_variant_checklist.md
+```
+
+Final QC commands:
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check .
+uv run scripts/list_experiments.py
+uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
+uv run scripts/inspect_model_config.py --config configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml
+uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
+uv run scripts/verify_run.py --run_dir runs/baseline_15m_fineweb100m_seed1 --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
+uv run scripts/summarize_run.py --run_dir runs/baseline_15m_fineweb100m_seed1
+```
+
+Final QC results:
+
+```text
+pytest: 70 passed in 6.07s
+ruff: All checks passed!
+list_experiments: E001_cp_trilinear_attention listed with status planned
+validate_experiment: ok=True, config_count=5, runnable_config_count=2, unimplemented_config_count=3
+inspect_model_config: 29938560 excluding positional, 30331776 including positional
+verify_data: manifest verified
+verify_run historical baseline: ok=True, data_manifest=True
+summarize_run historical baseline: final_val_loss=4.081209182739258
+```
+
+CP attention remains unimplemented; the E001 CP configs are planned skeletons marked
+`experimental_unimplemented`.
 
 ## Known Limitations
 

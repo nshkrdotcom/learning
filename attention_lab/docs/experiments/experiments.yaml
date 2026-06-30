@@ -1,0 +1,11 @@
+experiments:
+  - id: E001_cp_trilinear_attention
+    status: planned
+    plan: docs/experiments/E001_cp_trilinear_attention_plan.md
+    config_dir: configs/experiments/E001_cp_trilinear_attention
+    run_dir: runs/experiments/E001_cp_trilinear_attention
+    report_dir: reports/experiments/E001_cp_trilinear_attention
+    baseline_config: configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml
+    baseline_reference_run: runs/baseline_15m_fineweb100m_seed1
+    accurate_baseline_alias: configs/baseline_30m_fineweb100m.yaml
+    dataset_manifest: data/fineweb_edu_100m/manifest.json
