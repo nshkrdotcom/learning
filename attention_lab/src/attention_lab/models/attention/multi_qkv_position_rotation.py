@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import torch
 
-from attention_lab.models.attention.multi_qkv_common import MultiQKVBaseCausalSelfAttention
+from attention_lab.models.attention.multi_qkv_common import MultiQKVBaseCausalSelfAttention, MultiQKVRouteContext
 
 
 class MultiQKVPositionRotationGlobalCausalSelfAttention(MultiQKVBaseCausalSelfAttention):
@@ -10,6 +10,21 @@ class MultiQKVPositionRotationGlobalCausalSelfAttention(MultiQKVBaseCausalSelfAt
     route_formula = "(layer_idx + position) % track_count"
     position_routing_enabled = True
 
-    def active_track_indices(self, *, step: int | None, positions: torch.Tensor, schedule_mode: str) -> torch.Tensor:
-        del step, schedule_mode
-        return (self.layer_idx + positions) % self.track_count
+    def select_position_tracks(
+        self,
+        context: MultiQKVRouteContext,
+        *,
+        seq_len: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        if context.position_ids is None:
+            position_ids = torch.arange(seq_len, dtype=torch.long, device=device)
+        else:
+            position_ids = context.position_ids.to(device=device, dtype=torch.long)
+            if position_ids.ndim != 1:
+                raise ValueError("position_ids must be a 1D tensor for Multi-QKV position routing")
+            if position_ids.numel() != seq_len:
+                raise ValueError(
+                    f"position_ids length {position_ids.numel()} does not match seq_len {seq_len}"
+                )
+        return (context.layer_idx + position_ids) % self.track_count

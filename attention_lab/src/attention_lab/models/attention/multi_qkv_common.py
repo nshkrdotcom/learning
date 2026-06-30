@@ -60,6 +60,8 @@ class MultiQKVGlobalBank(nn.Module):
         return int(track) % self.track_count
 
     def project_track(self, x: torch.Tensor, track: int) -> torch.Tensor:
+        if track < 0 or track >= self.track_count:
+            raise IndexError(f"track={track} outside [0, {self.track_count})")
         resolved = self.resolve_track(track)
         return self.c_attn_bank[resolved](x)
 
@@ -75,7 +77,7 @@ class MultiQKVGlobalBank(nn.Module):
             values.append(float(total.sqrt().item()))
         return values
 
-    def qkv_gradient_norms(self) -> list[float | None]:
+    def qkv_gradient_norms(self) -> list[float]:
         values = []
         for track in range(self.track_count):
             total = None
@@ -84,13 +86,13 @@ class MultiQKVGlobalBank(nn.Module):
                     continue
                 grad_total = parameter.grad.detach().float().pow(2).sum()
                 total = grad_total if total is None else total + grad_total
-            values.append(None if total is None else float(total.sqrt().item()))
+            values.append(0.0 if total is None else float(total.sqrt().item()))
         return values
 
     def qkv_weight_norm_dict(self) -> dict[str, float]:
         return {str(index): value for index, value in enumerate(self.qkv_weight_norms())}
 
-    def qkv_gradient_norm_dict(self) -> dict[str, float | None]:
+    def qkv_gradient_norm_dict(self) -> dict[str, float]:
         return {str(index): value for index, value in enumerate(self.qkv_gradient_norms())}
 
 
@@ -130,10 +132,26 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         self.n_head = config.n_head
         self.n_embd = config.n_embd
         self.last_diagnostics: dict[str, Any] | None = None
+        self._last_active_track_index: int | None = None
+        self._last_active_track_counts: dict[str, int] | None = None
+        self._last_schedule_mode: str | None = None
+        self._last_step: int | None = None
 
     @property
     def track_count(self) -> int:
         return self.qkv_bank.track_count
+
+    def select_scalar_track(self, context: MultiQKVRouteContext) -> int:
+        raise NotImplementedError
+
+    def select_position_tracks(
+        self,
+        context: MultiQKVRouteContext,
+        *,
+        seq_len: int,
+        device: torch.device,
+    ) -> torch.Tensor:
+        raise NotImplementedError
 
     def active_track_indices(
         self,
@@ -142,7 +160,19 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         positions: torch.Tensor,
         schedule_mode: str,
     ) -> torch.Tensor:
-        raise NotImplementedError
+        context = MultiQKVRouteContext(
+            layer_idx=self.layer_idx,
+            step=step,
+            schedule_mode=schedule_mode,
+            position_ids=positions,
+        )
+        if self.position_routing_enabled:
+            return self.select_position_tracks(
+                context,
+                seq_len=positions.numel(),
+                device=positions.device,
+            )
+        return torch.tensor(self.select_scalar_track(context), dtype=torch.long, device=positions.device)
 
     def _split_qkv_heads(self, qkv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         q, k, v = qkv.split(self.n_embd, dim=2)
@@ -190,6 +220,10 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
     ) -> None:
         with torch.no_grad():
             counts = self._track_counts(active_tracks.detach(), seq_len)
+            self._last_active_track_index = int(active_tracks.item()) if active_tracks.dim() == 0 else None
+            self._last_active_track_counts = counts
+            self._last_schedule_mode = schedule_mode
+            self._last_step = step
             count_tensor = torch.tensor(list(counts.values()), dtype=torch.float32)
             probs = count_tensor / count_tensor.sum().clamp_min(1.0)
             entropy = -(probs * probs.clamp_min(1e-12).log()).sum()
@@ -216,7 +250,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             self.last_diagnostics = {
                 "attention_type": self.attention_type,
                 "track_count": self.track_count,
-                "active_track_index": int(active_tracks.item()) if active_tracks.dim() == 0 else None,
+                "active_track_index": self._last_active_track_index,
                 "active_track_counts": counts,
                 "per_track_output_norm": per_track_output_norm,
                 "track_output_delta": max(per_track_output_norm.values()) if per_track_output_norm else 0.0,
@@ -250,9 +284,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             return None
         active_track = self.last_diagnostics.get("active_track_index")
         if active_track is None:
-            gradients = [
-                value for value in self.qkv_bank.qkv_gradient_norms() if value is not None
-            ]
+            gradients = self.qkv_bank.qkv_gradient_norms()
             return max(gradients) if gradients else None
         value = self.qkv_bank.qkv_gradient_norm_dict().get(str(active_track))
         return None if value is None else float(value)
