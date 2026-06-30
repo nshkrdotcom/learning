@@ -23,6 +23,7 @@ COMPARISON_FIELDS = [
     "nvidia_smi_memory_mb",
     "parameters_including_positional",
     "trainable_parameters",
+    "global_qkv_bank_parameters",
     "attention_projection_parameters",
     "hellaswag_acc",
     "mechanism_check_passed",
@@ -79,6 +80,7 @@ def _parameter_fields(run_dir: Path) -> dict[str, Any]:
         "parameters_excluding_positional": inspection.get("parameters_excluding_positional"),
         "parameters_including_positional": inspection.get("parameters_including_positional"),
         "trainable_parameters": inspection.get("trainable_parameters"),
+        "global_qkv_bank_parameters": inspection.get("global_qkv_bank_parameters"),
         "attention_projection_parameters": inspection.get("attention_projection_parameters"),
         "non_attention_parameters": inspection.get("non_attention_parameters"),
     }

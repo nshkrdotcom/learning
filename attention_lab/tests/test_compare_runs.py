@@ -118,6 +118,7 @@ def test_compare_runs_includes_multi_qkv_mechanism_and_destructive_fields(tmp_pa
     assert candidate_row["attention_type"] == "multi_qkv_static_3track_global"
     assert candidate_row["hellaswag_acc"] == 0.42
     assert candidate_row["parameters_including_positional"] is not None
+    assert candidate_row["global_qkv_bank_parameters"] > 0
     assert candidate_row["mechanism_check_passed"] is True
     assert candidate_row["destructive_test_passed"] is True
     assert candidate_row["evidence_level"] == "full_run_verified"

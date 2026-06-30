@@ -108,6 +108,7 @@ def test_baseline_config_parameter_counts_are_inspectable(repo_root):
         assert result["attention_type"] == "standard"
         assert result["parameters_excluding_positional"] > 0
         assert result["parameters_including_positional"] >= result["parameters_excluding_positional"]
+        assert result["global_qkv_bank_parameters"] == 0
 
 
 def test_historical_15m_and_30m_alias_have_same_parameter_count(repo_root):

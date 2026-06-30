@@ -275,6 +275,7 @@ median_tokens_per_sec
 peak_vram_allocated_mb
 parameters_including_positional
 trainable_parameters
+global_qkv_bank_parameters
 attention_projection_parameters
 hellaswag_acc
 mechanism_check_passed

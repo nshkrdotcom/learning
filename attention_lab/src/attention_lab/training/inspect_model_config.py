@@ -13,6 +13,7 @@ def _parameter_breakdown(model: GPT) -> dict[str, int]:
     total = 0
     trainable = 0
     attention_projection = 0
+    global_qkv_bank = 0
     for name, parameter in model.named_parameters():
         count = parameter.numel()
         total += count
@@ -20,10 +21,13 @@ def _parameter_breakdown(model: GPT) -> dict[str, int]:
             trainable += count
         if ".attn." in name or name.startswith("multi_qkv_bank."):
             attention_projection += count
+        if name.startswith("multi_qkv_bank."):
+            global_qkv_bank += count
     return {
         "total_parameters": total,
         "trainable_parameters": trainable,
         "attention_projection_parameters": attention_projection,
+        "global_qkv_bank_parameters": global_qkv_bank,
         "non_attention_parameters": total - attention_projection,
     }
 
@@ -63,6 +67,7 @@ def inspect_model_config(config_path: str | Path, baseline_config_path: str | Pa
         "parameters_including_positional": parameters_including_positional,
         "trainable_parameters": breakdown["trainable_parameters"],
         "attention_projection_parameters": breakdown["attention_projection_parameters"],
+        "global_qkv_bank_parameters": breakdown["global_qkv_bank_parameters"],
         "non_attention_parameters": breakdown["non_attention_parameters"],
         "estimated_tokens_per_step": total_batch_size,
         "estimated_gradient_accum_steps": total_batch_size // micro_tokens,
