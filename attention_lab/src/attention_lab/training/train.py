@@ -302,7 +302,11 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                 attention_diagnostic_rows = collect_attention_diagnostics(raw_model, step)
             optimizer.step()
             if master_process and attention_diagnostic_rows:
-                append_attention_diagnostics(out_dir, attention_diagnostic_rows)
+                append_attention_diagnostics(
+                    out_dir,
+                    attention_diagnostic_rows,
+                    run_name=str(run_config["name"]),
+                )
             if device_type == "cuda":
                 torch.cuda.synchronize()
 

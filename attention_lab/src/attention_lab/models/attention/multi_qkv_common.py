@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
 
 import torch
 import torch.nn as nn
@@ -19,6 +20,14 @@ class MultiQKVRouteContext:
     step: int | None
     schedule_mode: ScheduleMode
     position_ids: torch.Tensor | None = None
+
+
+@dataclass(frozen=True)
+class MultiQKVDebugRouteOverride:
+    """Temporary route perturbation for destructive/off-route tests."""
+
+    mode: Literal["none", "force_track", "rotate_tracks", "zero_selected"] = "none"
+    forced_track: int | None = None
 
 
 MULTI_QKV_ATTENTION_TYPES = {
@@ -45,25 +54,11 @@ class MultiQKVGlobalBank(nn.Module):
         self.c_attn_bank = nn.ModuleList(
             [nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias) for _ in range(track_count)]
         )
-        self.forced_track: int | None = None
-        self.swap_tracks: tuple[int, int] | None = None
-
-    def resolve_track(self, track: int) -> int:
-        if self.forced_track is not None:
-            return int(self.forced_track) % self.track_count
-        if self.swap_tracks is not None:
-            a, b = self.swap_tracks
-            if track == a:
-                return b
-            if track == b:
-                return a
-        return int(track) % self.track_count
 
     def project_track(self, x: torch.Tensor, track: int) -> torch.Tensor:
         if track < 0 or track >= self.track_count:
             raise IndexError(f"track={track} outside [0, {self.track_count})")
-        resolved = self.resolve_track(track)
-        return self.c_attn_bank[resolved](x)
+        return self.c_attn_bank[track](x)
 
     def project_all_tracks(self, x: torch.Tensor) -> list[torch.Tensor]:
         return [self.project_track(x, track) for track in range(self.track_count)]
@@ -136,6 +131,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         self._last_active_track_counts: dict[str, int] | None = None
         self._last_schedule_mode: str | None = None
         self._last_step: int | None = None
+        self.debug_route_override: MultiQKVDebugRouteOverride | None = None
 
     @property
     def track_count(self) -> int:
@@ -167,12 +163,29 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             position_ids=positions,
         )
         if self.position_routing_enabled:
-            return self.select_position_tracks(
+            active_tracks = self.select_position_tracks(
                 context,
                 seq_len=positions.numel(),
                 device=positions.device,
             )
-        return torch.tensor(self.select_scalar_track(context), dtype=torch.long, device=positions.device)
+        else:
+            active_tracks = torch.tensor(self.select_scalar_track(context), dtype=torch.long, device=positions.device)
+        return self._apply_debug_route_override(active_tracks)
+
+    def _apply_debug_route_override(self, active_tracks: torch.Tensor) -> torch.Tensor:
+        override = self.debug_route_override
+        if override is None or override.mode == "none" or override.mode == "zero_selected":
+            return active_tracks
+        if override.mode == "rotate_tracks":
+            return (active_tracks + 1) % self.track_count
+        if override.mode == "force_track":
+            if override.forced_track is None:
+                raise ValueError("force_track override requires forced_track")
+            forced = int(override.forced_track)
+            if forced < 0 or forced >= self.track_count:
+                raise ValueError(f"forced_track={forced} outside [0, {self.track_count})")
+            return torch.full_like(active_tracks, forced)
+        raise ValueError(f"unknown Multi-QKV debug route override mode: {override.mode}")
 
     def _split_qkv_heads(self, qkv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         q, k, v = qkv.split(self.n_embd, dim=2)
@@ -248,6 +261,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
                 attention.detach().float() * attention.detach().float().clamp_min(1e-12).log()
             ).sum(dim=-1)
             self.last_diagnostics = {
+                "schema_version": 1,
                 "attention_type": self.attention_type,
                 "track_count": self.track_count,
                 "active_track_index": self._last_active_track_index,
@@ -262,7 +276,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
                 "last_forward_step": step,
                 "schedule_mode": schedule_mode,
                 "position_routing_enabled": self.position_routing_enabled,
-                "eval_freeze_mode": self.eval_freeze_mode and schedule_mode in {"eval", "generate"},
+                "eval_freeze_mode": self.eval_freeze_mode,
                 "attention_entropy_mean": float(attention_entropy.mean().item()),
                 "attention_entropy_std": float(attention_entropy.std(unbiased=False).item()),
             }
@@ -284,8 +298,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             return None
         active_track = self.last_diagnostics.get("active_track_index")
         if active_track is None:
-            gradients = self.qkv_bank.qkv_gradient_norms()
-            return max(gradients) if gradients else None
+            return None
         value = self.qkv_bank.qkv_gradient_norm_dict().get(str(active_track))
         return None if value is None else float(value)
 
@@ -316,6 +329,8 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             device=x.device, dtype=torch.long
         )
         qkv = self._project(x, active_tracks)
+        if self.debug_route_override is not None and self.debug_route_override.mode == "zero_selected":
+            qkv = torch.zeros_like(qkv)
         q, k, v = self._split_qkv_heads(qkv)
 
         head_size = channels // self.n_head
@@ -338,3 +353,19 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
 
 
 MultiQKVGlobalCausalSelfAttention = MultiQKVBaseCausalSelfAttention
+
+
+@contextmanager
+def override_multi_qkv_routes(
+    model: nn.Module,
+    override: MultiQKVDebugRouteOverride,
+) -> Iterator[None]:
+    modules = [module for module in model.modules() if isinstance(module, MultiQKVBaseCausalSelfAttention)]
+    previous = [module.debug_route_override for module in modules]
+    try:
+        for module in modules:
+            module.debug_route_override = override
+        yield
+    finally:
+        for module, old_value in zip(modules, previous):
+            module.debug_route_override = old_value

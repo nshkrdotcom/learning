@@ -3,9 +3,11 @@ from attention_lab.models.attention.cp_trilinear import CPTrilinearCausalSelfAtt
 from attention_lab.models.attention.multi_qkv_common import (
     MultiQKVGlobalBank,
     MultiQKVGlobalCausalSelfAttention,
+    MultiQKVDebugRouteOverride,
     MultiQKVRouteContext,
     MultiQKVSharedBank,
     ScheduleMode,
+    override_multi_qkv_routes,
 )
 from attention_lab.models.attention.multi_qkv_position_rotation import MultiQKVPositionRotationGlobalCausalSelfAttention
 from attention_lab.models.attention.multi_qkv_static import MultiQKVStaticGlobalCausalSelfAttention
@@ -20,6 +22,7 @@ __all__ = [
     "MultiQKVPositionRotationGlobalCausalSelfAttention",
     "MultiQKVGlobalBank",
     "MultiQKVGlobalCausalSelfAttention",
+    "MultiQKVDebugRouteOverride",
     "MultiQKVRouteContext",
     "MultiQKVSharedBank",
     "MultiQKVStaticGlobalCausalSelfAttention",
@@ -28,4 +31,5 @@ __all__ = [
     "StandardCausalSelfAttention",
     "TrilinearCPCausalSelfAttention",
     "build_attention",
+    "override_multi_qkv_routes",
 ]

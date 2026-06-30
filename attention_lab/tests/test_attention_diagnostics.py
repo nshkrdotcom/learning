@@ -56,3 +56,17 @@ def test_attention_diagnostics_collects_cp_rows_after_backward(tmp_path):
     assert path is not None
     written = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     assert len(written) == 2
+
+
+def test_append_attention_diagnostics_enriches_run_metadata(tmp_path):
+    out_dir = tmp_path / "runs" / "experiments" / "E002_multitrack_qkv_shift_register" / "tiny_qkv_run"
+    path = append_attention_diagnostics(
+        out_dir,
+        [{"attention_type": "multi_qkv_static_3track_global", "step": 1, "layer": 0}],
+    )
+
+    assert path is not None
+    row = json.loads(path.read_text(encoding="utf-8").strip())
+    assert row["schema_version"] == 1
+    assert row["experiment_id"] == "E002_multitrack_qkv_shift_register"
+    assert row["run_name"] == "tiny_qkv_run"

@@ -9,19 +9,34 @@ STATIC_RUN="runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_static
 TRAIN_ROTATION_RUN="runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_train_rotation_3track_global_30m_seed1"
 POSITION_ROTATION_RUN="runs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotation_3track_global_30m_seed1"
 
-require_summary() {
+require_file() {
   local run_dir="$1"
-  if [[ ! -f "${run_dir}/evals/run_summary.json" ]]; then
-    echo "Missing run summary: ${run_dir}/evals/run_summary.json" >&2
-    echo "Run and summarize the corresponding full run before comparing." >&2
+  local rel_path="$2"
+  if [[ ! -f "${run_dir}/${rel_path}" ]]; then
+    echo "Missing required E002 comparison artifact: ${run_dir}/${rel_path}" >&2
+    echo "Run the full train/eval/summarize/verify and mechanism diagnostic steps before comparing." >&2
     exit 1
   fi
 }
 
-require_summary "${STANDARD_RUN}"
-require_summary "${STATIC_RUN}"
-require_summary "${TRAIN_ROTATION_RUN}"
-require_summary "${POSITION_ROTATION_RUN}"
+require_standard_artifacts() {
+  local run_dir="$1"
+  require_file "${run_dir}" "evals/run_summary.json"
+  require_file "${run_dir}" "evals/val_loss.json"
+  require_file "${run_dir}" "evals/hellaswag.json"
+}
+
+require_multi_qkv_artifacts() {
+  local run_dir="$1"
+  require_standard_artifacts "${run_dir}"
+  require_file "${run_dir}" "evals/attention_diagnostics.jsonl"
+  require_file "${run_dir}" "evals/qkv_track_destructive_test.json"
+}
+
+require_standard_artifacts "${STANDARD_RUN}"
+require_multi_qkv_artifacts "${STATIC_RUN}"
+require_multi_qkv_artifacts "${TRAIN_ROTATION_RUN}"
+require_multi_qkv_artifacts "${POSITION_ROTATION_RUN}"
 
 uv run scripts/compare_runs.py \
   --experiment E002_multitrack_qkv_shift_register \

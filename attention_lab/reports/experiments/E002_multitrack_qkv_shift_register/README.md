@@ -17,4 +17,15 @@ Manual full-run scripts live under:
 scripts/experiments/E002_multitrack_qkv_shift_register/
 ```
 
+## Mechanism Diagnostics
+
+A/B/C runs are not interpretable from validation loss alone. Each Multi-QKV full run must include:
+
+- `evals/attention_diagnostics.jsonl`
+- `evals/qkv_track_destructive_test.json`
+
+A run with missing or degenerate diagnostics is marked `insufficient_evidence` even if validation loss improves. The current
+repository state is `implemented_not_run`: code, configs, tests, and manual scripts are prepared, but no full 3000-step E002
+result is claimed until the operator runs and verifies the jobs.
+
 Do not add comparison claims until actual run artifacts pass `verify_run.py`, `eval_loss.py`, `eval_generate.py`, `eval_hellaswag.py`, and `summarize_run.py`.
