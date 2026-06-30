@@ -3,6 +3,12 @@
 Use this checklist for every new attention architecture. Baseline files must not be
 edited unless the experiment explicitly includes a standard-refactor control.
 
+For queued or overnight runs, also follow:
+
+```text
+docs/guides/experiment_queue_discipline_checklist.md
+```
+
 1. Add the architecture module under `src/attention_lab/models/attention/`.
 2. Add a registry entry in `src/attention_lab/models/attention/registry.py`.
 3. Add config validation support for the new `attention_type`.
@@ -19,5 +25,10 @@ edited unless the experiment explicitly includes a standard-refactor control.
 14. Run `compare_runs.py`.
 15. Update the experiment report.
 16. State the claim boundary and negative-result interpretation.
+17. Write `docs/experiments/<EXPERIMENT_ID>/hypothesis_<run_name>.md` before any
+    full queue run.
+18. Confirm mechanism diagnostics prove the non-standard path is active before
+    interpreting loss.
+19. Confirm the nearest boring explanation has a queued or completed control.
 
 The standard-attention baseline path must remain intact throughout the experiment.

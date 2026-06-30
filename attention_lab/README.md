@@ -155,6 +155,7 @@ Follow:
 docs/architecture_variant_checklist.md
 docs/architecture_experiment_contract.md
 docs/pre_experiment_cleanup_checklist.md
+docs/guides/experiment_queue_discipline_checklist.md
 ```
 
 Rules:
@@ -166,6 +167,8 @@ Rules:
 - Add tests for shape, causal masking, gradient flow, parameter count, and diagnostics.
 - Keep dataset manifest, token budget, optimizer, LR schedule, seed, and eval cadence
   fixed for direct comparisons.
+- Before queueing future full runs, write a hypothesis document and pass the queue
+  discipline checklist in `docs/guides/experiment_queue_discipline_checklist.md`.
 
 ## 6. Validate E001
 
