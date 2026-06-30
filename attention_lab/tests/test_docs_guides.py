@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from attention_lab.queue.discipline import validate_hypothesis_doc
+
 
 def test_queue_discipline_guide_covers_required_source_requirements(repo_root):
     guide_path = repo_root / "docs" / "guides" / "experiment_queue_discipline_checklist.md"
@@ -57,3 +59,19 @@ def test_agents_md_summarizes_agent_process(repo_root):
     ]
     for marker in required:
         assert marker in agents
+
+
+def test_e001_hypothesis_docs_exist_and_validate(repo_root):
+    docs_dir = repo_root / "docs" / "experiments" / "E001_cp_trilinear_attention"
+    names = [
+        "hypothesis_standard_30m_seed1.md",
+        "hypothesis_standard_refactor_control_30m_seed1.md",
+        "hypothesis_cp_bilinear_r8_30m_seed1.md",
+        "hypothesis_cp_trilinear_r8_30m_seed1.md",
+        "hypothesis_cp_trilinear_r8_lambda0_30m_seed1.md",
+    ]
+    for name in names:
+        path = docs_dir / name
+        assert path.exists(), name
+        result = validate_hypothesis_doc(path)
+        assert result.ok is True, result.missing_fields

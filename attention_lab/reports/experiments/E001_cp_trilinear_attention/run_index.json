@@ -18,6 +18,10 @@
       "peak_vram_allocated_mb": null,
       "hellaswag_acc": null,
       "mechanism_active": null,
+      "full_run_approved": false,
+      "allow_overwrite_existing_run_dir": false,
+      "queue_requires_run": "standard_30m_seed1",
+      "queue_mechanism_check": "cp_gradient_norm",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -37,6 +41,10 @@
       "peak_vram_allocated_mb": null,
       "hellaswag_acc": null,
       "mechanism_active": null,
+      "full_run_approved": false,
+      "allow_overwrite_existing_run_dir": false,
+      "queue_requires_run": "standard_30m_seed1",
+      "queue_mechanism_check": "cp_gradient_norm",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -56,6 +64,10 @@
       "peak_vram_allocated_mb": null,
       "hellaswag_acc": null,
       "mechanism_active": null,
+      "full_run_approved": false,
+      "allow_overwrite_existing_run_dir": false,
+      "queue_requires_run": "standard_30m_seed1",
+      "queue_mechanism_check": "cp_gradient_norm",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -75,6 +87,10 @@
       "peak_vram_allocated_mb": null,
       "hellaswag_acc": null,
       "mechanism_active": null,
+      "full_run_approved": false,
+      "allow_overwrite_existing_run_dir": false,
+      "queue_requires_run": null,
+      "queue_mechanism_check": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -94,6 +110,10 @@
       "peak_vram_allocated_mb": null,
       "hellaswag_acc": null,
       "mechanism_active": null,
+      "full_run_approved": false,
+      "allow_overwrite_existing_run_dir": false,
+      "queue_requires_run": null,
+      "queue_mechanism_check": null,
       "notes": "config present; no queue ledger row"
     }
   ]

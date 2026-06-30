@@ -27,6 +27,10 @@ RUN_INDEX_FIELDS = (
     "peak_vram_allocated_mb",
     "hellaswag_acc",
     "mechanism_active",
+    "full_run_approved",
+    "allow_overwrite_existing_run_dir",
+    "queue_requires_run",
+    "queue_mechanism_check",
     "notes",
 )
 
@@ -88,7 +92,12 @@ def _belongs_to_experiment(row: dict[str, Any], experiment: dict[str, Any]) -> b
 
 
 def _select_fields(row: dict[str, Any]) -> dict[str, Any]:
-    return {field: row.get(field) for field in RUN_INDEX_FIELDS}
+    selected = {field: row.get(field) for field in RUN_INDEX_FIELDS}
+    config = _load_config_if_present(row.get("config_path"))
+    queue = config.get("queue", {}) if config else {}
+    selected["queue_requires_run"] = queue.get("requires_run")
+    selected["queue_mechanism_check"] = queue.get("mechanism_check")
+    return selected
 
 
 def _config_rows(config_dir: Path) -> list[dict[str, Any]]:
@@ -96,6 +105,7 @@ def _config_rows(config_dir: Path) -> list[dict[str, Any]]:
     for config_path in sorted(config_dir.glob("*.yaml")):
         with config_path.open("r", encoding="utf-8") as f:
             config = yaml.safe_load(f) or {}
+        queue = config.get("queue", {}) or {}
         rows.append(
             {
                 "id": config_path.stem,
@@ -114,6 +124,10 @@ def _config_rows(config_dir: Path) -> list[dict[str, Any]]:
                 "peak_vram_allocated_mb": None,
                 "hellaswag_acc": None,
                 "mechanism_active": None,
+                "full_run_approved": bool(queue.get("full_run_approved", False)),
+                "allow_overwrite_existing_run_dir": bool(queue.get("allow_overwrite_existing_run_dir", False)),
+                "queue_requires_run": queue.get("requires_run"),
+                "queue_mechanism_check": queue.get("mechanism_check"),
                 "notes": "config present; no queue ledger row",
             }
         )
@@ -126,8 +140,8 @@ def _render_run_index_markdown(experiment_id: str, rows: list[dict[str, Any]]) -
         "",
         "This file is exported from the queue ledger. It is an operational index, not a scientific interpretation.",
         "",
-        "| run | attention | stage | status | failure | step | final loss | best loss | ppl | tok/s | vram MB | hs | active | notes |",
-        "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        "| run | attention | stage | status | approved | overwrite | requires | mechanism_check | failure | step | final loss | best loss | ppl | tok/s | vram MB | hs | active | notes |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
     ]
     for row in rows:
         lines.append(
@@ -138,6 +152,10 @@ def _render_run_index_markdown(experiment_id: str, rows: list[dict[str, Any]]) -
                     _md(row.get("attention_type")),
                     _md(row.get("stage")),
                     _md(row.get("status")),
+                    _bool_md(row.get("full_run_approved")),
+                    _bool_md(row.get("allow_overwrite_existing_run_dir")),
+                    _md(row.get("queue_requires_run")),
+                    _md(row.get("queue_mechanism_check")),
                     _md(row.get("failure_class")),
                     _md(row.get("step_reached")),
                     _md(row.get("final_val_loss")),
@@ -159,3 +177,20 @@ def _md(value: Any) -> str:
     if value is None or value == "":
         return "---"
     return str(value).replace("|", "\\|").replace("\n", "<br>")
+
+
+def _bool_md(value: Any) -> str:
+    if value is None or value == "":
+        return "---"
+    return "yes" if bool(value) else "no"
+
+
+def _load_config_if_present(path: Any) -> dict[str, Any] | None:
+    if not path:
+        return None
+    config_path = Path(path)
+    if not config_path.exists():
+        return None
+    with config_path.open("r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
+    return config if isinstance(config, dict) else None

@@ -57,6 +57,12 @@ Completed in this implementation pass:
 - [x] Queue run-index export added via `attn-queue export-report`.
 - [x] Decision-log support added via `attn-queue morning-note`.
 - [x] E002 multitrack QKV shift-register skeleton added without architecture code.
+- [x] Screen diagnostics cadence forced to 50 steps for non-standard 150-step screens.
+- [x] Read-only readiness check added via `attn-queue doctor`.
+- [x] Queue run-index exports include approval, overwrite, control, and
+  mechanism-check fields.
+- [x] E001 hypothesis templates added without approving any run.
+- [x] End-to-end fake queue dry-run test added without launching training.
 - [x] No full training runs executed by this implementation pass.
 
 Still operator/manual by design:
@@ -348,6 +354,8 @@ Screen behavior:
   - [ ] `max_steps=150`
   - [ ] `val_every=50`
   - [ ] `save_every=150`
+- [ ] For non-standard attention, force `diagnostics.attention_diagnostics_every <= 50`
+  so mechanism diagnostics can be emitted during the screen.
 - [ ] Capture stdout/stderr.
 - [ ] Apply kill criteria in order.
 - [ ] Write verdict to ledger.
@@ -530,6 +538,9 @@ Command checklist:
   - [ ] Sends SIGTERM to PID in `data/queue.pid`.
 - [ ] `attn-queue leaderboard [--min-stage SCREEN|FULL] [--sort loss|ppl|speed]`
   - [ ] Prints filtered/sorted leaderboard.
+- [ ] `attn-queue doctor --experiment <EXPERIMENT_ID>`
+  - [ ] Prints read-only `OK`, `WARN`, and `FAIL` readiness checks.
+  - [ ] Exits nonzero only on `FAIL`.
 - [ ] `attn-queue approve <run_id_or_name>`
   - [ ] Allows an otherwise ready FULL run to execute.
 - [ ] `attn-queue unapprove <run_id_or_name>`
@@ -893,6 +904,7 @@ When queue code exists, add:
 uv run attention-lab-queue status
 uv run attention-lab-queue ls
 uv run attention-lab-queue export-report --experiment E001_cp_trilinear_attention
+uv run attention-lab-queue doctor --experiment E001_cp_trilinear_attention
 ```
 
 When full-run artifacts exist, add:

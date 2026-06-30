@@ -17,6 +17,34 @@ def test_screen_config_overrides_training_budget(tiny_config, tmp_path):
     assert screened["train"]["max_steps"] == 150
     assert screened["train"]["val_every"] == 50
     assert screened["train"]["save_every"] == 150
+    assert "diagnostics" not in screened
+
+
+def test_screen_config_forces_diagnostics_during_nonstandard_screen(tiny_config, tmp_path):
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config["model"]["attention_type"] = "cp_trilinear"
+    config["model"]["cp_rank"] = 8
+    config["model"]["cp_lambda_init"] = 0.0
+    config["model"]["cp_lambda_trainable"] = True
+    config["model"]["cp_lambda_fixed"] = False
+    config["diagnostics"] = {"attention_diagnostics_every": 250}
+    screened = screen_config_with_overrides(config, tmp_path / "runs" / "screen" / "candidate")
+    assert screened["diagnostics"]["attention_diagnostics_every"] == 50
+
+    config["diagnostics"] = {"attention_diagnostics_every": 25}
+    screened = screen_config_with_overrides(config, tmp_path / "runs" / "screen" / "candidate")
+    assert screened["diagnostics"]["attention_diagnostics_every"] == 25
+
+
+def test_screen_config_adds_diagnostics_for_nonstandard_without_diagnostics(tiny_config, tmp_path):
+    config = tiny_config(tmp_path, tmp_path / "data")
+    config["model"]["attention_type"] = "cp_bilinear"
+    config["model"]["cp_rank"] = 8
+    config["model"]["cp_lambda_init"] = 0.0
+    config["model"]["cp_lambda_trainable"] = True
+    config["model"]["cp_lambda_fixed"] = False
+    screened = screen_config_with_overrides(config, tmp_path / "runs" / "screen" / "candidate")
+    assert screened["diagnostics"]["attention_diagnostics_every"] == 50
 
 
 def test_screen_classifier_kill_criteria():
@@ -170,3 +198,24 @@ def test_qkv_mechanism_check_uses_future_diagnostic_fields(tmp_path):
     )
     assert inactive.passed is False
     assert inactive.failure_class == "DEAD_GRAD"
+
+
+def test_nonstandard_screen_with_step_50_diagnostics_can_pass(tmp_path):
+    metrics = [
+        {"event": "train", "step": 50, "tokens_per_sec": 100.0, "train_loss": 5.5},
+        {"event": "val", "step": 50, "val_loss": 6.0},
+        {"event": "train", "step": 150, "tokens_per_sec": 100.0, "train_loss": 4.5},
+        {"event": "val", "step": 150, "val_loss": 5.0},
+    ]
+    diagnostics = tmp_path / "attention_diagnostics.jsonl"
+    diagnostics.write_text(json.dumps({"step": 50, "cp_gradient_norm": 1e-3}) + "\n", encoding="utf-8")
+    verdict = classify_screen_result(
+        returncode=0,
+        stderr="",
+        metrics=metrics,
+        attention_type="cp_trilinear",
+        diagnostics_path=diagnostics,
+        queue_config={"mechanism_check": "cp_gradient_norm"},
+    )
+    assert verdict.passed is True
+    assert verdict.mechanism_active is True

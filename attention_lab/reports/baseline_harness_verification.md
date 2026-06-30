@@ -516,6 +516,11 @@ full-run artifact validation: summary/eval/checkpoint/HellaSwag required before 
 run-index export: attn-queue export-report
 decision log: attn-queue morning-note
 E002 skeleton: E002_multitrack_qkv_shift_register
+screen diagnostics cadence: non-standard screens force diagnostics every 50 steps
+doctor command: attn-queue doctor --experiment <ID>
+queue report safety fields: approval, overwrite, requires_run, mechanism_check
+E001 hypothesis templates: docs/experiments/E001_cp_trilinear_attention/hypothesis_*.md
+queue dry-run test: tests/test_queue_end_to_end.py
 ```
 
 No scientific claims are added by this queue pass. E001 and E002 full-run evidence must

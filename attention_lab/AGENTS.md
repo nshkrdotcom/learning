@@ -45,7 +45,9 @@ attention experiments.
 - Existing run directories are protected by default; do not set
   `queue.allow_overwrite_existing_run_dir: true` casually.
 - Queue morning review is `attn-queue status`, `attn-queue leaderboard`,
-  `attn-queue export-report`, and `attn-queue morning-note`.
+  `attn-queue doctor`, `attn-queue export-report`, and `attn-queue morning-note`.
+- Non-standard 150-step screens inject diagnostics cadence 50; do not remove this
+  unless the screen budget changes.
 - `E002_multitrack_qkv_shift_register` is a planned skeleton only. Do not implement
   QKV multitrack architecture code unless the user explicitly requests that pass.
 
@@ -60,4 +62,6 @@ uv run ruff check .
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
 uv run scripts/validate_experiment.py --id E002_multitrack_qkv_shift_register
 uv run scripts/verify_data.py --data_root data/fineweb_edu_100m --manifest data/fineweb_edu_100m/manifest.json --verify_hashes
+uv run attn-queue doctor --experiment E001_cp_trilinear_attention
+uv run attn-queue doctor --experiment E002_multitrack_qkv_shift_register
 ```

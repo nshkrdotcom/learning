@@ -29,6 +29,11 @@ def screen_config_with_overrides(config: dict, screen_run_dir: str | Path) -> di
     screened["train"]["max_steps"] = 150
     screened["train"]["val_every"] = 50
     screened["train"]["save_every"] = 150
+    attention_type = screened["model"].get("attention_type", "standard")
+    if "diagnostics" in screened or attention_type != "standard":
+        diagnostics = screened.setdefault("diagnostics", {})
+        current = diagnostics.get("attention_diagnostics_every")
+        diagnostics["attention_diagnostics_every"] = min(int(current), 50) if current is not None else 50
     return screened
 
 

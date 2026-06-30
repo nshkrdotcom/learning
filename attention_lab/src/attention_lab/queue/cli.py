@@ -7,6 +7,7 @@ import signal
 import subprocess
 from pathlib import Path
 
+from attention_lab.queue.doctor import render_doctor_report, run_doctor
 from attention_lab.queue.leaderboard import render_leaderboard
 from attention_lab.queue.ledger import QueueLedger
 from attention_lab.queue.paths import default_db_path, default_pid_path, ensure_queue_dirs
@@ -162,6 +163,17 @@ def cmd_morning_note(args: argparse.Namespace) -> None:
     print(f"appended: {path}")
 
 
+def cmd_doctor(args: argparse.Namespace) -> None:
+    ledger = _open_ledger(args)
+    try:
+        report = run_doctor(experiment_id=args.experiment, ledger=ledger, root=args.root)
+        print(render_doctor_report(report), end="")
+        if not report.ok:
+            raise SystemExit(1)
+    finally:
+        ledger.close()
+
+
 def cmd_start(args: argparse.Namespace) -> None:
     subprocess.Popen(["bash", "scripts/queue_daemon.sh"], cwd=args.root)
     print("queue daemon start requested")
@@ -241,6 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
     morning_note.add_argument("--not-shows", required=True)
     morning_note.add_argument("--next", required=True)
     morning_note.set_defaults(func=cmd_morning_note)
+
+    doctor = subparsers.add_parser("doctor")
+    doctor.add_argument("--experiment", required=True)
+    doctor.set_defaults(func=cmd_doctor)
     return parser
 
 

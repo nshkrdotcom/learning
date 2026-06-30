@@ -303,12 +303,16 @@ Queue safety rules:
   `queue.skip_control_check: true` is explicitly set and recorded as a warning.
 - Non-standard screen promotion requires mechanism diagnostics unless
   `queue.allow_missing_diagnostics: true` is explicit.
+- The 150-step screener injects `diagnostics.attention_diagnostics_every: 50` for
+  non-standard attention, or lowers an existing larger cadence to 50, so mechanism
+  diagnostics can exist during screening.
 - `queue.mechanism_check` currently supports `cp_gradient_norm` and
   `qkv_track_activity`.
 
 Operator review commands:
 
 ```bash
+uv run attn-queue doctor --experiment E001_cp_trilinear_attention
 uv run attn-queue leaderboard --min-stage FULL --sort loss
 uv run attn-queue leaderboard --sort speed
 uv run attn-queue export-report --experiment E001_cp_trilinear_attention
@@ -319,7 +323,16 @@ uv run attn-queue morning-note --experiment E001_cp_trilinear_attention \
 ```
 
 `export-report` writes `run_index.json` and `run_index.md` under the experiment report
-directory. `morning-note` appends to `decision_log.md`.
+directory, including approval, overwrite, control, and mechanism-check fields.
+`morning-note` appends to `decision_log.md`.
+
+E001 hypothesis templates already exist under:
+
+```text
+docs/experiments/E001_cp_trilinear_attention/hypothesis_<run_name>.md
+```
+
+They are gates for later approval, not evidence that full runs completed.
 
 ## 10. Planned E002 Skeleton
 
@@ -348,6 +361,7 @@ docs/guides/experiment_queue_discipline_checklist.md
 
 - Full 3000-step E001 runs are prepared but not executed in the implementation pass.
 - E002 is a planned skeleton only; no multitrack QKV architecture code exists yet.
+- Queue `doctor` is a readiness check only; it does not launch training.
 - The historical `trilinear_cp` attention type remains unimplemented; use canonical
   `cp_trilinear`.
 - `torch.compile` is intentionally unsupported for baseline QC.
