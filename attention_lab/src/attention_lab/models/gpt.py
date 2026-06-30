@@ -5,7 +5,11 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from attention_lab.models.attention.multi_qkv_common import MultiQKVGlobalBank, is_multi_qkv_attention
+from attention_lab.models.attention.multi_qkv_common import (
+    MultiQKVGlobalBank,
+    is_multi_qkv_attention,
+    validate_canonical_multi_qkv_model_config,
+)
 from attention_lab.models.attention.registry import build_attention
 
 
@@ -119,6 +123,7 @@ class Block(nn.Module):
 class GPT(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
+        validate_canonical_multi_qkv_model_config(config)
         self.config = config
         self.multi_qkv_bank = MultiQKVGlobalBank(config) if is_multi_qkv_attention(config.attention_type) else None
 

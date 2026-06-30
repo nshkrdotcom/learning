@@ -14,6 +14,18 @@ results.
 | `multi_qkv_train_rotation_3track_global_30m_seed1` | B: train-time phase rotation, eval freeze |
 | `multi_qkv_position_rotation_3track_global_30m_seed1` | C: position-clock routing at train/eval/generate |
 
+## Legacy Runnable Config
+
+`standard_30m_seed1.yaml` remains runnable as a legacy/noncanonical comparison config. It is not part of the four
+canonical first-build configs. The current E002 config classification is:
+
+```text
+canonical_first_build_config_count = 4
+legacy_or_auxiliary_runnable_config_count = 1
+runnable_config_count = 5
+unimplemented_config_count = 6
+```
+
 ## Required Artifacts Per Full Run
 
 - checkpoint
@@ -28,6 +40,14 @@ results.
 
 Validation loss is not interpretable without mechanism diagnostics. A Multi-QKV run with missing or degenerate diagnostics is
 `insufficient_evidence`.
+
+## Position-Rotation Generation
+
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during
+generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current
+implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002
+C must define and test whether routing uses absolute generated-token positions or window-relative positions before the
+KV-cache path is enabled.
 
 Current status:
 

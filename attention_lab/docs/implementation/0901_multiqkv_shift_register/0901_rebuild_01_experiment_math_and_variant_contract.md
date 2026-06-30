@@ -184,7 +184,7 @@ Position is the zero-indexed sequence-local token position used by this repo's p
 pos = torch.arange(0, T, dtype=torch.long, device=idx.device)
 ```
 
-The current generation path does not use KV-cache; it recomputes the visible context each generation step, so C uses the normal full-context position range during generation.
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002 C must define and test whether routing uses absolute generated-token positions or window-relative positions before the KV-cache path is enabled.
 
 C cannot use a single scalar active track for the whole sequence. It computes all three Q/K/V projections and selects per position before attention. This is intentionally correctness-first and may be slower; throughput and VRAM must be reported.
 
@@ -342,6 +342,8 @@ configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotati
 ```
 
 All share the E002 30M shape and training budget.
+
+`configs/experiments/E002_multitrack_qkv_shift_register/standard_30m_seed1.yaml` remains runnable only as a legacy/noncanonical comparison config. It is not part of the four canonical first-build configs. Validation reports four canonical first-build configs, one legacy/auxiliary runnable config, five runnable configs total, and six unimplemented old skeleton configs.
 
 ## Hypothesis Documents
 

@@ -258,7 +258,7 @@ Generation calls:
 model(idx_cond, schedule_mode="generate")
 ```
 
-The repo generation path recomputes full context and does not use KV-cache, so C uses normal sequence-local position IDs.
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002 C must define and test whether routing uses absolute generated-token positions or window-relative positions before the KV-cache path is enabled.
 
 ## Config Validation
 
@@ -269,6 +269,8 @@ qkv_track_count == 3
 qkv_global_bank is true
 qkv_route_formula matches attention_type
 ```
+
+The same canonical invariant is enforced when constructing `GPT` directly from Python. `GPT(GPTConfig(attention_type="multi_qkv_static_3track_global"))` must fail unless `qkv_track_count=3`, `qkv_global_bank=True`, and the expected `qkv_route_formula` are explicitly set. One-track identity remains a direct attention-module/unit-test path, not a canonical runnable `GPT` model path.
 
 Route formula mapping:
 

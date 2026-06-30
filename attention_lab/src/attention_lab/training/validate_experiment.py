@@ -60,6 +60,15 @@ def _fixed_values(config: dict[str, Any]) -> dict[str, Any]:
     return values
 
 
+def _manifest_config_names(experiment: dict[str, Any], key: str) -> list[str]:
+    values = experiment.get(key, [])
+    if values is None:
+        return []
+    if not isinstance(values, list) or not all(isinstance(value, str) and value.endswith(".yaml") for value in values):
+        raise ExperimentValidationError(f"Experiment {experiment['id']} field {key} must be a list of YAML filenames")
+    return values
+
+
 def validate_experiment(experiment_id: str) -> dict[str, Any]:
     experiment = get_experiment(experiment_id)
     validate_experiment_entry(experiment)
@@ -82,9 +91,26 @@ def validate_experiment(experiment_id: str) -> dict[str, Any]:
     if not config_paths:
         raise ExperimentValidationError(f"No YAML configs found in {config_dir}")
 
+    canonical_first_build_configs = _manifest_config_names(experiment, "canonical_first_build_configs")
+    legacy_or_auxiliary_runnable_configs = _manifest_config_names(
+        experiment,
+        "legacy_or_auxiliary_runnable_configs",
+    )
+    overlap = sorted(set(canonical_first_build_configs) & set(legacy_or_auxiliary_runnable_configs))
+    if overlap:
+        raise ExperimentValidationError(f"Configs cannot be both canonical first-build and legacy: {overlap}")
+    config_names = {path.name for path in config_paths}
+    missing_canonical = sorted(set(canonical_first_build_configs) - config_names)
+    if missing_canonical:
+        raise ExperimentValidationError(f"Missing canonical first-build configs: {missing_canonical}")
+    missing_legacy = sorted(set(legacy_or_auxiliary_runnable_configs) - config_names)
+    if missing_legacy:
+        raise ExperimentValidationError(f"Missing legacy/auxiliary runnable configs: {missing_legacy}")
+
     out_dirs = []
     runnable = []
     unimplemented = []
+    runnable_names = []
     fixed_reference = None
     for config_path in config_paths:
         config = load_yaml(config_path)
@@ -110,9 +136,22 @@ def validate_experiment(experiment_id: str) -> dict[str, Any]:
         else:
             load_config(config_path)
             runnable.append(str(config_path))
+            runnable_names.append(config_path.name)
 
     if len(out_dirs) != len(set(out_dirs)):
         raise ExperimentValidationError("Experiment configs must have unique run.out_dir values")
+    non_runnable_canonical = sorted(set(canonical_first_build_configs) - set(runnable_names))
+    if non_runnable_canonical:
+        raise ExperimentValidationError(f"Canonical first-build configs must be runnable: {non_runnable_canonical}")
+    non_runnable_legacy = sorted(set(legacy_or_auxiliary_runnable_configs) - set(runnable_names))
+    if non_runnable_legacy:
+        raise ExperimentValidationError(f"Legacy/auxiliary configs must be runnable: {non_runnable_legacy}")
+    unclassified_runnable = sorted(set(runnable_names) - set(canonical_first_build_configs) - set(legacy_or_auxiliary_runnable_configs))
+    if canonical_first_build_configs and unclassified_runnable:
+        raise ExperimentValidationError(
+            "Runnable configs must be classified as canonical first-build or legacy/auxiliary: "
+            f"{unclassified_runnable}"
+        )
 
     baseline_reference = Path(experiment["baseline_reference_run"])
     baseline_summary = baseline_reference / "evals" / "run_summary.json"
@@ -127,6 +166,10 @@ def validate_experiment(experiment_id: str) -> dict[str, Any]:
         "config_count": len(config_paths),
         "runnable_config_count": len(runnable),
         "unimplemented_config_count": len(unimplemented),
+        "canonical_first_build_config_count": len(canonical_first_build_configs),
+        "legacy_or_auxiliary_runnable_config_count": len(legacy_or_auxiliary_runnable_configs),
+        "canonical_first_build_configs": canonical_first_build_configs,
+        "legacy_or_auxiliary_runnable_configs": legacy_or_auxiliary_runnable_configs,
         "baseline_summary_checked": baseline_summary_checked,
         "ok": True,
     }

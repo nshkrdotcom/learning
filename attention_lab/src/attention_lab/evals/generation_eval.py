@@ -37,6 +37,9 @@ def generate_text(
     sample_rng.manual_seed(seed)
 
     for _ in range(max_new_tokens):
+        # No KV cache is used here. Each generation step recomputes the cropped
+        # full context, so GPT.forward assigns window-relative position ids
+        # 0..T-1; E002 position-rotation routing follows those same ids.
         idx_cond = x[:, -model.config.block_size :]
         with autocast_context(device_type, dtype):
             logits, _ = model(idx_cond, schedule_mode="generate")

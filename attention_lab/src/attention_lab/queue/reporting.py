@@ -31,6 +31,7 @@ RUN_INDEX_FIELDS = (
     "allow_overwrite_existing_run_dir",
     "queue_requires_run",
     "queue_mechanism_check",
+    "config_classification",
     "notes",
 )
 
@@ -45,9 +46,9 @@ def export_queue_report(
     experiment = get_experiment(experiment_id)
     report_dir = repo_root / experiment["report_dir"]
     report_dir.mkdir(parents=True, exist_ok=True)
-    rows = [_select_fields(row) for row in ledger.list_runs() if _belongs_to_experiment(row, experiment)]
+    rows = [_select_fields(row, experiment) for row in ledger.list_runs() if _belongs_to_experiment(row, experiment)]
     if not rows:
-        rows = _config_rows(repo_root / experiment["config_dir"])
+        rows = _config_rows(repo_root / experiment["config_dir"], experiment)
 
     json_path = report_dir / "run_index.json"
     md_path = report_dir / "run_index.md"
@@ -91,16 +92,17 @@ def _belongs_to_experiment(row: dict[str, Any], experiment: dict[str, Any]) -> b
     return run_dir.startswith(experiment["run_dir"]) or config_path.startswith(experiment["config_dir"])
 
 
-def _select_fields(row: dict[str, Any]) -> dict[str, Any]:
+def _select_fields(row: dict[str, Any], experiment: dict[str, Any]) -> dict[str, Any]:
     selected = {field: row.get(field) for field in RUN_INDEX_FIELDS}
     config = _load_config_if_present(row.get("config_path"))
     queue = config.get("queue", {}) if config else {}
     selected["queue_requires_run"] = queue.get("requires_run")
     selected["queue_mechanism_check"] = queue.get("mechanism_check")
+    selected["config_classification"] = _config_classification(row.get("config_path"), experiment)
     return selected
 
 
-def _config_rows(config_dir: Path) -> list[dict[str, Any]]:
+def _config_rows(config_dir: Path, experiment: dict[str, Any]) -> list[dict[str, Any]]:
     rows = []
     for config_path in sorted(config_dir.glob("*.yaml")):
         with config_path.open("r", encoding="utf-8") as f:
@@ -128,10 +130,24 @@ def _config_rows(config_dir: Path) -> list[dict[str, Any]]:
                 "allow_overwrite_existing_run_dir": bool(queue.get("allow_overwrite_existing_run_dir", False)),
                 "queue_requires_run": queue.get("requires_run"),
                 "queue_mechanism_check": queue.get("mechanism_check"),
+                "config_classification": _config_classification(config_path, experiment),
                 "notes": "config present; no queue ledger row",
             }
         )
     return rows
+
+
+def _config_classification(config_path: Any, experiment: dict[str, Any]) -> str | None:
+    if not config_path:
+        return None
+    name = Path(config_path).name
+    canonical = set(experiment.get("canonical_first_build_configs", []) or [])
+    legacy = set(experiment.get("legacy_or_auxiliary_runnable_configs", []) or [])
+    if name in canonical:
+        return "canonical_first_build"
+    if name in legacy:
+        return "legacy_or_auxiliary_runnable"
+    return None
 
 
 def _render_run_index_markdown(experiment_id: str, rows: list[dict[str, Any]]) -> str:
@@ -140,8 +156,8 @@ def _render_run_index_markdown(experiment_id: str, rows: list[dict[str, Any]]) -
         "",
         "This file is exported from the queue ledger. It is an operational index, not a scientific interpretation.",
         "",
-        "| run | attention | stage | status | approved | overwrite | requires | mechanism_check | failure | step | final loss | best loss | ppl | tok/s | vram MB | hs | active | notes |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        "| run | attention | stage | status | approved | overwrite | requires | mechanism_check | failure | step | final loss | best loss | ppl | tok/s | vram MB | hs | active | classification | notes |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |",
     ]
     for row in rows:
         lines.append(
@@ -165,6 +181,7 @@ def _render_run_index_markdown(experiment_id: str, rows: list[dict[str, Any]]) -
                     _md(row.get("peak_vram_allocated_mb")),
                     _md(row.get("hellaswag_acc")),
                     _md(row.get("mechanism_active")),
+                    _md(row.get("config_classification")),
                     _md(row.get("notes")),
                 ]
             )

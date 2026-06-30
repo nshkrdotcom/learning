@@ -67,7 +67,9 @@ multi_qkv_train_rotation_3track_global_30m_seed1
 multi_qkv_position_rotation_3track_global_30m_seed1
 ```
 
-The old E002 skeleton names remain compatibility/planning artifacts only.
+`standard_30m_seed1.yaml` remains runnable only as a legacy/noncanonical comparison config. It is not one of the four
+canonical first-build configs. The old E002 skeleton names remain compatibility/planning artifacts only and stay
+`status: experimental_unimplemented`.
 
 ## Manual Run Boundary
 
@@ -77,7 +79,7 @@ The implementation agent may run unit tests, integration tests, config validatio
 
 Architecture acceptance requires one globally shared 3-track Q/K/V bank, all blocks using the same bank object, bundled Q/K/V track selection, A/B/C formulas exactly as specified, B frozen to static depth routing during eval/generation, and no learned or stochastic routing.
 
-Code-quality acceptance requires standard attention invariance under step/position threading, CP attention regression coverage, strict config validation for new fields, registered attention types, training step passed to model, and eval/generation schedule context handled explicitly.
+Code-quality acceptance requires standard attention invariance under step/position threading, CP attention regression coverage, strict config validation for new fields, direct `GPT` construction rejecting invalid canonical Multi-QKV settings, registered attention types, training step passed to model, and eval/generation schedule context handled explicitly.
 
 Testing acceptance requires formula tests, global sharing tests, one-track identity with standard attention, causal masking tests, inactive-track gradient tests, train-loop step threading tests, eval/generation schedule tests, and diagnostics tests.
 

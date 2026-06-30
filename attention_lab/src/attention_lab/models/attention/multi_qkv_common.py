@@ -35,10 +35,33 @@ MULTI_QKV_ATTENTION_TYPES = {
     "multi_qkv_train_rotation_3track_global",
     "multi_qkv_position_rotation_3track_global",
 }
+MULTI_QKV_ROUTE_FORMULAS = {
+    "multi_qkv_static_3track_global": "layer_mod",
+    "multi_qkv_train_rotation_3track_global": "layer_plus_step_train_layer_eval",
+    "multi_qkv_position_rotation_3track_global": "layer_plus_position",
+}
 
 
 def is_multi_qkv_attention(attention_type: str) -> bool:
     return attention_type in MULTI_QKV_ATTENTION_TYPES
+
+
+def validate_canonical_multi_qkv_model_config(config: Any) -> None:
+    """Enforce the canonical _3track_global contract at model construction."""
+
+    attention_type = getattr(config, "attention_type", "standard")
+    if not is_multi_qkv_attention(attention_type):
+        return
+
+    track_count = int(getattr(config, "qkv_track_count", 1))
+    if track_count != 3:
+        raise ValueError(f"{attention_type} requires qkv_track_count=3, got {track_count}")
+    if getattr(config, "qkv_global_bank", False) is not True:
+        raise ValueError(f"{attention_type} requires qkv_global_bank=True")
+    expected_route = MULTI_QKV_ROUTE_FORMULAS[attention_type]
+    route_formula = getattr(config, "qkv_route_formula", None)
+    if route_formula != expected_route:
+        raise ValueError(f"{attention_type} requires qkv_route_formula={expected_route!r}")
 
 
 class MultiQKVGlobalBank(nn.Module):

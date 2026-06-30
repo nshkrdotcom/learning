@@ -47,6 +47,16 @@ Existing old skeleton configs remain `status: experimental_unimplemented` future
 
 B and C are primarily interpreted relative to A/static-global, not merely standard attention.
 
+`standard_30m_seed1.yaml` remains runnable as a legacy/noncanonical comparison config. It is not one of the four
+canonical first-build configs. Validation reports:
+
+```text
+canonical_first_build_config_count = 4
+legacy_or_auxiliary_runnable_config_count = 1
+runnable_config_count = 5
+unimplemented_config_count = 6
+```
+
 ## Architecture Contract
 
 All Multi-QKV first-build variants use one globally shared bank:
@@ -101,6 +111,12 @@ active_track(layer_idx, step, pos, mode) = (layer_idx + pos) mod 3
 ```
 
 C routes per position. It is invalid if it collapses to scalar layer routing.
+
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during
+generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current
+implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002
+C must define and test whether routing uses absolute generated-token positions or window-relative positions before the
+KV-cache path is enabled.
 
 ## Fixed Training Contract
 

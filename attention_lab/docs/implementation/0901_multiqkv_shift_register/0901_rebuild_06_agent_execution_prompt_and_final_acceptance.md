@@ -160,8 +160,7 @@ model(x, y, step=None, schedule_mode="eval")
 model(idx_cond, targets=None, step=None, schedule_mode="generate")
 ```
 
-C must use the same token positions as the model positional embedding path. If generation recomputes full context, use full
-context positions. If KV-cache is introduced later, implement absolute positions before accepting C.
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002 C must define and test whether routing uses absolute generated-token positions or window-relative positions before the KV-cache path is enabled.
 
 ## Required Config Fields
 
@@ -314,6 +313,10 @@ configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotati
 
 Use the existing E002 30M/FineWeb-Edu 100M shape and 3000-step budget. B and C require
 `multi_qkv_static_3track_global_30m_seed1` as their primary control.
+
+`standard_30m_seed1.yaml` may remain runnable only as a legacy/noncanonical comparison config. It is not part of the four
+canonical first-build configs. Validation should report four canonical first-build configs, one legacy/auxiliary runnable
+config, five runnable configs total, and six unimplemented old skeleton configs.
 
 Create hypothesis docs:
 

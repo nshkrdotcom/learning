@@ -105,3 +105,52 @@ def test_generation_path_uses_eval_freeze_for_train_rotation():
     assert all(row["eval_freeze_mode"] is True for row in rows)
     assert [row["active_track_index"] for row in rows] == [0, 1, 2]
     assert all(row["schedule_mode"] == "generate" for row in rows)
+
+
+def test_position_rotation_generation_uses_cropped_window_relative_positions():
+    class TinyEncoding:
+        def encode(self, prompt):
+            return [1, 2, 3, 4, 5, 6]
+
+        def decode(self, tokens):
+            return " ".join(str(token) for token in tokens)
+
+    model_config = config_from_dict(
+        {
+            "attention_type": "multi_qkv_position_rotation_3track_global",
+            "qkv_track_count": 3,
+            "qkv_global_bank": True,
+            "qkv_route_formula": "layer_plus_position",
+            "block_size": 4,
+            "n_layer": 3,
+            "n_head": 2,
+            "n_embd": 16,
+            "dropout": 0.0,
+            "bias": False,
+        },
+        {"vocab_size": 64},
+    )
+    model = GPT(model_config)
+
+    generate_text(
+        model,
+        TinyEncoding(),
+        prompt="long tiny prompt",
+        num_samples=1,
+        max_new_tokens=1,
+        top_k=5,
+        temperature=1.0,
+        device="cpu",
+        device_type="cpu",
+        dtype=torch.float32,
+        seed=123,
+    )
+
+    rows = [block.attn.last_diagnostics for block in model.transformer.h]
+    assert rows
+    assert all(row["schedule_mode"] == "generate" for row in rows)
+    assert rows[0]["active_track_index"] is None
+    # The generation path has no KV cache: it crops to a full context window and
+    # GPT.forward recomputes positions as 0..T-1 for that window.
+    assert rows[0]["active_track_counts"] == {"0": 2, "1": 1, "2": 1}
+    assert rows[1]["active_track_counts"] == {"0": 1, "1": 2, "2": 1}

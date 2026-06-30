@@ -181,6 +181,7 @@ Mechanism tests must use `src/attention_lab/queue/mechanism_checks.py`, not a du
 [x] Multi-QKV rejects wrong qkv_route_formula.
 [x] Multi-QKV rejects wrong qkv_track_count.
 [x] E002 metadata includes canonical initial config files.
+[x] E002 metadata distinguishes the four canonical first-build configs from the legacy/noncanonical runnable `standard_30m_seed1.yaml`.
 [x] Old skeleton variants remain experimental_unimplemented.
 [x] E002 run dirs are unique and under the E002 run directory.
 ```
@@ -201,6 +202,9 @@ Required compatibility coverage:
 ```text
 [x] Standard attention accepts schedule kwargs without behavior change.
 [x] CP bilinear/trilinear attention accepts schedule kwargs.
+[x] Direct canonical Multi-QKV `GPT` construction rejects missing or invalid `qkv_track_count`, `qkv_global_bank`, and `qkv_route_formula`.
+[x] One-track identity remains a direct attention-module test path rather than a canonical runnable `GPT` model.
+[x] C generation uses `schedule_mode="generate"` and window-relative positions from the cropped full context because the generation path has no KV cache.
 [x] qkv_track_count, qkv_global_bank, and qkv_route_formula are accepted.
 [x] unknown qkv-ish fields remain rejected.
 [x] multi_qkv_* attention types require required qkv fields.

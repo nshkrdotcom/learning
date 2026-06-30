@@ -47,6 +47,16 @@ configs/experiments/E002_multitrack_qkv_shift_register/multi_qkv_position_rotati
 
 Existing old skeleton names may remain only as `status: experimental_unimplemented` future variants.
 
+`standard_30m_seed1.yaml` may remain runnable as a legacy/noncanonical comparison config. It is not one of the four
+canonical first-build configs. The expected E002 validation counts are:
+
+```text
+canonical_first_build_config_count = 4
+legacy_or_auxiliary_runnable_config_count = 1
+runnable_config_count = 5
+unimplemented_config_count = 6
+```
+
 ## Shared Config Contract
 
 All four canonical configs use the E002 30M-ish training contract:
@@ -171,6 +181,12 @@ Formula:
 ```text
 active_track(layer_idx, step, position, mode) = (layer_idx + position) mod 3
 ```
+
+Current generation does not use a KV cache. For `multi_qkv_position_rotation_3track_global`, position IDs during
+generation are recomputed for the full cropped context window passed to `GPT.forward`. Therefore the current
+implementation uses window-relative positions during generation. If incremental KV-cache generation is added later, E002
+C must define and test whether routing uses absolute generated-token positions or window-relative positions before the
+KV-cache path is enabled.
 
 ## Hypothesis Docs
 

@@ -43,6 +43,50 @@ def tiny_multi_qkv_config(attention_type: str) -> GPTConfig:
     )
 
 
+@pytest.mark.parametrize("attention_type", list(ROUTES))
+def test_canonical_multi_qkv_gpt_rejects_missing_required_fields(attention_type: str):
+    config = GPTConfig(
+        block_size=8,
+        vocab_size=64,
+        n_layer=3,
+        n_head=2,
+        n_embd=16,
+        dropout=0.0,
+        bias=False,
+        attention_type=attention_type,
+    )
+
+    with pytest.raises(ValueError, match="qkv_track_count"):
+        GPT(config)
+
+
+@pytest.mark.parametrize("attention_type", list(ROUTES))
+def test_canonical_multi_qkv_gpt_rejects_wrong_track_count(attention_type: str):
+    config = tiny_multi_qkv_config(attention_type)
+    config.qkv_track_count = 2
+
+    with pytest.raises(ValueError, match="qkv_track_count"):
+        GPT(config)
+
+
+@pytest.mark.parametrize("attention_type", list(ROUTES))
+def test_canonical_multi_qkv_gpt_rejects_non_global_bank(attention_type: str):
+    config = tiny_multi_qkv_config(attention_type)
+    config.qkv_global_bank = False
+
+    with pytest.raises(ValueError, match="qkv_global_bank"):
+        GPT(config)
+
+
+@pytest.mark.parametrize("attention_type", list(ROUTES))
+def test_canonical_multi_qkv_gpt_rejects_wrong_route_formula(attention_type: str):
+    config = tiny_multi_qkv_config(attention_type)
+    config.qkv_route_formula = "layer_mod" if ROUTES[attention_type] != "layer_mod" else "layer_plus_position"
+
+    with pytest.raises(ValueError, match="qkv_route_formula"):
+        GPT(config)
+
+
 def tiny_cp_config(attention_type: str) -> GPTConfig:
     return GPTConfig(
         block_size=8,

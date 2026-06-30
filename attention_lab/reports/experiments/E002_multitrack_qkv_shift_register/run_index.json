@@ -22,6 +22,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -45,6 +46,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "multi_qkv_static_3track_global_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": "canonical_first_build",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -68,6 +70,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -91,6 +94,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -114,6 +118,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_refactor_control_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": "canonical_first_build",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -137,6 +142,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -160,6 +166,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "multi_qkv_static_3track_global_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": "canonical_first_build",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -183,6 +190,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -206,6 +214,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": "standard_30m_seed1",
       "queue_mechanism_check": "qkv_track_activity",
+      "config_classification": null,
       "notes": "config present; no queue ledger row"
     },
     {
@@ -229,6 +238,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": null,
       "queue_mechanism_check": null,
+      "config_classification": "legacy_or_auxiliary_runnable",
       "notes": "config present; no queue ledger row"
     },
     {
@@ -252,6 +262,7 @@
       "allow_overwrite_existing_run_dir": false,
       "queue_requires_run": null,
       "queue_mechanism_check": null,
+      "config_classification": "canonical_first_build",
       "notes": "config present; no queue ledger row"
     }
   ]
