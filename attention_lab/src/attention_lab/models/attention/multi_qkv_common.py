@@ -24,9 +24,9 @@ class MultiQKVSharedBank(nn.Module):
 
     def __init__(self, config: Any):
         super().__init__()
-        track_count = int(getattr(config, "multi_qkv_track_count", 3))
+        track_count = int(getattr(config, "qkv_track_count", getattr(config, "multi_qkv_track_count", 3)))
         if track_count <= 0:
-            raise ValueError("multi_qkv_track_count must be positive")
+            raise ValueError("qkv_track_count must be positive")
         self.track_count = track_count
         self.n_embd = int(config.n_embd)
         self.q_proj = nn.ModuleList(
@@ -79,6 +79,12 @@ class MultiQKVSharedBank(nn.Module):
             values.append(None if total is None else float(total.sqrt().item()))
         return values
 
+    def qkv_weight_norm_dict(self) -> dict[str, float]:
+        return {str(index): value for index, value in enumerate(self.qkv_weight_norms())}
+
+    def qkv_gradient_norm_dict(self) -> dict[str, float | None]:
+        return {str(index): value for index, value in enumerate(self.qkv_gradient_norms())}
+
 
 class MultiQKVBaseCausalSelfAttention(nn.Module):
     """Causal self-attention using a globally shared hard-switched Q/K/V bank."""
@@ -113,6 +119,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         *,
         step: int | None,
         positions: torch.Tensor,
+        schedule_mode: str,
     ) -> torch.Tensor:
         raise NotImplementedError
 
@@ -150,18 +157,19 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             self._select_per_position(v_values, active_tracks),
         )
 
-    def _track_counts(self, active_tracks: torch.Tensor, seq_len: int) -> list[int]:
+    def _track_counts(self, active_tracks: torch.Tensor, seq_len: int) -> dict[str, int]:
         if active_tracks.dim() == 0:
             values = [0 for _ in range(self.track_count)]
             values[int(active_tracks.item())] = seq_len
-            return values
+            return {str(index): value for index, value in enumerate(values)}
         counts = torch.bincount(active_tracks.reshape(-1).cpu(), minlength=self.track_count)
-        return [int(counts[i].item()) for i in range(self.track_count)]
+        return {str(index): int(counts[index].item()) for index in range(self.track_count)}
 
     def _record_diagnostics(
         self,
         *,
         step: int | None,
+        schedule_mode: str,
         active_tracks: torch.Tensor,
         seq_len: int,
         selected_q: torch.Tensor,
@@ -169,38 +177,43 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
     ) -> None:
         with torch.no_grad():
             counts = self._track_counts(active_tracks.detach(), seq_len)
-            count_tensor = torch.tensor(counts, dtype=torch.float32)
+            count_tensor = torch.tensor(list(counts.values()), dtype=torch.float32)
             probs = count_tensor / count_tensor.sum().clamp_min(1.0)
             entropy = -(probs * probs.clamp_min(1e-12).log()).sum()
-            per_track_output_norm = [0.0 for _ in range(self.track_count)]
-            for track, count in enumerate(counts):
+            per_track_output_norm = {str(track): 0.0 for track in range(self.track_count)}
+            for track_key, count in counts.items():
+                track = int(track_key)
                 if count == 0:
                     continue
                 if active_tracks.dim() == 0:
-                    per_track_output_norm[track] = float(selected_q.detach().float().norm().item())
+                    per_track_output_norm[track_key] = float(selected_q.detach().float().norm().item())
                 else:
                     mask = active_tracks == track
                     if mask.dim() == 1:
                         values = selected_q[:, mask]
                     else:
                         values = selected_q[mask]
-                    per_track_output_norm[track] = float(values.detach().float().norm().item()) if values.numel() else 0.0
+                    per_track_output_norm[track_key] = (
+                        float(values.detach().float().norm().item()) if values.numel() else 0.0
+                    )
             attention_entropy = -(
                 attention.detach().float() * attention.detach().float().clamp_min(1e-12).log()
             ).sum(dim=-1)
             self.last_diagnostics = {
                 "attention_type": self.attention_type,
+                "track_count": self.track_count,
                 "active_track_index": int(active_tracks.item()) if active_tracks.dim() == 0 else None,
                 "active_track_counts": counts,
                 "per_track_output_norm": per_track_output_norm,
-                "track_output_delta": max(per_track_output_norm) if per_track_output_norm else 0.0,
+                "track_output_delta": max(per_track_output_norm.values()) if per_track_output_norm else 0.0,
                 "track_entropy": float(entropy.item()),
                 "route_formula": self.route_formula,
                 "uses_global_bank": True,
                 "layer_idx": self.layer_idx,
                 "step": step,
+                "schedule_mode": schedule_mode,
                 "position_routing_enabled": self.position_routing_enabled,
-                "eval_freeze_mode": self.eval_freeze_mode and not self.training,
+                "eval_freeze_mode": self.eval_freeze_mode and schedule_mode in {"eval", "generate"},
                 "attention_entropy_mean": float(attention_entropy.mean().item()),
                 "attention_entropy_std": float(attention_entropy.std(unbiased=False).item()),
             }
@@ -212,8 +225,8 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             **self.last_diagnostics,
             "step": self.last_diagnostics.get("step", step),
             "layer": layer,
-            "per_track_gradient_norm": self.qkv_bank.qkv_gradient_norms(),
-            "per_track_qkv_weight_norm": self.qkv_bank.qkv_weight_norms(),
+            "per_track_gradient_norm": self.qkv_bank.qkv_gradient_norm_dict(),
+            "per_track_qkv_weight_norm": self.qkv_bank.qkv_weight_norm_dict(),
         }
 
     def forward(
@@ -222,6 +235,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        schedule_mode: str | None = None,
         layer_idx: int | None = None,
     ) -> torch.Tensor:
         del layer_idx
@@ -230,8 +244,14 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             positions = torch.arange(seq_len, dtype=torch.long, device=x.device)
         else:
             positions = positions.to(device=x.device, dtype=torch.long)
+        if schedule_mode is None:
+            schedule_mode = "train" if self.training else "eval"
+        if schedule_mode not in {"train", "eval", "generate"}:
+            raise ValueError("schedule_mode must be one of: train, eval, generate")
 
-        active_tracks = self.active_track_indices(step=step, positions=positions).to(device=x.device, dtype=torch.long)
+        active_tracks = self.active_track_indices(step=step, positions=positions, schedule_mode=schedule_mode).to(
+            device=x.device, dtype=torch.long
+        )
         q_raw, k_raw, v_raw = self._project(x, active_tracks)
         q = self._split_heads(q_raw)
         k = self._split_heads(k_raw)
@@ -244,6 +264,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         attention = F.softmax(scores, dim=-1)
         self._record_diagnostics(
             step=step,
+            schedule_mode=schedule_mode,
             active_tracks=active_tracks,
             seq_len=seq_len,
             selected_q=q_raw,

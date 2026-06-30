@@ -30,7 +30,7 @@ def _loss_and_logits(
     dtype: torch.dtype,
 ) -> tuple[float, torch.Tensor]:
     with autocast_context(device_type, dtype):
-        logits, loss = model(x, y)
+        logits, loss = model(x, y, schedule_mode="eval")
     assert loss is not None
     return float(loss.item()), logits.detach().float()
 

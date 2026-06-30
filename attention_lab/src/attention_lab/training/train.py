@@ -89,7 +89,7 @@ def evaluate_loss(
         x, y = loader.next_batch()
         x, y = x.to(device), y.to(device)
         with autocast_context(device_type, dtype):
-            _, loss = model(x, y)
+            _, loss = model(x, y, schedule_mode="eval")
         val_loss_accum += loss.detach() / val_steps
     if ddp:
         dist.all_reduce(val_loss_accum, op=dist.ReduceOp.AVG)
@@ -285,7 +285,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
                 if ddp:
                     model.require_backward_grad_sync = micro_step == grad_accum_steps - 1
                 with autocast_context(device_type, dtype):
-                    _, loss = model(x, y, step=step)
+                    _, loss = model(x, y, step=step, schedule_mode="train")
                 loss = loss / grad_accum_steps
                 loss_accum += loss.detach()
                 loss.backward()

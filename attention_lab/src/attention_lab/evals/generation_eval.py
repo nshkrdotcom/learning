@@ -39,7 +39,7 @@ def generate_text(
     for _ in range(max_new_tokens):
         idx_cond = x[:, -model.config.block_size :]
         with autocast_context(device_type, dtype):
-            logits, _ = model(idx_cond)
+            logits, _ = model(idx_cond, schedule_mode="generate")
         logits = logits[:, -1, :] / max(temperature, 1e-8)
         if top_k > 0:
             values, _ = torch.topk(logits, min(top_k, logits.size(-1)))

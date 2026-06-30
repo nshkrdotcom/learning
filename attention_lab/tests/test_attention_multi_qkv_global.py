@@ -17,8 +17,9 @@ def multi_config(attention_type: str = "multi_qkv_static_3track_global", track_c
     return config_from_dict(
         {
             "attention_type": attention_type,
-            "multi_qkv_track_count": track_count,
-            "multi_qkv_global": True,
+            "qkv_track_count": track_count,
+            "qkv_global_bank": True,
+            "qkv_route_formula": None,
             "block_size": 8,
             "n_layer": 3,
             "n_head": 2,
@@ -85,8 +86,16 @@ def test_static_route_formula_layer_idx_mod_three():
     config = multi_config()
     bank = MultiQKVSharedBank(config)
     positions = torch.arange(8)
-    assert int(MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank).active_track_indices(step=None, positions=positions)) == 0
-    assert int(MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=4, shared_qkv_bank=bank).active_track_indices(step=None, positions=positions)) == 1
+    assert int(
+        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank).active_track_indices(
+            step=None, positions=positions, schedule_mode="train"
+        )
+    ) == 0
+    assert int(
+        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=4, shared_qkv_bank=bank).active_track_indices(
+            step=None, positions=positions, schedule_mode="eval"
+        )
+    ) == 1
 
 
 def test_train_rotation_formula_and_eval_freeze():
@@ -95,11 +104,11 @@ def test_train_rotation_formula_and_eval_freeze():
     attention = MultiQKVTrainRotationGlobalCausalSelfAttention(config, layer_idx=2, shared_qkv_bank=bank)
     positions = torch.arange(8)
     attention.train()
-    assert int(attention.active_track_indices(step=5, positions=positions)) == (2 + 5) % 3
+    assert int(attention.active_track_indices(step=5, positions=positions, schedule_mode="train")) == (2 + 5) % 3
     with pytest.raises(ValueError, match="requires step"):
         attention(torch.randn(1, 8, 16))
     attention.eval()
-    assert int(attention.active_track_indices(step=None, positions=positions)) == 2
+    assert int(attention.active_track_indices(step=None, positions=positions, schedule_mode="eval")) == 2
 
 
 def test_position_rotation_formula_per_position():
@@ -107,7 +116,10 @@ def test_position_rotation_formula_per_position():
     bank = MultiQKVSharedBank(config)
     attention = MultiQKVPositionRotationGlobalCausalSelfAttention(config, layer_idx=1, shared_qkv_bank=bank)
     positions = torch.arange(6)
-    assert torch.equal(attention.active_track_indices(step=None, positions=positions), torch.tensor([1, 2, 0, 1, 2, 0]))
+    assert torch.equal(
+        attention.active_track_indices(step=None, positions=positions, schedule_mode="generate"),
+        torch.tensor([1, 2, 0, 1, 2, 0]),
+    )
 
 
 def test_inactive_hard_switch_tracks_receive_no_gradient_for_static_route():

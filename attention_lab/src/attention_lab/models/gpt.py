@@ -23,12 +23,23 @@ class GPTConfig:
     cp_lambda_init: float = 0.0
     cp_lambda_trainable: bool = True
     cp_lambda_fixed: bool = False
+    qkv_track_count: int = 1
+    qkv_global_bank: bool = False
+    qkv_route_formula: str | None = None
     multi_qkv_track_count: int = 3
     multi_qkv_global: bool = True
 
 
 def config_from_dict(model_config: dict[str, Any], data_config: dict[str, Any] | None = None) -> GPTConfig:
     merged = dict(model_config)
+    if "qkv_track_count" not in merged and "multi_qkv_track_count" in merged:
+        merged["qkv_track_count"] = merged["multi_qkv_track_count"]
+    if "qkv_global_bank" not in merged and "multi_qkv_global" in merged:
+        merged["qkv_global_bank"] = merged["multi_qkv_global"]
+    if "multi_qkv_track_count" not in merged and "qkv_track_count" in merged:
+        merged["multi_qkv_track_count"] = merged["qkv_track_count"]
+    if "multi_qkv_global" not in merged and "qkv_global_bank" in merged:
+        merged["multi_qkv_global"] = merged["qkv_global_bank"]
     if data_config is not None and "vocab_size" not in merged:
         merged["vocab_size"] = data_config.get("vocab_size", GPTConfig.vocab_size)
     valid_keys = set(GPTConfig.__dataclass_fields__)
@@ -79,8 +90,15 @@ class Block(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        schedule_mode: str | None = None,
     ) -> torch.Tensor:
-        x = x + self.attn(self.ln_1(x), step=step, positions=positions, layer_idx=self.layer_idx)
+        x = x + self.attn(
+            self.ln_1(x),
+            step=step,
+            positions=positions,
+            schedule_mode=schedule_mode,
+            layer_idx=self.layer_idx,
+        )
         x = x + self.mlp(self.ln_2(x))
         return x
 
@@ -124,6 +142,7 @@ class GPT(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        schedule_mode: str | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         _, seq_len = idx.size()
         if seq_len > self.config.block_size:
@@ -136,12 +155,14 @@ class GPT(nn.Module):
             pos = torch.arange(0, seq_len, dtype=torch.long, device=idx.device)
         else:
             pos = positions.to(device=idx.device, dtype=torch.long)
+        if schedule_mode is None:
+            schedule_mode = "train" if self.training else "eval"
         pos_emb = self.transformer.wpe(pos)
         tok_emb = self.transformer.wte(idx)
         x = tok_emb + pos_emb
 
         for block in self.transformer.h:
-            x = block(x, step=step, positions=pos)
+            x = block(x, step=step, positions=pos, schedule_mode=schedule_mode)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
 

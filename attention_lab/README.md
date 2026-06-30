@@ -157,22 +157,25 @@ hard-switched bundled Q/K/V banks:
 ```yaml
 model:
   attention_type: multi_qkv_static_3track_global
-  multi_qkv_track_count: 3
-  multi_qkv_global: true
+  qkv_track_count: 3
+  qkv_global_bank: true
+  qkv_route_formula: layer_mod
 ```
 
 ```yaml
 model:
   attention_type: multi_qkv_train_rotation_3track_global
-  multi_qkv_track_count: 3
-  multi_qkv_global: true
+  qkv_track_count: 3
+  qkv_global_bank: true
+  qkv_route_formula: layer_plus_step_train_layer_eval
 ```
 
 ```yaml
 model:
   attention_type: multi_qkv_position_rotation_3track_global
-  multi_qkv_track_count: 3
-  multi_qkv_global: true
+  qkv_track_count: 3
+  qkv_global_bank: true
+  qkv_route_formula: layer_plus_position
 ```
 
 The 0901 implementation contract is documented in:

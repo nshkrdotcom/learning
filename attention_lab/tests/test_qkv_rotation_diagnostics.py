@@ -12,8 +12,9 @@ def multi_config(attention_type: str):
     return config_from_dict(
         {
             "attention_type": attention_type,
-            "multi_qkv_track_count": 3,
-            "multi_qkv_global": True,
+            "qkv_track_count": 3,
+            "qkv_global_bank": True,
+            "qkv_route_formula": None,
             "block_size": 8,
             "n_layer": 3,
             "n_head": 2,
@@ -46,12 +47,15 @@ def test_multi_qkv_diagnostics_include_required_fields_after_backward():
         "uses_global_bank",
         "layer_idx",
         "step",
+        "schedule_mode",
+        "track_count",
         "position_routing_enabled",
         "eval_freeze_mode",
     ):
         assert key in row
     assert row["uses_global_bank"] is True
-    assert max(value or 0.0 for value in row["per_track_gradient_norm"]) > 0.0
+    assert row["schedule_mode"] == "train"
+    assert max(value or 0.0 for value in row["per_track_gradient_norm"].values()) > 0.0
 
 
 def test_position_rotation_diagnostics_count_all_tracks():
@@ -64,8 +68,8 @@ def test_position_rotation_diagnostics_count_all_tracks():
     rows = collect_attention_diagnostics(model, step=2)
     first = rows[0]
     assert first["active_track_index"] is None
-    assert sum(first["active_track_counts"]) == 8
-    assert all(count > 0 for count in first["active_track_counts"])
+    assert sum(first["active_track_counts"].values()) == 8
+    assert all(count > 0 for count in first["active_track_counts"].values())
 
 
 def test_diagnostics_rows_are_json_serializable():

@@ -42,13 +42,13 @@ These names are canonical. Old skeleton names remain experimental/unimplemented 
 `GPT.forward` accepts optional schedule context:
 
 ```python
-def forward(self, idx, targets=None, *, step=None, positions=None):
+def forward(self, idx, targets=None, *, step=None, positions=None, schedule_mode=None):
     ...
 ```
 
-`Block.forward` passes `step`, `positions`, and `layer_idx` to attention. Standard and CP modules accept these optional keywords and ignore them.
+`Block.forward` passes `step`, `positions`, `schedule_mode`, and `layer_idx` to attention. Standard and CP modules accept these optional keywords and ignore them.
 
-Training passes the current global optimizer step. Eval/generation leave `step=None` and run under `model.eval()`, causing B to freeze to static depth routing.
+Training passes the current global optimizer step with `schedule_mode="train"`. Eval loss and HellaSwag pass `schedule_mode="eval"`. Generation passes `schedule_mode="generate"`. B freezes to static depth routing in eval/generation and must not use the training step clock there.
 
 ## Registry
 
@@ -60,8 +60,9 @@ Training passes the current global optimizer step. Eval/generation leave `step=N
 
 ```yaml
 model:
-  multi_qkv_track_count: 3
-  multi_qkv_global: true
+  qkv_track_count: 3
+  qkv_global_bank: true
+  qkv_route_formula: layer_mod
 ```
 
-The three canonical Multi-QKV attention types require `multi_qkv_track_count: 3` and `multi_qkv_global: true`.
+The three canonical Multi-QKV attention types require `qkv_track_count: 3`, `qkv_global_bank: true`, and the matching `qkv_route_formula`. Legacy `multi_qkv_track_count`/`multi_qkv_global` aliases may be accepted for compatibility, but canonical E002 configs use `qkv_*`.

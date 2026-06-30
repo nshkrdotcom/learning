@@ -12,8 +12,9 @@ data:
 
 model:
   attention_type: multi_qkv_train_rotation_3track_global
-  multi_qkv_track_count: 3
-  multi_qkv_global: true
+  qkv_track_count: 3
+  qkv_global_bank: true
+  qkv_route_formula: layer_plus_step_train_layer_eval
   block_size: 1024
   n_layer: 6
   n_head: 6

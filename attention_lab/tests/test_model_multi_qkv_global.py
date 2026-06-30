@@ -10,8 +10,9 @@ def tiny_model_config(attention_type: str = "multi_qkv_static_3track_global"):
     return config_from_dict(
         {
             "attention_type": attention_type,
-            "multi_qkv_track_count": 3,
-            "multi_qkv_global": True,
+            "qkv_track_count": 3,
+            "qkv_global_bank": True,
+            "qkv_route_formula": None,
             "block_size": 8,
             "n_layer": 3,
             "n_head": 2,
@@ -72,7 +73,8 @@ def test_e002_candidate_parameter_deltas_are_reported(repo_root):
     )
 
     assert static["attention_type"] == "multi_qkv_static_3track_global"
-    assert static["multi_qkv_track_count"] == 3
+    assert static["qkv_track_count"] == 3
+    assert static["qkv_global_bank"] is True
     assert static["parameter_delta_vs_baseline"] != 0
     assert train_rotation["parameter_delta_vs_baseline"] == static["parameter_delta_vs_baseline"]
     assert position["parameter_delta_vs_baseline"] == static["parameter_delta_vs_baseline"]

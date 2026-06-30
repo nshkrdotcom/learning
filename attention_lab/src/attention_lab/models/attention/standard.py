@@ -25,9 +25,10 @@ class StandardCausalSelfAttention(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        schedule_mode: str | None = None,
         layer_idx: int | None = None,
     ) -> torch.Tensor:
-        del step, positions, layer_idx
+        del step, positions, schedule_mode, layer_idx
         batch_size, seq_len, channels = x.size()
         head_size = channels // self.n_head
 

@@ -13,6 +13,11 @@ MULTI_QKV_ATTENTION_TYPES = {
     "multi_qkv_train_rotation_3track_global",
     "multi_qkv_position_rotation_3track_global",
 }
+MULTI_QKV_ROUTE_FORMULAS = {
+    "multi_qkv_static_3track_global": "layer_mod",
+    "multi_qkv_train_rotation_3track_global": "layer_plus_step_train_layer_eval",
+    "multi_qkv_position_rotation_3track_global": "layer_plus_position",
+}
 IMPLEMENTED_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear"} | MULTI_QKV_ATTENTION_TYPES
 KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear", "trilinear_cp"} | MULTI_QKV_ATTENTION_TYPES
 DTYPES = {"bfloat16", "float16", "float32"}
@@ -162,13 +167,21 @@ def validate_config(
         if bool(model.get("cp_lambda_trainable", True)) and bool(model.get("cp_lambda_fixed", False)):
             raise ValueError("model.cp_lambda_trainable and model.cp_lambda_fixed cannot both be true")
     if attention_type in MULTI_QKV_ATTENTION_TYPES:
-        track_count = _require_positive_int(model, "multi_qkv_track_count", "model.multi_qkv_track_count")
+        track_count_key = "qkv_track_count" if "qkv_track_count" in model else "multi_qkv_track_count"
+        track_count = _require_positive_int(model, track_count_key, f"model.{track_count_key}")
         if track_count != 3:
-            raise ValueError("canonical multi_qkv_*_3track_global configs require model.multi_qkv_track_count: 3")
-        if not isinstance(model.get("multi_qkv_global", True), bool):
-            raise ValueError("model.multi_qkv_global must be a boolean")
-        if not bool(model.get("multi_qkv_global", True)):
-            raise ValueError("canonical multi_qkv_*_3track_global configs require model.multi_qkv_global: true")
+            raise ValueError("canonical multi_qkv_*_3track_global configs require model.qkv_track_count: 3")
+        global_key = "qkv_global_bank" if "qkv_global_bank" in model else "multi_qkv_global"
+        if not isinstance(model.get(global_key, True), bool):
+            raise ValueError(f"model.{global_key} must be a boolean")
+        if not bool(model.get(global_key, True)):
+            raise ValueError("canonical multi_qkv_*_3track_global configs require model.qkv_global_bank: true")
+        route_formula = model.get("qkv_route_formula")
+        if not isinstance(route_formula, str) or not route_formula.strip():
+            raise ValueError("model.qkv_route_formula must be a nonempty string")
+        expected_route = MULTI_QKV_ROUTE_FORMULAS[attention_type]
+        if route_formula != expected_route:
+            raise ValueError(f"model.qkv_route_formula must be {expected_route!r} for {attention_type}")
 
     block_size = _require_positive_int(model, "block_size", "model.block_size")
     n_layer = _require_positive_int(model, "n_layer", "model.n_layer")

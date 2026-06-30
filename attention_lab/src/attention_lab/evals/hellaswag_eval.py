@@ -59,7 +59,7 @@ def run_hellaswag(args: argparse.Namespace) -> dict:
         tokens = tokens.to(device)
         mask = mask.to(device)
         with autocast_context(device_type, dtype):
-            logits, _ = model(tokens)
+            logits, _ = model(tokens, schedule_mode="eval")
         pred_norm = get_most_likely_row(tokens, mask, logits)
         num_total += 1
         num_correct_norm += int(pred_norm == label)

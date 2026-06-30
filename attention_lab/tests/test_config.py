@@ -216,14 +216,20 @@ def test_multi_qkv_config_validation_requires_global_three_track(tiny_config, tm
     config["model"].update(
         {
             "attention_type": "multi_qkv_static_3track_global",
-            "multi_qkv_track_count": 2,
-            "multi_qkv_global": True,
+            "qkv_track_count": 2,
+            "qkv_global_bank": True,
+            "qkv_route_formula": "layer_mod",
         }
     )
     with pytest.raises(ValueError, match="3track_global"):
         validate_config(config)
 
-    config["model"]["multi_qkv_track_count"] = 3
-    config["model"]["multi_qkv_global"] = False
-    with pytest.raises(ValueError, match="multi_qkv_global"):
+    config["model"]["qkv_track_count"] = 3
+    config["model"]["qkv_global_bank"] = False
+    with pytest.raises(ValueError, match="qkv_global_bank"):
+        validate_config(config)
+
+    config["model"]["qkv_global_bank"] = True
+    config["model"]["qkv_route_formula"] = "wrong"
+    with pytest.raises(ValueError, match="qkv_route_formula"):
         validate_config(config)

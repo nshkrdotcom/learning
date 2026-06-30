@@ -551,10 +551,10 @@ multi_qkv_position_rotation_3track_global_30m_seed1
 Parameter counts from `inspect_model_config.py`:
 
 ```text
-standard_refactor_control_30m_seed1:              29938560 excluding positional, 30331776 including positional
-multi_qkv_static_3track_global_30m_seed1:         28611456 excluding positional, delta -1327104 (-4.4328%)
-multi_qkv_train_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%)
-multi_qkv_position_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%)
+standard_refactor_control_30m_seed1:              29938560 excluding positional, 30331776 including positional, 3538944 attention projection
+multi_qkv_static_3track_global_30m_seed1:         28611456 excluding positional, delta -1327104 (-4.4328%), 2211840 attention projection
+multi_qkv_train_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%), 2211840 attention projection
+multi_qkv_position_rotation_3track_global_30m_seed1: 28611456 excluding positional, delta -1327104 (-4.4328%), 2211840 attention projection
 ```
 
 The negative parameter delta is expected because Q/K/V banks are globally shared

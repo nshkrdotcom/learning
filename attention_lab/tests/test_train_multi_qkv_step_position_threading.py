@@ -21,8 +21,9 @@ def test_tiny_train_passes_step_to_multi_qkv_attention(tmp_path, write_tiny_shar
     config["model"].update(
         {
             "attention_type": "multi_qkv_train_rotation_3track_global",
-            "multi_qkv_track_count": 3,
-            "multi_qkv_global": True,
+            "qkv_track_count": 3,
+            "qkv_global_bank": True,
+            "qkv_route_formula": "layer_plus_step_train_layer_eval",
             "n_layer": 3,
             "n_head": 2,
         }
@@ -73,8 +74,9 @@ def test_generation_path_uses_eval_freeze_for_train_rotation():
     model_config = config_from_dict(
         {
             "attention_type": "multi_qkv_train_rotation_3track_global",
-            "multi_qkv_track_count": 3,
-            "multi_qkv_global": True,
+            "qkv_track_count": 3,
+            "qkv_global_bank": True,
+            "qkv_route_formula": "layer_plus_step_train_layer_eval",
             "block_size": 8,
             "n_layer": 3,
             "n_head": 2,
@@ -102,3 +104,4 @@ def test_generation_path_uses_eval_freeze_for_train_rotation():
     assert rows
     assert all(row["eval_freeze_mode"] is True for row in rows)
     assert [row["active_track_index"] for row in rows] == [0, 1, 2]
+    assert all(row["schedule_mode"] == "generate" for row in rows)
