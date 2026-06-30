@@ -20,6 +20,8 @@ class GPTConfig:
     attention_type: str = "standard"
     cp_rank: int | None = None
     cp_lambda_init: float = 0.0
+    cp_lambda_trainable: bool = True
+    cp_lambda_fixed: bool = False
 
 
 def config_from_dict(model_config: dict[str, Any], data_config: dict[str, Any] | None = None) -> GPTConfig:

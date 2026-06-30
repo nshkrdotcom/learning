@@ -1,7 +1,8 @@
 # E001 CP Trilinear Attention Plan
 
-Status: planned. CP-bilinear and CP-trilinear attention are intentionally not
-implemented yet.
+Status: implementation prepared. CP-bilinear and CP-trilinear attention modules are
+implemented behind the registry, but the 3000-step E001 comparison runs are intentionally
+manual and are not claimed until their run scripts complete and verify.
 
 ## Hypothesis
 
@@ -21,9 +22,11 @@ configs.
 - `standard_30m_seed1`: runnable standard-attention comparison run.
 - `standard_refactor_control_30m_seed1`: runnable standard-attention control for any
   future standard-path refactor.
-- `cp_bilinear_r8_30m_seed1`: planned CP-bilinear candidate.
-- `cp_trilinear_r8_30m_seed1`: planned CP-trilinear candidate.
-- `cp_trilinear_r8_lambda0_30m_seed1`: planned wiring/identity-style control.
+- `cp_bilinear_r8_30m_seed1`: low-rank bilinear additive score-branch control.
+- `cp_trilinear_r8_30m_seed1`: value-conditioned low-rank trilinear additive
+  score-branch candidate.
+- `cp_trilinear_r8_lambda0_30m_seed1`: wiring/identity-style control with fixed
+  zero branch contribution.
 
 ## Controls
 
@@ -52,9 +55,9 @@ All direct comparisons must hold fixed:
 | --- | --- | --- |
 | `standard_30m_seed1.yaml` | runnable | `runs/experiments/E001_cp_trilinear_attention/standard_30m_seed1` |
 | `standard_refactor_control_30m_seed1.yaml` | runnable | `runs/experiments/E001_cp_trilinear_attention/standard_refactor_control_30m_seed1` |
-| `cp_bilinear_r8_30m_seed1.yaml` | planned/unimplemented | `runs/experiments/E001_cp_trilinear_attention/cp_bilinear_r8_30m_seed1` |
-| `cp_trilinear_r8_30m_seed1.yaml` | planned/unimplemented | `runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1` |
-| `cp_trilinear_r8_lambda0_30m_seed1.yaml` | planned/unimplemented | `runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_lambda0_30m_seed1` |
+| `cp_bilinear_r8_30m_seed1.yaml` | runnable/manual full run prepared | `runs/experiments/E001_cp_trilinear_attention/cp_bilinear_r8_30m_seed1` |
+| `cp_trilinear_r8_30m_seed1.yaml` | runnable/manual full run prepared | `runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1` |
+| `cp_trilinear_r8_lambda0_30m_seed1.yaml` | runnable/manual full run prepared | `runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_lambda0_30m_seed1` |
 
 ## Success Criteria
 
@@ -99,14 +102,13 @@ reports/schema/attention_diagnostics.schema.json
 - `reports/experiments/E001_cp_trilinear_attention/comparison.json`
 - Completed experiment result report.
 
-## Commands After Implementation
+## Manual Full-Run Commands
 
 ```bash
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
-uv run scripts/train.py --config configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml --overwrite
-uv run scripts/train.py --config configs/experiments/E001_cp_trilinear_attention/standard_refactor_control_30m_seed1.yaml --overwrite
-uv run scripts/train.py --config configs/experiments/E001_cp_trilinear_attention/cp_bilinear_r8_30m_seed1.yaml --overwrite
-uv run scripts/train.py --config configs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1.yaml --overwrite
-uv run scripts/train.py --config configs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_lambda0_30m_seed1.yaml --overwrite
-uv run scripts/compare_runs.py --experiment E001_cp_trilinear_attention --baseline runs/baseline_15m_fineweb100m_seed1 --candidate runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1 --json-out reports/experiments/E001_cp_trilinear_attention/comparison.json
+scripts/experiments/E001_cp_trilinear_attention/run_all_full.sh
+scripts/experiments/E001_cp_trilinear_attention/compare_full_runs.sh
 ```
+
+The full-run scripts verify data manifests, train, verify, run evals, summarize, and
+verify again. They are intentionally not executed by the implementation agent pass.

@@ -1,8 +1,8 @@
 # Attention Lab
 
 Attention Lab is a small GPT pretraining harness for local attention architecture
-experiments. The standard-attention baseline is the control path; new mechanisms must
-live behind the attention registry and prove themselves through manifest-checked,
+experiments. The standard-attention baseline is the control path; new mechanisms live
+behind the attention registry and must be evaluated through manifest-checked,
 verifier-checked runs.
 
 ## 1. Baseline Setup
@@ -47,7 +47,7 @@ parameters_excluding_positional: 29938560
 parameters_including_positional: 30331776
 ```
 
-Use the accurate-size config for new runs:
+Use the accurate-size config for new baseline runs:
 
 ```text
 configs/baseline_30m_fineweb100m.yaml
@@ -75,7 +75,7 @@ Experiments are registered in:
 docs/experiments/experiments.yaml
 ```
 
-The first planned experiment is:
+The first architecture experiment is:
 
 ```text
 E001_cp_trilinear_attention
@@ -98,13 +98,15 @@ uv run scripts/list_experiments.py --id E001_cp_trilinear_attention
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
 ```
 
-## 4. Architecture Module Organization
+## 4. Architecture Modules
 
 Attention implementations live under:
 
 ```text
 src/attention_lab/models/attention/
   standard.py
+  cp_bilinear.py
+  cp_trilinear.py
   trilinear_cp.py
   registry.py
 ```
@@ -117,21 +119,33 @@ src/attention_lab/models/attention_trilinear_cp.py
 src/attention_lab/models/attention_registry.py
 ```
 
-The GPT block still calls:
-
-```python
-self.attn = build_attention(config)
-```
-
-The only implemented baseline attention type is:
+Implemented canonical attention types:
 
 ```yaml
 model:
   attention_type: standard
 ```
 
-`trilinear_cp` and `cp_bilinear` experiment configs are planned skeletons and
-intentionally fail as `experimental_unimplemented` until their modules are implemented.
+```yaml
+model:
+  attention_type: cp_bilinear
+  cp_rank: 8
+  cp_lambda_init: 0.0
+  cp_lambda_trainable: true
+  cp_lambda_fixed: false
+```
+
+```yaml
+model:
+  attention_type: cp_trilinear
+  cp_rank: 8
+  cp_lambda_init: 0.0
+  cp_lambda_trainable: true
+  cp_lambda_fixed: false
+```
+
+The historical `trilinear_cp` placeholder remains intentionally unimplemented. Use
+`cp_trilinear` for E001.
 
 ## 5. Add A New Attention Variant
 
@@ -153,59 +167,81 @@ Rules:
 - Keep dataset manifest, token budget, optimizer, LR schedule, seed, and eval cadence
   fixed for direct comparisons.
 
-## 6. Validate An Experiment
+## 6. Validate E001
 
 ```bash
 uv run scripts/validate_experiment.py --id E001_cp_trilinear_attention
 uv run scripts/inspect_model_config.py \
   --config configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml
+uv run scripts/inspect_model_config.py \
+  --config configs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1.yaml \
+  --baseline-config configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml
 ```
 
-The validator checks config parseability, runnable-vs-unimplemented status, unique run
-directories, experiment run-dir containment, fixed baseline fields, dataset manifest,
-and local historical baseline summary when present.
+The validator checks config parseability, unique run directories, experiment run-dir
+containment, fixed baseline fields, dataset manifest, and local historical baseline
+summary when present.
 
-## 7. Run An Experiment
+## 7. Manual Full-Run Execution
 
-Runnable standard-control config:
+The E001 3000-step full runs are intentionally prepared but not executed by the
+implementation pass. Run them manually when ready:
 
 ```bash
-uv run scripts/train.py \
-  --config configs/experiments/E001_cp_trilinear_attention/standard_30m_seed1.yaml \
-  --overwrite
-
-uv run scripts/verify_run.py \
-  --run_dir runs/experiments/E001_cp_trilinear_attention/standard_30m_seed1 \
-  --expect-complete-training \
-  --expect-sample \
-  --expect-data-manifest
+scripts/experiments/E001_cp_trilinear_attention/run_full_standard_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_bilinear_r8_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_trilinear_r8_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_trilinear_r8_lambda0_30m.sh
 ```
 
-CP configs are present as planned skeletons:
+Or run the full ordered set, stopping on first failure:
+
+```bash
+scripts/experiments/E001_cp_trilinear_attention/run_all_full.sh
+```
+
+Each full-run script performs:
 
 ```text
-configs/experiments/E001_cp_trilinear_attention/cp_bilinear_r8_30m_seed1.yaml
-configs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1.yaml
-configs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_lambda0_30m_seed1.yaml
+verify_data with manifest hashes
+train.py --overwrite
+verify_run with complete-training/sample/data-manifest checks
+eval_loss.py
+eval_generate.py
+eval_hellaswag.py --max_examples 100
+summarize_run.py
+final verify_run with eval-loss/HellaSwag/data-manifest checks
 ```
 
-They are not runnable until the architecture implementation pass.
+After all required summaries exist, compare the completed full runs:
 
-## 8. Compare To Baseline
+```bash
+scripts/experiments/E001_cp_trilinear_attention/compare_full_runs.sh
+```
+
+That script writes comparison JSON files under:
+
+```text
+reports/experiments/E001_cp_trilinear_attention/
+```
+
+## 8. Compare Runs Manually
+
+For individual comparisons:
 
 ```bash
 uv run scripts/compare_runs.py \
   --experiment E001_cp_trilinear_attention \
-  --baseline runs/baseline_15m_fineweb100m_seed1 \
+  --baseline runs/experiments/E001_cp_trilinear_attention/standard_30m_seed1 \
   --candidate runs/experiments/E001_cp_trilinear_attention/cp_trilinear_r8_30m_seed1 \
-  --json-out reports/experiments/E001_cp_trilinear_attention/comparison.json
+  --json-out reports/experiments/E001_cp_trilinear_attention/comparison_cp_trilinear_r8_vs_standard.json
 ```
 
 Comparisons read `evals/run_summary.json`, add experiment metadata, require candidate
 runs to live under the experiment run directory, and report deltas/ratios for loss,
 perplexity, throughput, and VRAM when numeric values are available.
 
-Future CP runs must emit diagnostics to:
+CP runs emit diagnostics to:
 
 ```text
 runs/experiments/E001_cp_trilinear_attention/<run_name>/evals/attention_diagnostics.jsonl
@@ -219,8 +255,9 @@ reports/schema/attention_diagnostics.schema.json
 
 ## 9. Known Limitations
 
-- CP-bilinear attention is not implemented.
-- CP-trilinear attention is not implemented.
+- Full 3000-step E001 runs are prepared but not executed in the implementation pass.
+- The historical `trilinear_cp` attention type remains unimplemented; use canonical
+  `cp_trilinear`.
 - `torch.compile` is intentionally unsupported for baseline QC.
 - DDP exists but is not the tested path.
 - OpenAI Evals is not used for this training baseline.

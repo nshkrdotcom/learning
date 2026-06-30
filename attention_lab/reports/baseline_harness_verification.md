@@ -426,12 +426,72 @@ verify_run historical baseline: ok=True, data_manifest=True
 summarize_run historical baseline: final_val_loss=4.081209182739258
 ```
 
-CP attention remains unimplemented; the E001 CP configs are planned skeletons marked
-`experimental_unimplemented`.
+This section records the preparation state before CP implementation. The later E001
+implementation pass below supersedes the statement that CP configs were skeletons.
+
+## E001 CP Attention Implementation Pass
+
+Implemented after the architecture-experiment preparation pass:
+
+```text
+src/attention_lab/models/attention/cp_bilinear.py
+src/attention_lab/models/attention/cp_trilinear.py
+src/attention_lab/models/attention/cp_common.py
+```
+
+Canonical runnable E001 attention types:
+
+```text
+cp_bilinear
+cp_trilinear
+```
+
+The historical `trilinear_cp` placeholder remains intentionally unimplemented and is
+not used by E001 configs.
+
+E001 parameter counts:
+
+```text
+standard_30m_seed1:                 29938560 excluding positional, 30331776 including positional
+cp_bilinear_r8_30m_seed1:           30159750 excluding positional, delta +221190 (+0.7388%)
+cp_trilinear_r8_30m_seed1:          30270342 excluding positional, delta +331782 (+1.1082%)
+cp_trilinear_r8_lambda0_30m_seed1:  30270336 excluding positional, delta +331776 (+1.1082%)
+```
+
+Added implementation and manual execution artifacts:
+
+```text
+reports/experiments/E001_cp_trilinear_attention/implementation_notes.md
+reports/experiments/E001_cp_trilinear_attention/results.md
+reports/experiments/E001_cp_trilinear_attention/run_index.md
+reports/experiments/E001_cp_trilinear_attention/run_index.json
+scripts/experiments/E001_cp_trilinear_attention/run_full_standard_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_bilinear_r8_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_trilinear_r8_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_full_cp_trilinear_r8_lambda0_30m.sh
+scripts/experiments/E001_cp_trilinear_attention/run_all_full.sh
+scripts/experiments/E001_cp_trilinear_attention/compare_full_runs.sh
+```
+
+The full 3000-step E001 runs were intentionally not executed in this pass. Manual
+execution is required before any scientific comparison claim.
+
+E001 implementation QC results:
+
+```text
+pytest: 92 passed in 7.92s
+ruff: All checks passed!
+validate_experiment: ok=True, config_count=5, runnable_config_count=5, unimplemented_config_count=0
+verify_data: manifest verified for data/fineweb_edu_100m/manifest.json
+historical baseline verify_run: ok=True, data_manifest=True
+script syntax checks: passed
+```
 
 ## Known Limitations
 
-- `trilinear_cp` remains unimplemented and is excluded from baseline QC.
+- Full 3000-step E001 CP comparison runs are prepared but not executed in this pass.
+- The historical `trilinear_cp` attention type remains unimplemented; E001 uses
+  canonical `cp_trilinear`.
 - `torch.compile` is rejected by config validation for baseline QC.
 - DDP is present but not part of the tested baseline completion path.
 - OpenAI Evals is not used for this stage.

@@ -6,6 +6,8 @@ import pytest
 import torch
 
 from attention_lab.models.attention_registry import build_attention
+from attention_lab.models.attention.cp_bilinear import CPBilinearCausalSelfAttention
+from attention_lab.models.attention.cp_trilinear import CPTrilinearCausalSelfAttention
 from attention_lab.models.attention_standard import StandardCausalSelfAttention
 from attention_lab.models.attention.registry import build_attention as build_attention_new
 from attention_lab.models.attention.standard import StandardCausalSelfAttention as NewStandardCausalSelfAttention
@@ -69,6 +71,21 @@ def test_trilinear_attention_is_not_runnable_baseline():
         TrilinearCPCausalSelfAttention(config)
 
 
+def test_cp_attention_registry_paths_are_canonical():
+    base = {
+        "n_embd": 16,
+        "n_head": 2,
+        "bias": False,
+        "dropout": 0.0,
+        "cp_rank": 4,
+        "cp_lambda_init": 0.0,
+        "cp_lambda_trainable": True,
+        "cp_lambda_fixed": False,
+    }
+    assert isinstance(build_attention(SimpleNamespace(attention_type="cp_bilinear", **base)), CPBilinearCausalSelfAttention)
+    assert isinstance(build_attention(SimpleNamespace(attention_type="cp_trilinear", **base)), CPTrilinearCausalSelfAttention)
+
+
 def test_tiny_forward_is_deterministic_in_eval_mode():
     torch.manual_seed(123)
     model = GPT(tiny_gpt_config())
@@ -104,3 +121,17 @@ def test_standard_30m_parameter_count_is_stable(repo_root):
     result = inspect_model_config(repo_root / "configs" / "baseline_30m_fineweb100m.yaml")
     assert result["parameters_excluding_positional"] == 29_938_560
     assert result["parameters_including_positional"] == 30_331_776
+
+
+def test_e001_candidate_parameter_deltas_are_reported(repo_root):
+    config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
+    baseline = config_dir / "standard_30m_seed1.yaml"
+    bilinear = inspect_model_config(config_dir / "cp_bilinear_r8_30m_seed1.yaml", baseline_config_path=baseline)
+    trilinear = inspect_model_config(config_dir / "cp_trilinear_r8_30m_seed1.yaml", baseline_config_path=baseline)
+
+    assert bilinear["attention_type"] == "cp_bilinear"
+    assert bilinear["cp_rank"] == 8
+    assert bilinear["parameter_delta_vs_baseline"] > 0
+    assert trilinear["attention_type"] == "cp_trilinear"
+    assert trilinear["cp_rank"] == 8
+    assert trilinear["parameter_delta_vs_baseline"] > bilinear["parameter_delta_vs_baseline"]

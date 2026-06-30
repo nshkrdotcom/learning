@@ -105,24 +105,36 @@ def test_compile_requires_explicit_experimental_flag(tiny_config, tmp_path):
         validate_config(config)
 
 
-def test_e001_runnable_standard_configs_load_and_instantiate(repo_root):
-    config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
-    for config_name in ("standard_30m_seed1.yaml", "standard_refactor_control_30m_seed1.yaml"):
-        config = load_config(config_dir / config_name)
-        model = GPT(config_from_dict(config["model"], config["data"]))
-        assert model.num_parameters() == 29_938_560
-
-
-def test_e001_cp_skeleton_configs_are_unimplemented(repo_root):
+def test_e001_runnable_configs_load_and_instantiate(repo_root):
     config_dir = repo_root / "configs" / "experiments" / "E001_cp_trilinear_attention"
     config_names = [
+        "standard_30m_seed1.yaml",
+        "standard_refactor_control_30m_seed1.yaml",
         "cp_bilinear_r8_30m_seed1.yaml",
         "cp_trilinear_r8_30m_seed1.yaml",
         "cp_trilinear_r8_lambda0_30m_seed1.yaml",
     ]
     for config_name in config_names:
-        with pytest.raises(ValueError, match="experimental"):
-            load_config(config_dir / config_name)
+        config = load_config(config_dir / config_name)
+        model = GPT(config_from_dict(config["model"], config["data"]))
+        assert model.num_parameters() >= 29_938_560
+
+
+def test_invalid_cp_lambda_flags_fail(tiny_config, tmp_path):
+    config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
+    config["model"]["attention_type"] = "cp_trilinear"
+    config["model"]["cp_rank"] = 8
+    config["model"]["cp_lambda_trainable"] = True
+    config["model"]["cp_lambda_fixed"] = True
+    with pytest.raises(ValueError, match="cannot both be true"):
+        validate_config(config)
+
+
+def test_unknown_diagnostics_key_fails(tiny_config, tmp_path):
+    config = deepcopy(tiny_config(tmp_path, tmp_path / "data"))
+    config["diagnostics"] = {"attention_diagnostics_evey": 1}
+    with pytest.raises(ValueError, match="Unknown diagnostics config keys"):
+        validate_config(config)
 
 
 def test_e001_configs_have_distinct_experiment_run_dirs(repo_root):

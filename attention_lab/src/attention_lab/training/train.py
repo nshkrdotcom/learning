@@ -13,6 +13,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 from attention_lab.evals.generation_eval import generate_text
 from attention_lab.models.gpt import GPT, config_from_dict
+from attention_lab.training.attention_diagnostics import append_attention_diagnostics, collect_attention_diagnostics
 from attention_lab.training.checkpointing import load_checkpoint, restore_rng_state, save_checkpoint
 from attention_lab.training.config import load_config, save_config
 from attention_lab.training.data_manifest import copy_manifest_to_run
@@ -252,6 +253,7 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
     save_every = int(train_config["save_every"])
     log_every = int(train_config["log_every"])
     sample_every = int(config.get("sample", {}).get("sample_every", save_every))
+    attention_diagnostics_every = int(config.get("diagnostics", {}).get("attention_diagnostics_every", 0))
 
     try:
         if start_step == 0 and bool(train_config.get("eval_at_start", True)):
@@ -291,7 +293,16 @@ def train(config_path: str | Path, overwrite: bool = False, resume_path: str | N
             if ddp:
                 dist.all_reduce(loss_accum, op=dist.ReduceOp.AVG)
             grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), float(train_config["grad_clip"]))
+            attention_diagnostic_rows = []
+            if (
+                master_process
+                and attention_diagnostics_every > 0
+                and (step % attention_diagnostics_every == 0 or step == max_steps)
+            ):
+                attention_diagnostic_rows = collect_attention_diagnostics(raw_model, step)
             optimizer.step()
+            if master_process and attention_diagnostic_rows:
+                append_attention_diagnostics(out_dir, attention_diagnostic_rows)
             if device_type == "cuda":
                 torch.cuda.synchronize()
 

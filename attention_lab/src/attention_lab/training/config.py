@@ -7,9 +7,9 @@ from attention_lab.models.gpt import GPTConfig
 
 
 REQUIRED_SECTIONS = ("run", "data", "model", "train")
-OPTIONAL_SECTIONS = ("sample", "status")
-IMPLEMENTED_ATTENTION_TYPES = {"standard"}
-KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "trilinear_cp"}
+OPTIONAL_SECTIONS = ("sample", "status", "diagnostics")
+IMPLEMENTED_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear"}
+KNOWN_ATTENTION_TYPES = {"standard", "cp_bilinear", "cp_trilinear", "trilinear_cp"}
 DTYPES = {"bfloat16", "float16", "float32"}
 EXPERIMENTAL_UNIMPLEMENTED_STATUS = "experimental_unimplemented"
 RUN_KEYS = {"name", "out_dir", "seed"}
@@ -42,6 +42,7 @@ SAMPLE_KEYS = {
     "temperature",
     "seed",
 }
+DIAGNOSTICS_KEYS = {"attention_diagnostics_every"}
 
 
 def _require_mapping(config: dict[str, Any], section: str) -> dict[str, Any]:
@@ -103,11 +104,15 @@ def validate_config(
     sample = config.get("sample", {})
     if not isinstance(sample, dict):
         raise ValueError("sample must be a mapping")
+    diagnostics = config.get("diagnostics", {})
+    if not isinstance(diagnostics, dict):
+        raise ValueError("diagnostics must be a mapping")
 
     _reject_unknown_keys(run, RUN_KEYS, "run")
     _reject_unknown_keys(data, DATA_KEYS, "data")
     _reject_unknown_keys(train, TRAIN_KEYS, "train")
     _reject_unknown_keys(sample, SAMPLE_KEYS, "sample")
+    _reject_unknown_keys(diagnostics, DIAGNOSTICS_KEYS, "diagnostics")
 
     _require_nonempty_string(run, "name", "run.name")
     _require_nonempty_string(run, "out_dir", "run.out_dir")
@@ -124,6 +129,17 @@ def validate_config(
         raise ValueError(f"model.attention_type must be one of {sorted(KNOWN_ATTENTION_TYPES)}")
     if attention_type not in IMPLEMENTED_ATTENTION_TYPES and not allow_experimental:
         raise ValueError(f"model.attention_type={attention_type!r} is not implemented for baseline runs")
+    if attention_type in {"cp_bilinear", "cp_trilinear"}:
+        _require_positive_int(model, "cp_rank", "model.cp_rank")
+        if not isinstance(model.get("cp_lambda_init", 0.0), (int, float)) or isinstance(
+            model.get("cp_lambda_init", 0.0), bool
+        ):
+            raise ValueError("model.cp_lambda_init must be numeric")
+        for key in ("cp_lambda_trainable", "cp_lambda_fixed"):
+            if not isinstance(model.get(key, False), bool):
+                raise ValueError(f"model.{key} must be a boolean")
+        if bool(model.get("cp_lambda_trainable", True)) and bool(model.get("cp_lambda_fixed", False)):
+            raise ValueError("model.cp_lambda_trainable and model.cp_lambda_fixed cannot both be true")
 
     block_size = _require_positive_int(model, "block_size", "model.block_size")
     n_layer = _require_positive_int(model, "n_layer", "model.n_layer")
@@ -142,6 +158,8 @@ def validate_config(
 
     for key in ("max_steps", "val_every", "val_steps", "save_every", "log_every"):
         _require_positive_int(train, key, f"train.{key}")
+    if "attention_diagnostics_every" in diagnostics:
+        _require_positive_int(diagnostics, "attention_diagnostics_every", "diagnostics.attention_diagnostics_every")
 
     dtype = train.get("dtype")
     if dtype not in DTYPES:
