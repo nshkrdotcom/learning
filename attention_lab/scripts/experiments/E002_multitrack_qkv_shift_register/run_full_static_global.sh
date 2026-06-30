@@ -19,3 +19,8 @@ uv run scripts/eval_generate.py --checkpoint "${RUN_DIR}/checkpoints/ckpt_last.p
 uv run scripts/eval_hellaswag.py --checkpoint "${RUN_DIR}/checkpoints/ckpt_last.pt" --max_examples 100
 uv run scripts/summarize_run.py --run_dir "${RUN_DIR}"
 uv run scripts/verify_run.py --run_dir "${RUN_DIR}" --expect-complete-training --expect-sample --expect-eval-loss --expect-hellaswag --expect-data-manifest
+
+echo
+echo "Full run completed and verified: ${RUN_DIR}"
+echo "Next destructive test:"
+echo "uv run scripts/qkv_track_destructive_test.py --config ${CONFIG} --checkpoint ${RUN_DIR}/checkpoints/ckpt_last.pt --out ${RUN_DIR}/evals/qkv_track_destructive_test.json --num-batches 4"

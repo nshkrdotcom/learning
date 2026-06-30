@@ -1,16 +1,16 @@
 # Hypothesis: standard_refactor_control_30m_seed1
 
 CLAIM:
-This run establishes the standard-attention refactor/control comparison point under the E002 fixed training contract.
+This run checks whether shared-path changes for step, schedule mode, position IDs, diagnostics, and Multi-QKV compatibility preserve standard-attention behavior under the E002 fixed training contract.
 
 KILL_CONDITION:
-The run fails manifest verification, train/eval/reload verification, or produces unstable losses.
+The run fails training, checkpoint reload, manifest verification, eval_loss, bounded HellaSwag, summarize_run, final verify_run, or diverges materially from the known standard baseline without an explained intentional change.
 
 MECHANISM_PROOF:
-Standard attention has no non-standard mechanism activity requirement; validity is established by manifest checks, full training completion, eval_loss reload, summarize_run, and verify_run.
+Standard attention has no Multi-QKV mechanism. Validity is established by unchanged standard model tests, checkpoint reload, eval_loss, summarize_run, and verify_run.
 
 NEAREST_BORING_EXPLANATION:
-Any difference from the historical baseline is due to source-state drift, run variance, or operator environment changes.
+Any downstream Multi-QKV candidate difference may be caused by shared training/eval plumbing changes rather than architecture.
 
 CONTROL_THAT_RULES_IT_OUT:
-Historical baseline_15m/baseline_30m run and this standard refactor control under the E002 fixed contract.
+This standard refactor control is the plumbing control for E002. It must pass before interpreting A/B/C.

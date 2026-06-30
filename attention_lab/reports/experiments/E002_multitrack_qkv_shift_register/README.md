@@ -1,6 +1,33 @@
-# E002 Multi-QKV Shift Register Reports
+# E002 Multitrack QKV Shift Register
 
-This directory holds E002 queue exports, run indexes, decision logs, implementation notes, and future verified results.
+Status: implementation prepared; no full-run result is claimed until manual full runs complete and verify.
+
+This directory holds E002 queue exports, run indexes, decision logs, implementation notes, templates, and future verified
+results.
+
+## Canonical Initial Runs
+
+| Run | Role |
+| --- | --- |
+| `standard_refactor_control_30m_seed1` | Shared-path standard control |
+| `multi_qkv_static_3track_global_30m_seed1` | A: static global 3-track cycle |
+| `multi_qkv_train_rotation_3track_global_30m_seed1` | B: train-time phase rotation, eval freeze |
+| `multi_qkv_position_rotation_3track_global_30m_seed1` | C: position-clock routing at train/eval/generate |
+
+## Required Artifacts Per Full Run
+
+- checkpoint
+- metrics
+- `evals/val_loss.json`
+- `evals/hellaswag.json`
+- `evals/run_summary.json`
+- `evals/attention_diagnostics.jsonl` for Multi-QKV runs
+- `evals/qkv_track_destructive_test.json` for Multi-QKV runs
+
+## Evidence Rule
+
+Validation loss is not interpretable without mechanism diagnostics. A Multi-QKV run with missing or degenerate diagnostics is
+`insufficient_evidence`.
 
 Current status:
 
@@ -17,15 +44,5 @@ Manual full-run scripts live under:
 scripts/experiments/E002_multitrack_qkv_shift_register/
 ```
 
-## Mechanism Diagnostics
-
-A/B/C runs are not interpretable from validation loss alone. Each Multi-QKV full run must include:
-
-- `evals/attention_diagnostics.jsonl`
-- `evals/qkv_track_destructive_test.json`
-
-A run with missing or degenerate diagnostics is marked `insufficient_evidence` even if validation loss improves. The current
-repository state is `implemented_not_run`: code, configs, tests, and manual scripts are prepared, but no full 3000-step E002
-result is claimed until the operator runs and verifies the jobs.
-
-Do not add comparison claims until actual run artifacts pass `verify_run.py`, `eval_loss.py`, `eval_generate.py`, `eval_hellaswag.py`, and `summarize_run.py`.
+Do not add comparison claims until actual run artifacts pass `verify_run.py`, `eval_loss.py`, `eval_generate.py`,
+`eval_hellaswag.py`, `summarize_run.py`, `qkv_track_activity`, and the destructive route test.

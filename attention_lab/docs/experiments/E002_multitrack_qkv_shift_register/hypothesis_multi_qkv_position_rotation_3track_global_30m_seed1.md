@@ -1,16 +1,16 @@
 # Hypothesis: multi_qkv_position_rotation_3track_global_30m_seed1
 
 CLAIM:
-Position-dependent deterministic routing changes local training/eval behavior beyond static depth routing.
+The position-rotation run tests whether an inference-persistent token-position clock can route a globally shared Q/K/V bank by `(layer_idx + position) % 3` during both training and eval/generation.
 
 KILL_CONDITION:
-The run is unstable, fails verification, emits degenerate or missing position-routing diagnostics, or is no better than static routing with materially worse throughput/VRAM.
+The run fails training, emits NaN/Inf, fails checkpoint reload, fails manifest verification, fails final verify_run, lacks valid attention diagnostics, implements scalar routing instead of per-position routing, breaks causal masking, or fails destructive route tests.
 
 MECHANISM_PROOF:
-Diagnostics must show expected active_track = (layer_idx + pos) mod 3 during train and eval, all tracks active over typical contexts, and nonzero selected-track gradients.
+`attention_diagnostics.jsonl` must show `position_routing_enabled=true`, `active_track_index=null`, multi-track nonzero `active_track_counts` within a sequence, nonzero gradients for all tracks, and route formula `(layer_idx + position) % track_count`.
 
 NEAREST_BORING_EXPLANATION:
-Any effect is due to extra three-track capacity or global-bank sharing, not position routing.
+Any improvement may be due to extra computation, effective ensemble-like projection selection, parameter-count differences, or static global bank effects rather than inference-persistent clocking.
 
 CONTROL_THAT_RULES_IT_OUT:
-multi_qkv_static_3track_global_30m_seed1 and standard_refactor_control_30m_seed1.
+multi_qkv_static_3track_global_30m_seed1.

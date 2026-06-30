@@ -1,5 +1,7 @@
 # E002 Results
 
+Status: no full runs completed yet.
+
 No full 3000-step E002 result exists yet.
 
 Implementation status:
