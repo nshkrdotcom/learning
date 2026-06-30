@@ -7,6 +7,20 @@ useful only if it preserves experiment meaning, provenance, and comparison disci
 This document is not evidence that any queued run completed. It is the work plan and
 acceptance checklist for implementing and operating the queue layer.
 
+## How To Read The Checkboxes
+
+The top `Implementation Status` section is the completion log for the queue system
+itself. The phase checklists below are reusable acceptance and operating gates. They
+are intentionally not all checked globally because many items must be re-evaluated for
+each future experiment, each queued config, or each manual full-run freeze.
+
+In short:
+
+- Checked items near the top mean the system feature exists.
+- Unchecked phase items mean "do this or verify this when using that process."
+- Per-run science gates, such as hypothesis docs, one-batch overfit, destructive
+  mechanism tests, controls, and morning notes, remain operator responsibilities.
+
 ## Implementation Status
 
 Completed in this implementation pass:

@@ -43,3 +43,17 @@ def test_queue_discipline_guide_is_linked_from_operator_docs(repo_root):
     guide_ref = "docs/guides/experiment_queue_discipline_checklist.md"
     assert guide_ref in readme
     assert guide_ref in checklist
+
+
+def test_agents_md_summarizes_agent_process(repo_root):
+    agents = (repo_root / "AGENTS.md").read_text(encoding="utf-8")
+    required = [
+        "README.md",
+        "docs/architecture_experiment_contract.md",
+        "docs/architecture_variant_checklist.md",
+        "docs/guides/experiment_queue_discipline_checklist.md",
+        "Do not rewrite the trainer",
+        "Required QC",
+    ]
+    for marker in required:
+        assert marker in agents
