@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from attention_lab.models.attention.multi_qkv_common import MultiQKVSharedBank, is_multi_qkv_attention
+from attention_lab.models.attention.multi_qkv_common import MultiQKVGlobalBank, is_multi_qkv_attention
 from attention_lab.models.attention.registry import build_attention
 
 
@@ -76,11 +76,21 @@ class MLP(nn.Module):
 
 
 class Block(nn.Module):
-    def __init__(self, config: GPTConfig, *, layer_idx: int, shared_qkv_bank: MultiQKVSharedBank | None = None):
+    def __init__(
+        self,
+        config: GPTConfig,
+        *,
+        layer_idx: int,
+        qkv_bank: MultiQKVGlobalBank | None = None,
+        shared_qkv_bank: MultiQKVGlobalBank | None = None,
+    ):
         super().__init__()
+        if qkv_bank is not None and shared_qkv_bank is not None and qkv_bank is not shared_qkv_bank:
+            raise ValueError("qkv_bank and shared_qkv_bank must reference the same global bank")
+        bank = qkv_bank if qkv_bank is not None else shared_qkv_bank
         self.layer_idx = layer_idx
         self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
-        self.attn = build_attention(config, layer_idx=layer_idx, shared_qkv_bank=shared_qkv_bank)
+        self.attn = build_attention(config, layer_idx=layer_idx, qkv_bank=bank)
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
         self.mlp = MLP(config)
 
@@ -90,12 +100,15 @@ class Block(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
         schedule_mode: str | None = None,
     ) -> torch.Tensor:
+        if position_ids is not None:
+            positions = position_ids
         x = x + self.attn(
             self.ln_1(x),
             step=step,
-            positions=positions,
+            position_ids=positions,
             schedule_mode=schedule_mode,
             layer_idx=self.layer_idx,
         )
@@ -107,14 +120,14 @@ class GPT(nn.Module):
     def __init__(self, config: GPTConfig):
         super().__init__()
         self.config = config
-        self.multi_qkv_bank = MultiQKVSharedBank(config) if is_multi_qkv_attention(config.attention_type) else None
+        self.multi_qkv_bank = MultiQKVGlobalBank(config) if is_multi_qkv_attention(config.attention_type) else None
 
         self.transformer = nn.ModuleDict(
             dict(
                 wte=nn.Embedding(config.vocab_size, config.n_embd),
                 wpe=nn.Embedding(config.block_size, config.n_embd),
                 h=nn.ModuleList(
-                    [Block(config, layer_idx=layer_idx, shared_qkv_bank=self.multi_qkv_bank) for layer_idx in range(config.n_layer)]
+                    [Block(config, layer_idx=layer_idx, qkv_bank=self.multi_qkv_bank) for layer_idx in range(config.n_layer)]
                 ),
                 ln_f=LayerNorm(config.n_embd, bias=config.bias),
             )
@@ -142,6 +155,7 @@ class GPT(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
         schedule_mode: str | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor | None]:
         _, seq_len = idx.size()
@@ -151,6 +165,8 @@ class GPT(nn.Module):
                 f"block_size is {self.config.block_size}"
             )
 
+        if position_ids is not None:
+            positions = position_ids
         if positions is None:
             pos = torch.arange(0, seq_len, dtype=torch.long, device=idx.device)
         else:
@@ -162,7 +178,7 @@ class GPT(nn.Module):
         x = tok_emb + pos_emb
 
         for block in self.transformer.h:
-            x = block(x, step=step, positions=pos, schedule_mode=schedule_mode)
+            x = block(x, step=step, position_ids=pos, schedule_mode=schedule_mode)
         x = self.transformer.ln_f(x)
         logits = self.lm_head(x)
 

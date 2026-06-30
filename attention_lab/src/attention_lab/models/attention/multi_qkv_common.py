@@ -1,11 +1,24 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Literal
 
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+
+ScheduleMode = Literal["train", "eval", "generate"]
+
+
+@dataclass(frozen=True)
+class MultiQKVRouteContext:
+    """Routing context for deterministic Multi-QKV track selection."""
+
+    layer_idx: int
+    step: int | None
+    schedule_mode: ScheduleMode
+    position_ids: torch.Tensor | None = None
 
 
 MULTI_QKV_ATTENTION_TYPES = {
@@ -19,8 +32,8 @@ def is_multi_qkv_attention(attention_type: str) -> bool:
     return attention_type in MULTI_QKV_ATTENTION_TYPES
 
 
-class MultiQKVSharedBank(nn.Module):
-    """Globally shared pool of bundled Q/K/V projection tracks."""
+class MultiQKVGlobalBank(nn.Module):
+    """Globally shared bank of packed bundled Q/K/V projection tracks."""
 
     def __init__(self, config: Any):
         super().__init__()
@@ -29,14 +42,8 @@ class MultiQKVSharedBank(nn.Module):
             raise ValueError("qkv_track_count must be positive")
         self.track_count = track_count
         self.n_embd = int(config.n_embd)
-        self.q_proj = nn.ModuleList(
-            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
-        )
-        self.k_proj = nn.ModuleList(
-            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
-        )
-        self.v_proj = nn.ModuleList(
-            [nn.Linear(config.n_embd, config.n_embd, bias=config.bias) for _ in range(track_count)]
+        self.c_attn_bank = nn.ModuleList(
+            [nn.Linear(config.n_embd, 3 * config.n_embd, bias=config.bias) for _ in range(track_count)]
         )
         self.forced_track: int | None = None
         self.swap_tracks: tuple[int, int] | None = None
@@ -52,17 +59,19 @@ class MultiQKVSharedBank(nn.Module):
                 return a
         return int(track) % self.track_count
 
-    def project_track(self, x: torch.Tensor, track: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def project_track(self, x: torch.Tensor, track: int) -> torch.Tensor:
         resolved = self.resolve_track(track)
-        return self.q_proj[resolved](x), self.k_proj[resolved](x), self.v_proj[resolved](x)
+        return self.c_attn_bank[resolved](x)
+
+    def project_all_tracks(self, x: torch.Tensor) -> list[torch.Tensor]:
+        return [self.project_track(x, track) for track in range(self.track_count)]
 
     def qkv_weight_norms(self) -> list[float]:
         values = []
         for track in range(self.track_count):
-            total = torch.zeros((), device=self.q_proj[track].weight.device)
-            for module in (self.q_proj[track], self.k_proj[track], self.v_proj[track]):
-                for parameter in module.parameters():
-                    total = total + parameter.detach().float().pow(2).sum()
+            total = torch.zeros((), device=self.c_attn_bank[track].weight.device)
+            for parameter in self.c_attn_bank[track].parameters():
+                total = total + parameter.detach().float().pow(2).sum()
             values.append(float(total.sqrt().item()))
         return values
 
@@ -70,12 +79,11 @@ class MultiQKVSharedBank(nn.Module):
         values = []
         for track in range(self.track_count):
             total = None
-            for module in (self.q_proj[track], self.k_proj[track], self.v_proj[track]):
-                for parameter in module.parameters():
-                    if parameter.grad is None:
-                        continue
-                    grad_total = parameter.grad.detach().float().pow(2).sum()
-                    total = grad_total if total is None else total + grad_total
+            for parameter in self.c_attn_bank[track].parameters():
+                if parameter.grad is None:
+                    continue
+                grad_total = parameter.grad.detach().float().pow(2).sum()
+                total = grad_total if total is None else total + grad_total
             values.append(None if total is None else float(total.sqrt().item()))
         return values
 
@@ -86,6 +94,9 @@ class MultiQKVSharedBank(nn.Module):
         return {str(index): value for index, value in enumerate(self.qkv_gradient_norms())}
 
 
+MultiQKVSharedBank = MultiQKVGlobalBank
+
+
 class MultiQKVBaseCausalSelfAttention(nn.Module):
     """Causal self-attention using a globally shared hard-switched Q/K/V bank."""
 
@@ -94,14 +105,24 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
     position_routing_enabled = False
     eval_freeze_mode = False
 
-    def __init__(self, config: Any, *, layer_idx: int, shared_qkv_bank: MultiQKVSharedBank):
+    def __init__(
+        self,
+        config: Any,
+        *,
+        layer_idx: int,
+        qkv_bank: MultiQKVGlobalBank | None = None,
+        shared_qkv_bank: MultiQKVGlobalBank | None = None,
+    ):
         super().__init__()
         if config.n_embd % config.n_head != 0:
             raise ValueError("n_embd must be divisible by n_head")
-        if shared_qkv_bank is None:
-            raise ValueError("Multi-QKV attention requires a shared_qkv_bank")
+        if qkv_bank is not None and shared_qkv_bank is not None and qkv_bank is not shared_qkv_bank:
+            raise ValueError("qkv_bank and shared_qkv_bank must reference the same global bank")
+        bank = qkv_bank if qkv_bank is not None else shared_qkv_bank
+        if bank is None:
+            raise ValueError("Multi-QKV attention requires a qkv_bank")
         self.layer_idx = int(layer_idx)
-        self.__dict__["qkv_bank"] = shared_qkv_bank
+        self.__dict__["qkv_bank"] = bank
         self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=config.bias)
         self.c_proj.NANOGPT_SCALE_INIT = 1
         self.attn_dropout = nn.Dropout(config.dropout)
@@ -123,6 +144,10 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
     ) -> torch.Tensor:
         raise NotImplementedError
 
+    def _split_qkv_heads(self, qkv: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        q, k, v = qkv.split(self.n_embd, dim=2)
+        return self._split_heads(q), self._split_heads(k), self._split_heads(v)
+
     def _split_heads(self, x: torch.Tensor) -> torch.Tensor:
         batch_size, seq_len, channels = x.size()
         head_size = channels // self.n_head
@@ -139,23 +164,11 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             raise ValueError("active track tensor must be scalar, [T], or [B, T]")
         return stacked.gather(dim=2, index=index).squeeze(2)
 
-    def _project(self, x: torch.Tensor, active_tracks: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _project(self, x: torch.Tensor, active_tracks: torch.Tensor) -> torch.Tensor:
         if active_tracks.dim() == 0:
             return self.qkv_bank.project_track(x, int(active_tracks.item()))
 
-        q_values = []
-        k_values = []
-        v_values = []
-        for track in range(self.track_count):
-            q, k, v = self.qkv_bank.project_track(x, track)
-            q_values.append(q)
-            k_values.append(k)
-            v_values.append(v)
-        return (
-            self._select_per_position(q_values, active_tracks),
-            self._select_per_position(k_values, active_tracks),
-            self._select_per_position(v_values, active_tracks),
-        )
+        return self._select_per_position(self.qkv_bank.project_all_tracks(x), active_tracks)
 
     def _track_counts(self, active_tracks: torch.Tensor, seq_len: int) -> dict[str, int]:
         if active_tracks.dim() == 0:
@@ -172,7 +185,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         schedule_mode: str,
         active_tracks: torch.Tensor,
         seq_len: int,
-        selected_q: torch.Tensor,
+        selected_qkv: torch.Tensor,
         attention: torch.Tensor,
     ) -> None:
         with torch.no_grad():
@@ -185,6 +198,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
                 track = int(track_key)
                 if count == 0:
                     continue
+                selected_q = selected_qkv[..., : self.n_embd]
                 if active_tracks.dim() == 0:
                     per_track_output_norm[track_key] = float(selected_q.detach().float().norm().item())
                 else:
@@ -211,6 +225,7 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
                 "uses_global_bank": True,
                 "layer_idx": self.layer_idx,
                 "step": step,
+                "last_forward_step": step,
                 "schedule_mode": schedule_mode,
                 "position_routing_enabled": self.position_routing_enabled,
                 "eval_freeze_mode": self.eval_freeze_mode and schedule_mode in {"eval", "generate"},
@@ -225,9 +240,22 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             **self.last_diagnostics,
             "step": self.last_diagnostics.get("step", step),
             "layer": layer,
+            "track_gradient_norm": self._active_track_gradient_norm(),
             "per_track_gradient_norm": self.qkv_bank.qkv_gradient_norm_dict(),
             "per_track_qkv_weight_norm": self.qkv_bank.qkv_weight_norm_dict(),
         }
+
+    def _active_track_gradient_norm(self) -> float | None:
+        if self.last_diagnostics is None:
+            return None
+        active_track = self.last_diagnostics.get("active_track_index")
+        if active_track is None:
+            gradients = [
+                value for value in self.qkv_bank.qkv_gradient_norms() if value is not None
+            ]
+            return max(gradients) if gradients else None
+        value = self.qkv_bank.qkv_gradient_norm_dict().get(str(active_track))
+        return None if value is None else float(value)
 
     def forward(
         self,
@@ -235,11 +263,14 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
         schedule_mode: str | None = None,
         layer_idx: int | None = None,
     ) -> torch.Tensor:
         del layer_idx
         batch_size, seq_len, channels = x.size()
+        if position_ids is not None:
+            positions = position_ids
         if positions is None:
             positions = torch.arange(seq_len, dtype=torch.long, device=x.device)
         else:
@@ -252,10 +283,8 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
         active_tracks = self.active_track_indices(step=step, positions=positions, schedule_mode=schedule_mode).to(
             device=x.device, dtype=torch.long
         )
-        q_raw, k_raw, v_raw = self._project(x, active_tracks)
-        q = self._split_heads(q_raw)
-        k = self._split_heads(k_raw)
-        v = self._split_heads(v_raw)
+        qkv = self._project(x, active_tracks)
+        q, k, v = self._split_qkv_heads(qkv)
 
         head_size = channels // self.n_head
         scores = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(head_size))
@@ -267,10 +296,13 @@ class MultiQKVBaseCausalSelfAttention(nn.Module):
             schedule_mode=schedule_mode,
             active_tracks=active_tracks,
             seq_len=seq_len,
-            selected_q=q_raw,
+            selected_qkv=qkv,
             attention=attention,
         )
         attention = self.attn_dropout(attention)
         y = attention @ v
         y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, channels)
         return self.resid_dropout(self.c_proj(y))
+
+
+MultiQKVGlobalCausalSelfAttention = MultiQKVBaseCausalSelfAttention

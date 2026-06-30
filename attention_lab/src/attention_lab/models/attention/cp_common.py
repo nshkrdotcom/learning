@@ -139,10 +139,11 @@ class CPScoreAugmentedCausalSelfAttention(nn.Module):
         *,
         step: int | None = None,
         positions: torch.Tensor | None = None,
+        position_ids: torch.Tensor | None = None,
         schedule_mode: str | None = None,
         layer_idx: int | None = None,
     ) -> torch.Tensor:
-        del step, positions, schedule_mode, layer_idx
+        del step, positions, position_ids, schedule_mode, layer_idx
         batch_size, seq_len, channels = x.size()
         head_size = channels // self.n_head
         q, k, v = self._split_qkv(x)

@@ -43,9 +43,11 @@
       "additionalProperties": { "type": ["number", "null"] }
     },
     "track_entropy": { "type": ["number", "null"] },
+    "track_gradient_norm": { "type": ["number", "null"] },
     "route_formula": { "type": ["string", "null"] },
     "uses_global_bank": { "type": ["boolean", "null"] },
     "track_count": { "type": ["integer", "null"], "minimum": 1 },
+    "last_forward_step": { "type": ["integer", "null"], "minimum": 0 },
     "schedule_mode": { "type": ["string", "null"], "enum": ["train", "eval", "generate", null] },
     "layer_idx": { "type": ["integer", "null"], "minimum": 0 },
     "position_routing_enabled": { "type": ["boolean", "null"] },

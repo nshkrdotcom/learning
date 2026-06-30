@@ -55,7 +55,7 @@ def test_standard_attention_outputs_are_unchanged_by_step_position_threading():
     idx = torch.randint(0, 64, (2, 8))
     positions = torch.arange(8)
     logits_without_context, _ = model(idx)
-    logits_with_context, _ = model(idx, step=123, positions=positions)
+    logits_with_context, _ = model(idx, step=123, position_ids=positions)
     assert torch.equal(logits_without_context, logits_with_context)
 
 

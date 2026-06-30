@@ -38,10 +38,7 @@ def standard_config():
 
 
 def copy_standard_weights(target: MultiQKVStaticGlobalCausalSelfAttention, source: StandardCausalSelfAttention) -> None:
-    q_weight, k_weight, v_weight = source.c_attn.weight.data.chunk(3, dim=0)
-    target.qkv_bank.q_proj[0].weight.data.copy_(q_weight)
-    target.qkv_bank.k_proj[0].weight.data.copy_(k_weight)
-    target.qkv_bank.v_proj[0].weight.data.copy_(v_weight)
+    target.qkv_bank.c_attn_bank[0].load_state_dict(deepcopy(source.c_attn.state_dict()))
     target.c_proj.load_state_dict(deepcopy(source.c_proj.state_dict()))
 
 
@@ -49,7 +46,7 @@ def test_multi_qkv_static_forward_shape():
     torch.manual_seed(1)
     config = multi_config()
     bank = MultiQKVSharedBank(config)
-    attention = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=1, shared_qkv_bank=bank)
+    attention = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=1, qkv_bank=bank)
     y = attention(torch.randn(2, 8, 16))
     assert tuple(y.shape) == (2, 8, 16)
 
@@ -58,7 +55,7 @@ def test_multi_qkv_causal_mask_prevents_future_token_influence():
     torch.manual_seed(2)
     config = multi_config("multi_qkv_position_rotation_3track_global")
     bank = MultiQKVSharedBank(config)
-    attention = MultiQKVPositionRotationGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank)
+    attention = MultiQKVPositionRotationGlobalCausalSelfAttention(config, layer_idx=0, qkv_bank=bank)
     attention.eval()
     x1 = torch.randn(1, 8, 16)
     x2 = x1.clone()
@@ -74,7 +71,7 @@ def test_one_track_multi_qkv_matches_standard_attention_with_shared_weights():
     standard = StandardCausalSelfAttention(standard_config())
     config = multi_config(track_count=1)
     bank = MultiQKVSharedBank(config)
-    multi = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank)
+    multi = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, qkv_bank=bank)
     copy_standard_weights(multi, standard)
     standard.eval()
     multi.eval()
@@ -87,12 +84,12 @@ def test_static_route_formula_layer_idx_mod_three():
     bank = MultiQKVSharedBank(config)
     positions = torch.arange(8)
     assert int(
-        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank).active_track_indices(
+        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, qkv_bank=bank).active_track_indices(
             step=None, positions=positions, schedule_mode="train"
         )
     ) == 0
     assert int(
-        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=4, shared_qkv_bank=bank).active_track_indices(
+        MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=4, qkv_bank=bank).active_track_indices(
             step=None, positions=positions, schedule_mode="eval"
         )
     ) == 1
@@ -101,7 +98,7 @@ def test_static_route_formula_layer_idx_mod_three():
 def test_train_rotation_formula_and_eval_freeze():
     config = multi_config("multi_qkv_train_rotation_3track_global")
     bank = MultiQKVSharedBank(config)
-    attention = MultiQKVTrainRotationGlobalCausalSelfAttention(config, layer_idx=2, shared_qkv_bank=bank)
+    attention = MultiQKVTrainRotationGlobalCausalSelfAttention(config, layer_idx=2, qkv_bank=bank)
     positions = torch.arange(8)
     attention.train()
     assert int(attention.active_track_indices(step=5, positions=positions, schedule_mode="train")) == (2 + 5) % 3
@@ -114,7 +111,7 @@ def test_train_rotation_formula_and_eval_freeze():
 def test_position_rotation_formula_per_position():
     config = multi_config("multi_qkv_position_rotation_3track_global")
     bank = MultiQKVSharedBank(config)
-    attention = MultiQKVPositionRotationGlobalCausalSelfAttention(config, layer_idx=1, shared_qkv_bank=bank)
+    attention = MultiQKVPositionRotationGlobalCausalSelfAttention(config, layer_idx=1, qkv_bank=bank)
     positions = torch.arange(6)
     assert torch.equal(
         attention.active_track_indices(step=None, positions=positions, schedule_mode="generate"),
@@ -126,11 +123,10 @@ def test_inactive_hard_switch_tracks_receive_no_gradient_for_static_route():
     torch.manual_seed(4)
     config = multi_config()
     bank = MultiQKVSharedBank(config)
-    attention = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, shared_qkv_bank=bank)
+    attention = MultiQKVStaticGlobalCausalSelfAttention(config, layer_idx=0, qkv_bank=bank)
     loss = attention(torch.randn(2, 8, 16)).pow(2).mean()
     loss.backward()
-    assert bank.q_proj[0].weight.grad is not None and bank.q_proj[0].weight.grad.abs().sum() > 0
+    assert bank.c_attn_bank[0].weight.grad is not None and bank.c_attn_bank[0].weight.grad.abs().sum() > 0
     for track in (1, 2):
-        for module_list in (bank.q_proj, bank.k_proj, bank.v_proj):
-            grad = module_list[track].weight.grad
-            assert grad is None or grad.abs().sum() == 0
+        grad = bank.c_attn_bank[track].weight.grad
+        assert grad is None or grad.abs().sum() == 0

@@ -49,12 +49,16 @@ def test_multi_qkv_diagnostics_include_required_fields_after_backward():
         "step",
         "schedule_mode",
         "track_count",
+        "last_forward_step",
+        "track_gradient_norm",
         "position_routing_enabled",
         "eval_freeze_mode",
     ):
         assert key in row
     assert row["uses_global_bank"] is True
     assert row["schedule_mode"] == "train"
+    assert row["last_forward_step"] == 2
+    assert row["track_gradient_norm"] is not None and row["track_gradient_norm"] > 0.0
     assert max(value or 0.0 for value in row["per_track_gradient_norm"].values()) > 0.0
 
 
