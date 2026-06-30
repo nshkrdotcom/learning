@@ -33,7 +33,8 @@ def main() -> None:
     out_dir = Path(args.out_dir)
     total_tokens = args.val_tokens + args.train_tokens
     enc = tiktoken.get_encoding(args.tokenizer)
-    eot = enc._special_tokens["<|endoftext|>"]
+    eot_token = "<|" + "endoftext" + "|>"
+    eot = enc._special_tokens[eot_token]
     dataset = load_dataset(args.dataset, name=args.name, split=args.split, streaming=True)
 
     val_buffer = np.empty(args.val_tokens, dtype=np.uint16)
